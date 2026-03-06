@@ -136,10 +136,10 @@ export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
 
         {/* World Event Alert */}
         <View className="mb-4 border border-destructive/30 p-3 bg-destructive/5">
-          <Text className="text-destructive font-robotomono text-[9px] font-bold">
+          <Text className="text-destructive font-robotomono text-xs font-bold">
             ⚠ {t('report.worldEvent')}
           </Text>
-          <Text className="text-destructive/70 font-robotomono text-[8px] mt-1">
+          <Text style={{ color: 'rgba(255,62,62,0.7)' }} className="font-robotomono text-[11px] mt-1">
             PARTY "LAST_LIGHT" ELIMINATED · {t('common.floor')} 03 · {t('common.cycle')} 01
           </Text>
         </View>

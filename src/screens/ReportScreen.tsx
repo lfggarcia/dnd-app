@@ -2,9 +2,10 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { TypewriterText } from '../components/TypewriterText';
+import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
+import { useGlossary } from '../hooks/useGlossary';
+import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
-
-const REPORT_HEADER = '─── COMBAT_REPORT · FLOOR_01 · CYCLE_01 ───';
 
 const REPORT_DATA = {
   result: 'VICTORY',
@@ -25,14 +26,20 @@ const REPORT_DATA = {
 };
 
 export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
+  const { t } = useI18n();
+  const glossary = useGlossary();
+
+  const headerText = `─── ${t('report.title')} · ${t('common.floor')} 01 · ${t('common.cycle')} 01 ───`;
+
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
+      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
 
       {/* Header */}
       <View className="p-4 border-b border-primary/30">
         <TypewriterText
-          text={REPORT_HEADER}
+          text={headerText}
           className="text-primary text-xs text-center"
           delay={20}
           showCursor={false}
@@ -45,16 +52,16 @@ export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
           <Text className={`font-robotomono text-2xl font-bold ${
             REPORT_DATA.result === 'VICTORY' ? 'text-primary' : 'text-destructive'
           }`}>
-            [{REPORT_DATA.result}]
+            [{REPORT_DATA.result === 'VICTORY' ? t('report.victory') : t('report.defeat')}]
           </Text>
           <Text className="text-primary/40 font-robotomono text-[8px] mt-1">
-            {REPORT_DATA.roundsElapsed} ROUNDS · FLOOR_01
+            {REPORT_DATA.roundsElapsed} {t('report.rounds')} · {t('common.floor')} 01
           </Text>
         </View>
 
         {/* Enemies Defeated */}
         <View className="mb-4 border border-primary/20 p-3 bg-muted/10">
-          <Text className="text-primary font-robotomono text-[9px] mb-2 font-bold">ENEMIES_DEFEATED:</Text>
+          <Text className="text-primary font-robotomono text-[9px] mb-2 font-bold">{t('report.enemiesDefeated')}</Text>
           {REPORT_DATA.enemiesDefeated.map((e, i) => (
             <View key={i} className="flex-row justify-between items-center mb-1 py-1 border-b border-primary/10">
               <Text className="text-primary/70 font-robotomono text-[9px]">{e.name}</Text>
@@ -70,18 +77,18 @@ export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
 
         {/* Party Status */}
         <View className="mb-4 border border-primary/20 p-3 bg-muted/10">
-          <Text className="text-primary font-robotomono text-[9px] mb-2 font-bold">PARTY_STATUS:</Text>
+          <Text className="text-primary font-robotomono text-[9px] mb-2 font-bold">{t('report.partyStatus')}</Text>
           {REPORT_DATA.partyStatus.map((c, i) => {
             const hpLost = c.hpBefore - c.hpAfter;
             return (
               <View key={i} className="flex-row justify-between items-center mb-1 py-1 border-b border-primary/10">
                 <View className="flex-row items-center">
                   <Text className="text-primary font-robotomono text-[9px] font-bold mr-2">{c.name}</Text>
-                  <Text className="text-secondary/60 font-robotomono text-[7px]">{c.class}</Text>
+                  <Text className="text-secondary/60 font-robotomono text-[7px]">{t(`party.class_${c.class}`)}</Text>
                 </View>
                 <View className="flex-row items-center">
                   <Text className="text-primary/60 font-robotomono text-[8px]">
-                    HP: {c.hpAfter}/{c.hpBefore}
+                    {t('common.hp')}: {c.hpAfter}/{c.hpBefore}
                   </Text>
                   {hpLost > 0 && (
                     <Text className="text-destructive font-robotomono text-[8px] ml-2">-{hpLost}</Text>
@@ -98,18 +105,18 @@ export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
         {/* XP & Gold */}
         <View className="mb-4 flex-row">
           <View className="flex-1 mr-2 border border-secondary/30 p-3 bg-secondary/5 items-center">
-            <Text className="text-secondary/50 font-robotomono text-[7px]">TOTAL_XP</Text>
+            <Text className="text-secondary/50 font-robotomono text-[7px]">{t('report.totalXp')}</Text>
             <Text className="text-secondary font-robotomono text-xl font-bold">+{REPORT_DATA.totalXp}</Text>
           </View>
           <View className="flex-1 ml-2 border border-secondary/30 p-3 bg-secondary/5 items-center">
-            <Text className="text-secondary/50 font-robotomono text-[7px]">GOLD_EARNED</Text>
+            <Text className="text-secondary/50 font-robotomono text-[7px]">{t('report.goldEarned')}</Text>
             <Text className="text-secondary font-robotomono text-xl font-bold">{REPORT_DATA.goldEarned}G</Text>
           </View>
         </View>
 
         {/* Performance Graph */}
         <View className="mb-4 border border-primary/20 p-3 bg-primary/5">
-          <Text className="text-primary font-robotomono text-[9px] mb-2 font-bold">DAMAGE_DEALT:</Text>
+          <Text className="text-primary font-robotomono text-[9px] mb-2 font-bold">{t('report.damageDone')}</Text>
           <View className="flex-row items-end h-16">
             {[
               { name: 'RAVEN', dmg: 15, max: 15 },
@@ -131,10 +138,10 @@ export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
         {/* World Event Alert */}
         <View className="mb-4 border border-destructive/30 p-3 bg-destructive/5">
           <Text className="text-destructive font-robotomono text-[9px] font-bold">
-            ⚠ WORLD_EVENT:
+            ⚠ {t('report.worldEvent')}
           </Text>
           <Text className="text-destructive/70 font-robotomono text-[8px] mt-1">
-            PARTY "LAST_LIGHT" ELIMINATED ON FLOOR_03 · CYCLE_01
+            PARTY "LAST_LIGHT" ELIMINATED · {t('common.floor')} 03 · {t('common.cycle')} 01
           </Text>
         </View>
 
@@ -147,9 +154,11 @@ export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
           onPress={() => navigation.navigate('Extraction')}
           className="bg-primary p-3 items-center"
         >
-          <Text className="text-background font-bold font-robotomono">CONTINUE</Text>
+          <Text className="text-background font-bold font-robotomono">{t('common.continue')}</Text>
         </TouchableOpacity>
       </View>
+
+      <GlossaryButton onPress={glossary.open} />
     </View>
   );
 };

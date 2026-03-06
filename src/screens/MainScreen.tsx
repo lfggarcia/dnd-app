@@ -2,27 +2,26 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { TypewriterText } from '../components/TypewriterText';
 import { CRTOverlay } from '../components/CRTOverlay';
+import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
+import { useGlossary } from '../hooks/useGlossary';
+import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
-const BOOT_LOGS = [
-  "[KERNEL_INIT] ............ OK",
-  "[TOWER_PROTOCOL] ........ ACTIVE",
-  "[SEED_ENGINE] ........... STANDBY",
-  "[SOUL_REGISTRY] ......... 0 LOADED",
-  "[CYCLE_CLOCK] ........... OFFLINE",
-  "[DND_CORE v5e] .......... LINKED",
-  "[UPLINK] ................ SECURE",
-];
+const BOOT_KEY_ORDER = [
+  'bootKernel', 'bootTower', 'bootSeed', 'bootSouls', 'bootCycle', 'bootDnd', 'bootUplink',
+] as const;
 
 const MENU_ITEMS = [
-  { key: 'continue', label: 'CONTINUE_EXPEDITION', enabled: false },
-  { key: 'new', label: 'NEW_SEED', enabled: true },
-  { key: 'load', label: 'LOAD_SEED', enabled: false },
-  { key: 'settings', label: 'SYSTEM_CONFIG', enabled: false },
-  { key: 'credits', label: 'CREDITS', enabled: false },
+  { key: 'continue', labelKey: 'main.continueExpedition', enabled: false, tag: 'noSave' },
+  { key: 'new', labelKey: 'main.newSeed', enabled: true, tag: null },
+  { key: 'load', labelKey: 'main.loadSeed', enabled: false, tag: 'locked' },
+  { key: 'settings', labelKey: 'main.systemConfig', enabled: false, tag: 'locked' },
+  { key: 'credits', labelKey: 'main.credits', enabled: false, tag: 'locked' },
 ] as const;
 
 export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
+  const { t, lang, setLang } = useI18n();
+  const glossary = useGlossary();
   const [bootComplete, setBootComplete] = useState(false);
 
   useEffect(() => {
@@ -34,15 +33,26 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
     if (key === 'new') navigation.navigate('Seed');
   };
 
+  const toggleLang = () => setLang(lang === 'es' ? 'en' : 'es');
+
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
+      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
+
+      {/* Language Toggle */}
+      <TouchableOpacity
+        onPress={toggleLang}
+        className="absolute top-12 right-4 z-10 border border-primary/40 px-3 py-1"
+      >
+        <Text className="text-primary font-robotomono text-[10px]">{lang.toUpperCase()}</Text>
+      </TouchableOpacity>
 
       {/* Boot Logs */}
-      <View className="absolute top-12 left-6 right-6 opacity-30">
-        {BOOT_LOGS.map((log, i) => (
+      <View className="absolute top-12 left-6 right-16 opacity-30">
+        {BOOT_KEY_ORDER.map((key, i) => (
           <Text key={i} className="text-[9px] text-primary font-robotomono leading-4">
-            {log}
+            {t(`main.${key}`)}
           </Text>
         ))}
       </View>
@@ -59,7 +69,7 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
         </Text>
 
         <Text className="text-secondary font-robotomono text-[9px] mb-1">
-          100 FLOORS · 60 CYCLES · 10 PARTIES · 1 TOWER
+          {t('main.subtitle')}
         </Text>
         <View className="w-48 h-[1px] bg-primary/30 mb-10" />
 
@@ -80,7 +90,7 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
                 </Text>
                 {item.key === 'new' && bootComplete ? (
                   <TypewriterText
-                    text={item.label}
+                    text={t(item.labelKey)}
                     className="text-primary font-bold text-base"
                     delay={40}
                     showCursor={false}
@@ -89,17 +99,17 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
                   <Text className={`font-robotomono text-base ${
                     item.enabled ? 'text-primary font-bold' : 'text-primary'
                   }`}>
-                    {item.label}
+                    {t(item.labelKey)}
                   </Text>
                 )}
-                {!item.enabled && item.key !== 'continue' && (
+                {item.tag === 'locked' && (
                   <Text className="text-primary/30 font-robotomono text-[8px] ml-auto">
-                    [LOCKED]
+                    [{t('common.locked').toUpperCase()}]
                   </Text>
                 )}
-                {item.key === 'continue' && (
+                {item.tag === 'noSave' && (
                   <Text className="text-primary/30 font-robotomono text-[8px] ml-auto">
-                    [NO_SAVE]
+                    [{t('main.noSave').toUpperCase()}]
                   </Text>
                 )}
               </View>
@@ -111,12 +121,14 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
       {/* Footer */}
       <View className="px-6 pb-6 flex-row justify-between items-end">
         <Text className="text-[9px] text-primary/30 font-robotomono">
-          TORRE_OS v2.0 | DND_5E_CORE
+          {t('main.footer')}
         </Text>
         <Text className="text-[9px] text-primary/30 font-robotomono">
-          PROTOCOL_ACTIVE
+          {t('main.protocolActive')}
         </Text>
       </View>
+
+      <GlossaryButton onPress={glossary.open} />
     </View>
   );
 };

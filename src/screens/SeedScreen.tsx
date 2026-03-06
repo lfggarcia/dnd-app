@@ -8,6 +8,9 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
+import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
+import { useGlossary } from '../hooks/useGlossary';
+import { useI18n } from '../i18n';
 
 const DataColumn = ({ index }: { index: number }) => {
   const [chars, setChars] = useState('');
@@ -32,6 +35,8 @@ const DataColumn = ({ index }: { index: number }) => {
 };
 
 export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
+  const { t } = useI18n();
+  const glossary = useGlossary();
   const [seed, setSeed] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const processingAnim = useSharedValue(0);
@@ -40,7 +45,7 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
     if (!seed || isProcessing) return;
     setIsProcessing(true);
     processingAnim.value = withTiming(1, { duration: 1500 }, () => {
-      runOnJS(navigation.navigate)('Party');
+      runOnJS(navigation.navigate)('Party' as any);
     });
   };
 
@@ -56,6 +61,7 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
+      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
 
       {/* Matrix background */}
       <View className="absolute inset-0 flex-row justify-center opacity-15" pointerEvents="none">
@@ -68,9 +74,9 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
       <View className="p-4 border-b border-secondary/30">
         <View className="flex-row justify-between items-center">
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text className="text-secondary font-robotomono text-xs">{'<'} BACK</Text>
+            <Text className="text-secondary font-robotomono text-xs">{'<'} {t('common.back')}</Text>
           </TouchableOpacity>
-          <Text className="text-secondary font-robotomono text-xs">SEED_GENERATION_PROTOCOL</Text>
+          <Text className="text-secondary font-robotomono text-xs">{t('seed.title')}</Text>
         </View>
       </View>
 
@@ -78,14 +84,14 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
         {/* Seed Name Input */}
         <View className="mb-8">
           <Text className="text-secondary font-robotomono text-[10px] mb-2">
-            {'>'} SEED_IDENTIFIER:
+            {'>'} {t('seed.seedLabel')}
           </Text>
           <View className="border-2 border-secondary p-4 bg-muted/30">
             <TextInput
               className="text-2xl text-secondary font-robotomono h-10"
               value={seed}
               onChangeText={setSeed}
-              placeholder="ENTER_SEED"
+              placeholder={t('seed.enterSeed')}
               placeholderTextColor="#FFB00030"
               autoCapitalize="characters"
               maxLength={16}
@@ -93,35 +99,33 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
           </View>
           <View className="flex-row justify-between mt-2">
             <Text className="text-secondary/40 font-robotomono text-[9px]">
-              HASH: 0x{seedHash}
+              {t('seed.hash')}: 0x{seedHash}
             </Text>
             <Text className="text-secondary/40 font-robotomono text-[9px]">
-              STATUS: {seed ? 'VALID' : 'AWAITING_INPUT'}
+              {t('common.status')}: {seed ? t('seed.valid') : t('seed.awaiting')}
             </Text>
           </View>
         </View>
 
         {/* Difficulty */}
         <View className="mb-8 border border-secondary/30 p-4 bg-muted/20">
-          <Text className="text-secondary font-robotomono text-[10px] mb-3">DIFFICULTY_SETTING:</Text>
+          <Text className="text-secondary font-robotomono text-[10px] mb-3">{t('seed.difficulty')}:</Text>
           <View className="flex-row items-center justify-between">
-            <Text className="text-secondary font-robotomono text-lg font-bold">CRUEL</Text>
-            <Text className="text-destructive font-robotomono text-[9px]">[FIXED — NO MERCY]</Text>
+            <Text className="text-secondary font-robotomono text-lg font-bold">{t('seed.cruel')}</Text>
+            <Text className="text-destructive font-robotomono text-[9px]">[{t('seed.cruelDesc').toUpperCase()}]</Text>
           </View>
           <Text className="text-secondary/50 font-robotomono text-[8px] mt-2">
-            PERMANENT_DEATH · NO_SAVE_SCUM · FULL_DND_5E_RULES
+            {t('seed.cruelRules')}
           </Text>
         </View>
 
         {/* Seed Info */}
         <View className="mb-8 border border-primary/20 p-3 bg-primary/5">
           <Text className="text-primary font-robotomono text-[9px]">
-            SEED_GENERATES:
+            {t('seed.seedGenerates')}
           </Text>
           <Text className="text-primary/60 font-robotomono text-[8px] mt-1">
-            · 100 FLOOR_LAYOUTS  · ENEMY_TABLES  · LOOT_TABLES{'\n'}
-            · 8 AI_PARTIES       · BOSS_VARIANTS · EVENT_POOL{'\n'}
-            · DETERMINISTIC — SAME_SEED = SAME_WORLD
+            {t('seed.seedInfo')}
           </Text>
         </View>
 
@@ -134,10 +138,10 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
           }`}
         >
           <Text className="text-secondary font-bold text-lg font-robotomono">
-            [ CREATE_PARTY ]
+            [ {t('seed.createParty')} ]
           </Text>
           <Text className="text-secondary/50 font-robotomono text-[8px] mt-1">
-            GENERATE WORLD → BUILD PARTY → START EXPEDITION
+            {t('seed.createPartyDesc')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -147,6 +151,8 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
         style={[overlayStyle, { position: 'absolute', inset: 0 }]}
         pointerEvents="none"
       />
+
+      <GlossaryButton onPress={glossary.open} />
     </View>
   );
 };

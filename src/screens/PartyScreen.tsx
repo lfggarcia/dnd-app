@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
+import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
+import { useGlossary } from '../hooks/useGlossary';
+import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
 const RACES = ['HUMAN', 'ELF', 'DWARF', 'HALFLING', 'HALF-ORC', 'TIEFLING'];
@@ -35,24 +38,48 @@ const defaultCharacter = (index: number): CharacterDraft => ({
   stats: generateStats(),
 });
 
-const StatBar = ({ label, value }: { label: string; value: number }) => {
+const STAT_KEYS = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] as const;
+
+const StatBar = ({ statKey, value, t }: { statKey: string; value: number; t: (k: string) => string }) => {
   const mod = Math.floor((value - 10) / 2);
   const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
   const pct = ((value - 3) / 15) * 100;
+  const label = t(`glossary.stats.${statKey}.name`).split(' ')[0];
 
   return (
-    <View className="flex-row items-center mb-1">
-      <Text className="text-primary font-robotomono text-[9px] w-8">{label}</Text>
-      <View className="flex-1 h-3 bg-muted/40 border border-primary/20 mx-2">
-        <View className="h-full bg-primary/40" style={{ width: `${Math.min(pct, 100)}%` }} />
+    <View className="flex-row items-center mb-2">
+      <Text className="text-primary font-robotomono text-xs w-10 font-bold">{label}</Text>
+      <View className="flex-1 h-4 bg-muted/40 border border-primary/30 mx-2 rounded-sm">
+        <View className="h-full bg-primary/50 rounded-sm" style={{ width: `${Math.min(pct, 100)}%` }} />
       </View>
-      <Text className="text-primary font-robotomono text-[10px] w-6 text-right">{value}</Text>
-      <Text className="text-secondary font-robotomono text-[9px] w-6 text-right">{modStr}</Text>
+      <Text className="text-primary font-robotomono text-sm w-7 text-right font-bold">{value}</Text>
+      <Text className="text-secondary font-robotomono text-xs w-7 text-right">{modStr}</Text>
     </View>
   );
 };
 
+/** Reusable section card wrapper */
+const SectionCard = ({ children, borderColor = 'border-primary/30' }: { children: React.ReactNode; borderColor?: string }) => (
+  <View className={`mb-5 border ${borderColor} rounded-md bg-muted/10 p-4`}>{children}</View>
+);
+
+const SectionHeader = ({ icon, label, color = 'text-primary' }: { icon: string; label: string; color?: string }) => (
+  <Text className={`${color} font-robotomono text-sm font-bold mb-1`}>{icon}  {label}</Text>
+);
+
+const SectionHint = ({ text, color = 'text-primary/50' }: { text: string; color?: string }) => (
+  <Text className={`${color} font-robotomono text-xs mb-3`}>{text}</Text>
+);
+
+const DescriptionBox = ({ text, borderColor = 'border-primary/40', textColor = 'text-primary/70' }: { text: string; borderColor?: string; textColor?: string }) => (
+  <View className={`mt-3 border-l-2 ${borderColor} pl-3 py-2 bg-background/60 rounded-r-sm`}>
+    <Text className={`${textColor} font-robotomono text-[11px] leading-4`}>{text}</Text>
+  </View>
+);
+
 export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
+  const { t } = useI18n();
+  const glossary = useGlossary();
   const [roster, setRoster] = useState<CharacterDraft[]>([defaultCharacter(0)]);
   const [activeSlot, setActiveSlot] = useState(0);
 
@@ -79,18 +106,24 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
     updateCurrent({ stats: generateStats() });
   };
 
+  const raceKey = RACES[current.race].replace('-', '_');
+  const classKey = CLASSES[current.charClass];
+  const bgKey = BACKGROUNDS[current.background];
+  const alignKey = ALIGNMENTS[current.alignment];
+
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
+      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
 
       {/* Header */}
       <View className="p-3 border-b border-primary/40 flex-row justify-between items-center">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text className="text-primary font-robotomono text-xs">{'<'} BACK</Text>
+          <Text className="text-primary font-robotomono text-xs">{'<'} {t('common.back')}</Text>
         </TouchableOpacity>
-        <Text className="text-primary font-robotomono text-[10px]">PARTY_ASSEMBLY</Text>
+        <Text className="text-primary font-robotomono text-[10px]">{t('party.title')}</Text>
         <Text className="text-primary/50 font-robotomono text-[9px]">
-          {roster.length}/4 SLOTS
+          {roster.length}/4 {t('party.slots')}
         </Text>
       </View>
 
@@ -112,7 +145,7 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
               </Text>
               {char && (
                 <Text className="text-secondary font-robotomono text-[7px]">
-                  {CLASSES[char.charClass]}
+                  {t(`party.class_${CLASSES[char.charClass]}`)}
                 </Text>
               )}
             </TouchableOpacity>
@@ -120,168 +153,194 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
         })}
       </View>
 
-      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
-        {/* Character Portrait Area */}
-        <View className="flex-row mb-4">
-          <View className="w-24 h-32 border border-primary/40 bg-muted/30 items-center justify-center mr-4">
-            <View className="w-16 h-24 border border-primary/30 border-dashed items-center justify-center">
-              <Text className="text-primary/30 font-robotomono text-[7px]">PORTRAIT</Text>
-            </View>
-            <Text className="text-primary/40 font-robotomono text-[6px] mt-1">SCAN_ACTIVE</Text>
-          </View>
+      <ScrollView className="flex-1 px-3 pt-4" showsVerticalScrollIndicator={false}>
 
-          {/* Basic Info */}
-          <View className="flex-1">
-            <Text className="text-primary/50 font-robotomono text-[8px] mb-1">DESIGNATION:</Text>
-            <Text className="text-primary font-robotomono text-sm font-bold mb-2">
-              {current.name}
+        {/* ── Character Summary Banner ── */}
+        <View className="mb-5 border border-primary/30 rounded-md bg-primary/5 px-4 py-3 flex-row items-center justify-between">
+          <View>
+            <Text className="text-primary font-robotomono text-base font-bold">{current.name}</Text>
+            <Text className="text-primary/50 font-robotomono text-xs mt-1">
+              {t(`party.race_${raceKey}`)} · {t(`party.class_${classKey}`)} · {t(`party.align_${alignKey}`)}
             </Text>
-            <View className="flex-row flex-wrap">
-              <View className="mr-3 mb-1">
-                <Text className="text-primary/40 font-robotomono text-[7px]">RACE</Text>
-                <Text className="text-primary font-robotomono text-[10px]">{RACES[current.race]}</Text>
-              </View>
-              <View className="mr-3 mb-1">
-                <Text className="text-primary/40 font-robotomono text-[7px]">CLASS</Text>
-                <Text className="text-secondary font-robotomono text-[10px]">{CLASSES[current.charClass]}</Text>
-              </View>
-              <View className="mr-3 mb-1">
-                <Text className="text-primary/40 font-robotomono text-[7px]">ALIGNMENT</Text>
-                <Text className="text-accent font-robotomono text-[10px]">{ALIGNMENTS[current.alignment]}</Text>
-              </View>
-            </View>
+          </View>
+          <View className="items-center border border-primary/20 rounded px-2 py-1">
+            <Text className="text-primary/30 font-robotomono text-[8px]">{t('party.portrait')}</Text>
           </View>
         </View>
 
-        {/* Race Selection */}
-        <View className="mb-4">
-          <Text className="text-primary font-robotomono text-[9px] mb-2">RACE_SELECT:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {RACES.map((r, i) => (
-              <TouchableOpacity
-                key={r}
-                onPress={() => updateCurrent({ race: i })}
-                className={`mr-2 px-3 py-2 border ${
-                  current.race === i
-                    ? 'bg-primary border-primary'
-                    : 'border-primary/30 bg-muted/20'
-                }`}
-              >
-                <Text
-                  className={`text-[9px] font-robotomono font-bold ${
-                    current.race === i ? 'text-background' : 'text-primary/70'
+        {/* ── 1. Race ── */}
+        <SectionCard borderColor="border-primary/40">
+          <SectionHeader icon="🧬" label={t('party.raceSelect')} color="text-primary" />
+          <SectionHint text={t('party.raceDesc')} />
+          <View className="flex-row flex-wrap">
+            {RACES.map((r, i) => {
+              const rk = r.replace('-', '_');
+              const selected = current.race === i;
+              return (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => updateCurrent({ race: i })}
+                  className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
+                    selected
+                      ? 'bg-primary border-primary'
+                      : 'border-primary/30 bg-muted/20'
                   }`}
                 >
-                  {r}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+                  <Text
+                    className={`text-xs font-robotomono font-bold ${
+                      selected ? 'text-background' : 'text-primary/70'
+                    }`}
+                  >
+                    {t(`party.race_${rk}`)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <DescriptionBox
+            text={t(`glossary.races.${RACES[current.race]}.desc`)}
+            borderColor="border-primary/50"
+            textColor="text-primary/70"
+          />
+        </SectionCard>
 
-        {/* Class Selection */}
-        <View className="mb-4">
-          <Text className="text-primary font-robotomono text-[9px] mb-2">CLASS_SELECT:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {CLASSES.map((c, i) => (
-              <TouchableOpacity
-                key={c}
-                onPress={() => updateCurrent({ charClass: i })}
-                className={`mr-2 px-3 py-2 border ${
-                  current.charClass === i
-                    ? 'bg-secondary border-secondary'
-                    : 'border-secondary/30 bg-muted/20'
-                }`}
-              >
-                <Text
-                  className={`text-[9px] font-robotomono font-bold ${
-                    current.charClass === i ? 'text-background' : 'text-secondary/70'
+        {/* ── 2. Class ── */}
+        <SectionCard borderColor="border-secondary/40">
+          <SectionHeader icon="⚔" label={t('party.classSelect')} color="text-secondary" />
+          <SectionHint text={t('party.classDesc')} color="text-secondary/50" />
+          <View className="flex-row flex-wrap">
+            {CLASSES.map((c, i) => {
+              const selected = current.charClass === i;
+              return (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => updateCurrent({ charClass: i })}
+                  className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
+                    selected
+                      ? 'bg-secondary border-secondary'
+                      : 'border-secondary/30 bg-muted/20'
                   }`}
                 >
-                  {c}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+                  <Text
+                    className={`text-xs font-robotomono font-bold ${
+                      selected ? 'text-background' : 'text-secondary/70'
+                    }`}
+                  >
+                    {t(`party.class_${c}`)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <DescriptionBox
+            text={t(`glossary.classes.${CLASSES[current.charClass]}.desc`)}
+            borderColor="border-secondary/50"
+            textColor="text-secondary/70"
+          />
+        </SectionCard>
 
-        {/* Background Selection */}
-        <View className="mb-4">
-          <Text className="text-primary font-robotomono text-[9px] mb-2">BACKGROUND:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {BACKGROUNDS.map((b, i) => (
-              <TouchableOpacity
-                key={b}
-                onPress={() => updateCurrent({ background: i })}
-                className={`mr-2 px-3 py-2 border ${
-                  current.background === i
-                    ? 'bg-accent border-accent'
-                    : 'border-accent/30 bg-muted/20'
-                }`}
-              >
-                <Text
-                  className={`text-[9px] font-robotomono font-bold ${
-                    current.background === i ? 'text-background' : 'text-accent/70'
+        {/* ── 3. Background ── */}
+        <SectionCard borderColor="border-accent/40">
+          <SectionHeader icon="📜" label={t('party.background')} color="text-accent" />
+          <SectionHint text={t('party.backgroundDesc')} color="text-accent/50" />
+          <View className="flex-row flex-wrap">
+            {BACKGROUNDS.map((b, i) => {
+              const selected = current.background === i;
+              return (
+                <TouchableOpacity
+                  key={b}
+                  onPress={() => updateCurrent({ background: i })}
+                  className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
+                    selected
+                      ? 'bg-accent border-accent'
+                      : 'border-accent/30 bg-muted/20'
                   }`}
                 >
-                  {b}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+                  <Text
+                    className={`text-xs font-robotomono font-bold ${
+                      selected ? 'text-background' : 'text-accent/70'
+                    }`}
+                  >
+                    {t(`party.bg_${b}`)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <DescriptionBox
+            text={t(`glossary.backgrounds.${BACKGROUNDS[current.background]}.desc`)}
+            borderColor="border-accent/50"
+            textColor="text-accent/70"
+          />
+        </SectionCard>
 
-        {/* Stats */}
-        <View className="mb-4 border border-primary/30 p-3 bg-muted/10">
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-primary font-robotomono text-[9px]">ABILITY_SCORES:</Text>
-            <TouchableOpacity onPress={rerollStats} className="border border-primary/40 px-2 py-1">
-              <Text className="text-primary font-robotomono text-[8px]">REROLL_4D6</Text>
+        {/* ── 4. Attributes ── */}
+        <SectionCard borderColor="border-primary/40">
+          <View className="flex-row justify-between items-center mb-1">
+            <SectionHeader icon="🎲" label={t('party.abilityScores')} />
+            <TouchableOpacity onPress={rerollStats} className="border border-primary/50 rounded-sm px-3 py-1 bg-primary/10">
+              <Text className="text-primary font-robotomono text-xs">{t('party.reroll')}</Text>
             </TouchableOpacity>
           </View>
-          {Object.entries(current.stats).map(([key, val]) => (
-            <StatBar key={key} label={key} value={val} />
+          <SectionHint text={t('party.abilityDesc')} />
+          {STAT_KEYS.map(key => (
+            <StatBar key={key} statKey={key} value={current.stats[key]} t={t} />
           ))}
-        </View>
+        </SectionCard>
 
-        {/* Alignment */}
-        <View className="mb-4">
-          <Text className="text-primary font-robotomono text-[9px] mb-2">ALIGNMENT_MATRIX:</Text>
-          <View className="flex-row flex-wrap">
-            {ALIGNMENTS.map((a, i) => (
-              <TouchableOpacity
-                key={a}
-                onPress={() => updateCurrent({ alignment: i })}
-                className={`w-[30%] mr-[1.5%] mb-1 p-2 border items-center ${
-                  current.alignment === i
-                    ? 'bg-primary/20 border-primary'
-                    : 'border-primary/15 bg-muted/10'
-                }`}
-              >
-                <Text
-                  className={`text-[9px] font-robotomono ${
-                    current.alignment === i ? 'text-primary font-bold' : 'text-primary/40'
+        {/* ── 5. Alignment ── */}
+        <SectionCard borderColor="border-primary/40">
+          <SectionHeader icon="⚖" label={t('party.alignment')} />
+          <SectionHint text={t('party.alignmentDesc')} />
+          <View className="flex-row flex-wrap justify-between">
+            {ALIGNMENTS.map((a, i) => {
+              const selected = current.alignment === i;
+              return (
+                <TouchableOpacity
+                  key={a}
+                  onPress={() => updateCurrent({ alignment: i })}
+                  className={`w-[31%] mb-2 py-3 border rounded-sm items-center ${
+                    selected
+                      ? 'bg-primary/20 border-primary'
+                      : 'border-primary/15 bg-muted/10'
                   }`}
                 >
-                  {a}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    className={`text-xs font-robotomono ${
+                      selected ? 'text-primary font-bold' : 'text-primary/40'
+                    }`}
+                  >
+                    {t(`party.align_${a}`)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        </View>
+          <DescriptionBox
+            text={t(`glossary.alignments.${ALIGNMENTS[current.alignment]}.desc`)}
+            borderColor="border-primary/50"
+            textColor="text-primary/70"
+          />
+        </SectionCard>
 
-        {/* Trait Icons Preview */}
-        <View className="mb-4 border border-primary/20 p-3 bg-primary/5">
-          <Text className="text-primary font-robotomono text-[9px] mb-2">TRAIT_PREVIEW:</Text>
-          <View className="flex-row flex-wrap">
-            <Text className="text-secondary font-robotomono text-[10px] mr-4">
-              ⚖ MORAL: {['CHAOTIC', 'NEUTRAL', 'HONORABLE'][Math.min(2, Math.floor(current.alignment / 3))]}
-            </Text>
-            <Text className="text-accent font-robotomono text-[10px] mr-4">🧠 MENTAL: STABLE</Text>
+        {/* ── 6. Traits Preview ── */}
+        <SectionCard borderColor="border-primary/20">
+          <SectionHeader icon="🏷" label={t('party.traitPreview')} />
+          <View className="flex-row flex-wrap mt-2">
+            <View className="flex-row items-center mr-6 mb-1">
+              <Text className="text-secondary font-robotomono text-sm">
+                ⚖ {t('party.moral')}: {[t('party.chaotic'), t('party.neutral'), t('party.honorable')][Math.min(2, Math.floor(current.alignment / 3))]}
+              </Text>
+            </View>
+            <View className="flex-row items-center mb-1">
+              <Text className="text-accent font-robotomono text-sm">
+                🧠 {t('party.mental')}: {t('party.stable')}
+              </Text>
+            </View>
           </View>
-        </View>
+        </SectionCard>
 
-        <View className="h-20" />
+        <View className="h-24" />
       </ScrollView>
 
       {/* Bottom Action Bar */}
@@ -294,7 +353,7 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
               roster.length >= 4 ? 'opacity-30' : 'bg-primary/10'
             }`}
           >
-            <Text className="text-primary font-robotomono text-[10px]">+ ADD_MEMBER</Text>
+            <Text className="text-primary font-robotomono text-[10px]">+ {t('party.addMember')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={removeCharacter}
@@ -303,16 +362,18 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
               roster.length <= 1 ? 'opacity-30' : 'bg-destructive/10'
             }`}
           >
-            <Text className="text-destructive font-robotomono text-[10px]">- REMOVE</Text>
+            <Text className="text-destructive font-robotomono text-[10px]">- {t('party.removeMember')}</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity
           onPress={() => navigation.navigate('Village')}
           className="bg-primary p-3 items-center"
         >
-          <Text className="text-background font-bold font-robotomono">START_EXPEDITION</Text>
+          <Text className="text-background font-bold font-robotomono">{t('party.startExpedition')}</Text>
         </TouchableOpacity>
       </View>
+
+      <GlossaryButton onPress={glossary.open} />
     </View>
   );
 };

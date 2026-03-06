@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { TypewriterText } from '../components/TypewriterText';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
+import { TorreLogo } from '../components/TorreLogo';
 import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
@@ -57,17 +58,10 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
       </View>
 
       <View className="flex-1 items-center justify-center px-6">
-        {/* Tower ASCII Logo */}
-        <Text className="text-primary font-robotomono text-[10px] mb-2 text-center leading-[12px]">
-{`████████╗ ██████╗ ██████╗ ██████╗ ███████╗
-╚══██╔══╝██╔═══██╗██╔══██╗██╔══██╗██╔════╝
-   ██║   ██║   ██║██████╔╝██████╔╝█████╗  
-   ██║   ██║   ██║██╔══██╗██╔══██╗██╔══╝  
-   ██║   ╚██████╔╝██║  ██║██║  ██║███████╗
-   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝`}
-        </Text>
+        {/* Tower Logo */}
+        <TorreLogo />
 
-        <Text className="text-secondary font-robotomono text-[9px] mb-1">
+        <Text className="text-secondary font-robotomono text-[9px] mt-2 mb-1">
           {t('main.subtitle')}
         </Text>
         <View className="w-48 h-[1px] bg-primary/30 mb-10" />

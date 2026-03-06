@@ -280,7 +280,7 @@ export const GlossaryButton = ({ onPress }: { onPress?: () => void }) => {
         }}
         style={{
           position: 'absolute',
-          bottom: 24,
+          bottom: 56,
           right: 16,
           width: 48,
           height: 48,

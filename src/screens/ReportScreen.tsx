@@ -1,62 +1,155 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { TypewriterText } from '../components/TypewriterText';
+import type { ScreenProps } from '../navigation/types';
 
-const REPORT_LINES = [
-  "--- AUDITORÍA_DIARIA_COMPLETADA ---",
-  "FECHA: CICLO_30 | SECTOR: TORRE_B",
-  "XP_TOTAL_RECOLECTADA: 4500",
-  "INTEGRIDAD_SQUAD: 88%",
-  "MATERIALES_BRUTOS: 12 unidades",
-  "-----------------------------------",
-];
+const REPORT_HEADER = '─── COMBAT_REPORT · FLOOR_01 · CYCLE_01 ───';
 
-export const ReportScreen = ({ navigation }: any) => {
-  const [showButton, setShowButton] = useState(false);
+const REPORT_DATA = {
+  result: 'VICTORY',
+  enemiesDefeated: [
+    { name: 'SKELETON_KNIGHT', xp: 200, loot: 'IRON_LONGSWORD' },
+    { name: 'WIGHT', xp: 150, loot: 'SHADOW_ESSENCE x2' },
+    { name: 'SHADOW', xp: 100, loot: null },
+  ],
+  partyStatus: [
+    { name: 'KAEL', class: 'FIGHTER', hpBefore: 32, hpAfter: 28, status: 'ALIVE' },
+    { name: 'LYRA', class: 'WIZARD', hpBefore: 18, hpAfter: 18, status: 'ALIVE' },
+    { name: 'THORNE', class: 'CLERIC', hpBefore: 24, hpAfter: 24, status: 'ALIVE' },
+    { name: 'RAVEN', class: 'ROGUE', hpBefore: 22, hpAfter: 20, status: 'ALIVE' },
+  ],
+  totalXp: 450,
+  goldEarned: 120,
+  roundsElapsed: 4,
+};
 
+export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
   return (
-    <View className="flex-1 bg-background p-8">
+    <View className="flex-1 bg-background">
       <CRTOverlay />
-      
-      <View className="flex-1 bg-primary/5 border border-primary/20 p-4">
-         <ScrollView>
-            {REPORT_LINES.map((line, i) => (
-               <TypewriterText 
-                 key={i} 
-                 text={line} 
-                 delay={30} 
-                 className="text-primary text-sm mb-2" 
-                 showCursor={false}
-               />
-            ))}
 
-            <View className="mt-8 p-4 border-2 border-primary/40 bg-primary/10">
-               <Text className="text-primary font-bold font-robotomono text-xs mb-2">PERFORMANCE_GRAPH:</Text>
-               <View className="h-24 flex-row items-end space-x-2">
-                  <View className="w-4 h-full bg-primary" />
-                  <View className="w-4 h-3/4 bg-primary" />
-                  <View className="w-4 h-1/2 bg-primary" />
-                  <View className="w-4 h-2/3 bg-primary" />
-               </View>
-            </View>
-
-            <View className="mt-8">
-               <Text className="text-secondary font-bold font-robotomono text-xs animate-pulse">
-                  [ALERTA: PARTY_IA_LOBOS HA CAÍDO EN PISO 3]
-               </Text>
-            </View>
-            
-            <View className="h-20" />
-         </ScrollView>
+      {/* Header */}
+      <View className="p-4 border-b border-primary/30">
+        <TypewriterText
+          text={REPORT_HEADER}
+          className="text-primary text-xs text-center"
+          delay={20}
+          showCursor={false}
+        />
       </View>
 
-      <TouchableOpacity 
-        onPress={() => navigation.navigate('Extraction')}
-        className="mt-6 bg-primary p-4 items-center"
-      >
-        <Text className="text-background font-bold font-robotomono">CONFIRMAR_LECTURA</Text>
-      </TouchableOpacity>
+      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+        {/* Result */}
+        <View className="items-center mb-6">
+          <Text className={`font-robotomono text-2xl font-bold ${
+            REPORT_DATA.result === 'VICTORY' ? 'text-primary' : 'text-destructive'
+          }`}>
+            [{REPORT_DATA.result}]
+          </Text>
+          <Text className="text-primary/40 font-robotomono text-[8px] mt-1">
+            {REPORT_DATA.roundsElapsed} ROUNDS · FLOOR_01
+          </Text>
+        </View>
+
+        {/* Enemies Defeated */}
+        <View className="mb-4 border border-primary/20 p-3 bg-muted/10">
+          <Text className="text-primary font-robotomono text-[9px] mb-2 font-bold">ENEMIES_DEFEATED:</Text>
+          {REPORT_DATA.enemiesDefeated.map((e, i) => (
+            <View key={i} className="flex-row justify-between items-center mb-1 py-1 border-b border-primary/10">
+              <Text className="text-primary/70 font-robotomono text-[9px]">{e.name}</Text>
+              <View className="flex-row">
+                <Text className="text-secondary font-robotomono text-[8px] mr-3">+{e.xp}XP</Text>
+                {e.loot && (
+                  <Text className="text-accent font-robotomono text-[8px]">{e.loot}</Text>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Party Status */}
+        <View className="mb-4 border border-primary/20 p-3 bg-muted/10">
+          <Text className="text-primary font-robotomono text-[9px] mb-2 font-bold">PARTY_STATUS:</Text>
+          {REPORT_DATA.partyStatus.map((c, i) => {
+            const hpLost = c.hpBefore - c.hpAfter;
+            return (
+              <View key={i} className="flex-row justify-between items-center mb-1 py-1 border-b border-primary/10">
+                <View className="flex-row items-center">
+                  <Text className="text-primary font-robotomono text-[9px] font-bold mr-2">{c.name}</Text>
+                  <Text className="text-secondary/60 font-robotomono text-[7px]">{c.class}</Text>
+                </View>
+                <View className="flex-row items-center">
+                  <Text className="text-primary/60 font-robotomono text-[8px]">
+                    HP: {c.hpAfter}/{c.hpBefore}
+                  </Text>
+                  {hpLost > 0 && (
+                    <Text className="text-destructive font-robotomono text-[8px] ml-2">-{hpLost}</Text>
+                  )}
+                  <View className={`w-2 h-2 ml-2 ${
+                    c.status === 'ALIVE' ? 'bg-primary' : 'bg-destructive'
+                  }`} />
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* XP & Gold */}
+        <View className="mb-4 flex-row">
+          <View className="flex-1 mr-2 border border-secondary/30 p-3 bg-secondary/5 items-center">
+            <Text className="text-secondary/50 font-robotomono text-[7px]">TOTAL_XP</Text>
+            <Text className="text-secondary font-robotomono text-xl font-bold">+{REPORT_DATA.totalXp}</Text>
+          </View>
+          <View className="flex-1 ml-2 border border-secondary/30 p-3 bg-secondary/5 items-center">
+            <Text className="text-secondary/50 font-robotomono text-[7px]">GOLD_EARNED</Text>
+            <Text className="text-secondary font-robotomono text-xl font-bold">{REPORT_DATA.goldEarned}G</Text>
+          </View>
+        </View>
+
+        {/* Performance Graph */}
+        <View className="mb-4 border border-primary/20 p-3 bg-primary/5">
+          <Text className="text-primary font-robotomono text-[9px] mb-2 font-bold">DAMAGE_DEALT:</Text>
+          <View className="flex-row items-end h-16">
+            {[
+              { name: 'RAVEN', dmg: 15, max: 15 },
+              { name: 'LYRA', dmg: 9, max: 15 },
+              { name: 'KAEL', dmg: 0, max: 15 },
+              { name: 'THORNE', dmg: 0, max: 15 },
+            ].map((d, i) => (
+              <View key={i} className="flex-1 items-center mx-1">
+                <View
+                  className="w-full bg-primary/40 border border-primary/20"
+                  style={{ height: `${(d.dmg / d.max) * 100}%`, minHeight: 2 }}
+                />
+                <Text className="text-primary/40 font-robotomono text-[6px] mt-1">{d.name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* World Event Alert */}
+        <View className="mb-4 border border-destructive/30 p-3 bg-destructive/5">
+          <Text className="text-destructive font-robotomono text-[9px] font-bold">
+            ⚠ WORLD_EVENT:
+          </Text>
+          <Text className="text-destructive/70 font-robotomono text-[8px] mt-1">
+            PARTY "LAST_LIGHT" ELIMINATED ON FLOOR_03 · CYCLE_01
+          </Text>
+        </View>
+
+        <View className="h-8" />
+      </ScrollView>
+
+      {/* Continue Button */}
+      <View className="p-4 border-t border-primary/30 bg-background">
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Extraction')}
+          className="bg-primary p-3 items-center"
+        >
+          <Text className="text-background font-bold font-robotomono">CONTINUE</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

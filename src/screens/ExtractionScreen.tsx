@@ -1,59 +1,134 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
+import type { ScreenProps } from '../navigation/types';
 
-export const ExtractionScreen = ({ navigation }: any) => {
+const LOOT_ITEMS = [
+  { name: 'IRON_LONGSWORD', rarity: 'COMMON', type: 'WEAPON', qty: 1 },
+  { name: 'SHADOW_ESSENCE', rarity: 'UNCOMMON', type: 'MATERIAL', qty: 2 },
+  { name: 'BONE_FRAGMENT', rarity: 'COMMON', type: 'MATERIAL', qty: 5 },
+  { name: 'WIGHT_DUST', rarity: 'UNCOMMON', type: 'MATERIAL', qty: 1 },
+];
+
+const RARITY_COLORS: Record<string, string> = {
+  COMMON: 'text-primary/60',
+  UNCOMMON: 'text-accent',
+  RARE: 'text-secondary',
+  LEGENDARY: 'text-destructive',
+};
+
+export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
   const [gold, setGold] = useState(0);
+  const [phase, setPhase] = useState<'counting' | 'done'>('counting');
+  const targetGold = 120;
 
   useEffect(() => {
     let current = 0;
-    const target = 15400;
+    const step = Math.ceil(targetGold / 40);
     const interval = setInterval(() => {
-      current += 154;
-      if (current >= target) {
-        setGold(target);
+      current += step;
+      if (current >= targetGold) {
+        setGold(targetGold);
+        setPhase('done');
         clearInterval(interval);
       } else {
         setGold(current);
       }
-    }, 10);
+    }, 30);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <View className="flex-1 bg-background p-10 justify-center">
+    <View className="flex-1 bg-background">
       <CRTOverlay />
-      
-      <View className="border-4 border-primary p-8 bg-muted">
-         <Text className="text-primary font-robotomono text-xl mb-4 text-center">--- LIQUIDACIÓN_TEMPORAL ---</Text>
-         
-         <View className="space-y-2 mb-8">
-            <View className="flex-row justify-between">
-               <Text className="text-primary font-robotomono">MAT_HIERRO_NEGRO</Text>
-               <Text className="text-primary font-robotomono">x45</Text>
-            </View>
-            <View className="flex-row justify-between">
-               <Text className="text-primary font-robotomono">PULSO_ESTELAR</Text>
-               <Text className="text-primary font-robotomono">x12</Text>
-            </View>
-            <View className="flex-row justify-between">
-               <Text className="text-primary font-robotomono">NUCLEO_IA_DAÑADO</Text>
-               <Text className="text-primary font-robotomono">x1</Text>
-            </View>
-         </View>
 
-         <View className="border-t border-primary/40 pt-4 items-center">
-            <Text className="text-primary font-robotomono text-xs mb-2">GOLD_EXTRACTION_SUCCESSFUL:</Text>
-            <Text className="text-primary font-robotomono text-5xl font-bold">{gold}G</Text>
-         </View>
+      {/* Header */}
+      <View className="p-4 border-b border-primary/30">
+        <Text className="text-primary font-robotomono text-xs text-center">
+          ─── EXTRACTION_PROTOCOL ───
+        </Text>
       </View>
 
-      <TouchableOpacity 
-        onPress={() => navigation.navigate('Main')}
-        className="mt-12 border-2 border-primary p-4 items-center"
-      >
-        <Text className="text-primary font-bold font-robotomono">VOLVER AL PUEBLO (7 DÍAS DE REPOSO)</Text>
-      </TouchableOpacity>
+      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+        {/* Gold Counter */}
+        <View className="border-2 border-primary p-6 bg-muted/20 items-center mb-6">
+          <Text className="text-primary/50 font-robotomono text-[9px] mb-2">GOLD_EXTRACTED:</Text>
+          <Text className="text-primary font-robotomono text-5xl font-bold">{gold}G</Text>
+          <Text className="text-primary/30 font-robotomono text-[8px] mt-1">
+            {phase === 'counting' ? 'COUNTING...' : 'TRANSFER_COMPLETE'}
+          </Text>
+        </View>
+
+        {/* Loot Inventory */}
+        <View className="border border-primary/30 p-4 bg-muted/10 mb-6">
+          <Text className="text-primary font-robotomono text-[9px] mb-3 font-bold">ITEMS_ACQUIRED:</Text>
+          {LOOT_ITEMS.map((item, i) => (
+            <View key={i} className="flex-row justify-between items-center py-2 border-b border-primary/10">
+              <View className="flex-row items-center flex-1">
+                <View className={`w-2 h-2 mr-2 ${
+                  item.rarity === 'UNCOMMON' ? 'bg-accent' :
+                  item.rarity === 'RARE' ? 'bg-secondary' : 'bg-primary/40'
+                }`} />
+                <View>
+                  <Text className={`font-robotomono text-[10px] font-bold ${RARITY_COLORS[item.rarity]}`}>
+                    {item.name}
+                  </Text>
+                  <Text className="text-primary/30 font-robotomono text-[7px]">
+                    {item.type} · {item.rarity}
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-primary font-robotomono text-[10px]">x{item.qty}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Summary Stats */}
+        <View className="flex-row mb-6">
+          <View className="flex-1 mr-2 border border-primary/20 p-3 bg-primary/5 items-center">
+            <Text className="text-primary/40 font-robotomono text-[7px]">ITEMS</Text>
+            <Text className="text-primary font-robotomono text-lg font-bold">
+              {LOOT_ITEMS.reduce((acc, i) => acc + i.qty, 0)}
+            </Text>
+          </View>
+          <View className="flex-1 mx-1 border border-primary/20 p-3 bg-primary/5 items-center">
+            <Text className="text-primary/40 font-robotomono text-[7px]">MATERIALS</Text>
+            <Text className="text-primary font-robotomono text-lg font-bold">
+              {LOOT_ITEMS.filter(i => i.type === 'MATERIAL').reduce((acc, i) => acc + i.qty, 0)}
+            </Text>
+          </View>
+          <View className="flex-1 ml-2 border border-secondary/20 p-3 bg-secondary/5 items-center">
+            <Text className="text-secondary/40 font-robotomono text-[7px]">GOLD</Text>
+            <Text className="text-secondary font-robotomono text-lg font-bold">{targetGold}G</Text>
+          </View>
+        </View>
+
+        {/* Cycle Cost Notice */}
+        <View className="border border-secondary/30 p-3 bg-secondary/5 mb-4">
+          <Text className="text-secondary font-robotomono text-[8px]">
+            ⚠ RETURNING TO VILLAGE COSTS NO CYCLES
+          </Text>
+          <Text className="text-secondary/50 font-robotomono text-[7px] mt-1">
+            RESTING AT INN WILL ADVANCE CYCLE (+1)
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* Action Buttons */}
+      <View className="p-4 border-t border-primary/30 bg-background">
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Village')}
+          className="bg-primary p-3 items-center mb-2"
+        >
+          <Text className="text-background font-bold font-robotomono">RETURN_TO_VILLAGE</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Map')}
+          className="border border-primary p-3 items-center"
+        >
+          <Text className="text-primary font-robotomono text-sm">CONTINUE_EXPLORING</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

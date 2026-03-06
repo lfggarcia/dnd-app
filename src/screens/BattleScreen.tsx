@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
+import type { ScreenProps } from '../navigation/types';
 
 const LOG_ENTRIES = [
   "INITIATIVE_ROLL: PARTY_ALFA (18) vs ENEMIGO (12)",
@@ -9,9 +10,7 @@ const LOG_ENTRIES = [
   "> TURNO: SQUAD_VULCAN",
 ];
 
-export const BattleScreen = ({ navigation }: any) => {
-  const [turn, setTurn] = useState(0);
-
+export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
   return (
     <View className="flex-1 bg-background p-4">
       <CRTOverlay />

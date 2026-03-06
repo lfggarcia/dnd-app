@@ -1,29 +1,59 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming, 
-  Easing 
+import type { ScreenProps } from '../navigation/types';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
 
-const NODES = [
-  { id: 1, type: "START", pos: { x: 10, y: 80 }, status: "CLEAR" },
-  { id: 2, type: "ENEMY", pos: { x: 40, y: 50 }, status: "LOCKED", info: "TIPO: NO-MUERTO, AMENAZA: MEDIA" },
-  { id: 3, type: "LOOT", pos: { x: 40, y: 110 }, status: "LOCKED" },
-  { id: 4, type: "BOSS", pos: { x: 80, y: 80 }, status: "LOCKED" },
+type NodeType = 'COMBAT' | 'EVENT' | 'SAFE_ZONE' | 'BOSS' | 'UNKNOWN';
+
+type MapNode = {
+  id: number;
+  type: NodeType;
+  pos: { x: number; y: number };
+  status: 'CLEAR' | 'CURRENT' | 'LOCKED' | 'AVAILABLE';
+  label?: string;
+  connections: number[];
+};
+
+const NODE_STYLES: Record<NodeType, { border: string; bg: string; icon: string }> = {
+  COMBAT: { border: 'border-destructive', bg: 'bg-destructive/15', icon: '⚔' },
+  EVENT: { border: 'border-accent', bg: 'bg-accent/15', icon: '?' },
+  SAFE_ZONE: { border: 'border-primary', bg: 'bg-primary/15', icon: '◆' },
+  BOSS: { border: 'border-secondary', bg: 'bg-secondary/20', icon: '☠' },
+  UNKNOWN: { border: 'border-primary/30', bg: 'bg-muted/20', icon: '·' },
+};
+
+const FLOOR_NODES: MapNode[] = [
+  { id: 1, type: 'SAFE_ZONE', pos: { x: 15, y: 85 }, status: 'CURRENT', label: 'ENTRANCE', connections: [2, 3] },
+  { id: 2, type: 'COMBAT', pos: { x: 35, y: 65 }, status: 'AVAILABLE', label: 'UNDEAD_PATROL', connections: [4, 5] },
+  { id: 3, type: 'EVENT', pos: { x: 35, y: 105 }, status: 'AVAILABLE', label: 'STRANGE_ALTAR', connections: [5] },
+  { id: 4, type: 'COMBAT', pos: { x: 55, y: 45 }, status: 'LOCKED', label: 'AMBUSH_POINT', connections: [6] },
+  { id: 5, type: 'UNKNOWN', pos: { x: 55, y: 85 }, status: 'LOCKED', connections: [6, 7] },
+  { id: 6, type: 'SAFE_ZONE', pos: { x: 75, y: 60 }, status: 'LOCKED', label: 'CAMP', connections: [8] },
+  { id: 7, type: 'COMBAT', pos: { x: 75, y: 105 }, status: 'LOCKED', connections: [8] },
+  { id: 8, type: 'BOSS', pos: { x: 90, y: 80 }, status: 'LOCKED', label: 'FLOOR_GUARDIAN', connections: [] },
 ];
 
-export const MapScreen = ({ navigation }: any) => {
+export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const rotation = useSharedValue(0);
+  const pulse = useSharedValue(0.3);
 
   useEffect(() => {
     rotation.value = withRepeat(
-      withTiming(360, { duration: 10000, easing: Easing.linear }),
+      withTiming(360, { duration: 12000, easing: Easing.linear }),
       -1,
       false
+    );
+    pulse.value = withRepeat(
+      withTiming(1, { duration: 1500 }),
+      -1,
+      true
     );
   }, []);
 
@@ -31,61 +61,149 @@ export const MapScreen = ({ navigation }: any) => {
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
+  const pulseStyle = useAnimatedStyle(() => ({
+    opacity: pulse.value,
+  }));
+
+  const handleNodePress = (node: MapNode) => {
+    if (node.status === 'LOCKED') return;
+    if (node.type === 'COMBAT' || node.type === 'BOSS') {
+      navigation.navigate('Battle');
+    }
+  };
+
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
-      
-      {/* Dynamic Clock */}
-      <View className="bg-primary/20 p-2 flex-row justify-between px-6 border-b border-primary">
-         <Text className="text-primary font-robotomono text-xs">INCURSION_DAY: 12/30</Text>
-         <Text className="text-primary font-bold font-robotomono text-xs">TIME: 18:45</Text>
+
+      {/* Top Bar */}
+      <View className="bg-primary/10 px-4 py-2 flex-row justify-between items-center border-b border-primary/30">
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text className="text-primary font-robotomono text-xs">{'<'} VILLAGE</Text>
+        </TouchableOpacity>
+        <Text className="text-primary font-bold font-robotomono text-xs">FLOOR_01 · MAP_VIEW</Text>
+        <Text className="text-secondary font-robotomono text-[9px]">CYCLE: 01/60</Text>
       </View>
 
-      <View className="flex-1 items-center justify-center p-4">
-         {/* Rotating Radar Background */}
-         <Animated.View 
-           style={[radarStyle, { width: 400, height: 400, borderRadius: 200 }]} 
-           className="absolute border border-primary/10 items-center justify-center"
-         >
-            <View className="w-full h-1 bg-primary/20 absolute" />
-            <View className="h-full w-1 bg-primary/20 absolute" />
-         </Animated.View>
+      {/* Day/Night + Floor Info */}
+      <View className="flex-row px-4 py-1 bg-muted/20 border-b border-primary/10">
+        <Text className="text-secondary font-robotomono text-[8px]">☀ DAY_PHASE</Text>
+        <Text className="text-primary/30 font-robotomono text-[8px] mx-2">|</Text>
+        <Text className="text-primary/50 font-robotomono text-[8px]">ENEMIES: UNDEAD · ABERRATION</Text>
+        <Text className="text-primary/30 font-robotomono text-[8px] mx-2">|</Text>
+        <Text className="text-primary/50 font-robotomono text-[8px]">THREAT: MODERATE</Text>
+      </View>
 
-         {/* Node Tree */}
-         <View className="w-full h-full relative">
-            {NODES.map((node) => (
-              <TouchableOpacity 
+      {/* Map Area */}
+      <View className="flex-1 p-4">
+        <View className="flex-1 relative">
+          {/* Radar Background */}
+          <Animated.View
+            style={[radarStyle, { position: 'absolute', top: '10%', left: '10%', right: '10%', bottom: '10%', borderRadius: 999 }]}
+            className="border border-primary/5 items-center justify-center"
+            pointerEvents="none"
+          >
+            <View className="w-full h-[1px] bg-primary/10 absolute" />
+            <View className="h-full w-[1px] bg-primary/10 absolute" />
+          </Animated.View>
+
+          {/* Connection Lines (visual hint) */}
+          <View className="absolute inset-0" pointerEvents="none">
+            {FLOOR_NODES.map(node =>
+              node.connections.map(targetId => {
+                const target = FLOOR_NODES.find(n => n.id === targetId);
+                if (!target) return null;
+                return (
+                  <View
+                    key={`${node.id}-${targetId}`}
+                    className="absolute bg-primary/10"
+                    style={{
+                      left: `${Math.min(node.pos.x, target.pos.x) + 3}%`,
+                      top: `${Math.min(node.pos.y, target.pos.y) + 3}%`,
+                      width: `${Math.abs(target.pos.x - node.pos.x)}%`,
+                      height: 1,
+                    }}
+                  />
+                );
+              })
+            )}
+          </View>
+
+          {/* Nodes */}
+          {FLOOR_NODES.map(node => {
+            const style = NODE_STYLES[node.type];
+            const isAccessible = node.status === 'AVAILABLE' || node.status === 'CURRENT';
+
+            return (
+              <TouchableOpacity
                 key={node.id}
-                onPress={() => node.type === "ENEMY" && navigation.navigate('Battle')}
-                className={`absolute w-12 h-12 border-2 items-center justify-center ${node.status === 'CLEAR' ? 'border-primary bg-primary/20' : 'border-primary/20 bg-muted/40'}`}
-                style={{ left: `${node.pos.x}%`, top: `${node.pos.y}%`, transform: [{translateX: -24}, {translateY: -24}] }}
+                onPress={() => handleNodePress(node)}
+                disabled={!isAccessible}
+                className={`absolute items-center justify-center ${
+                  isAccessible ? '' : 'opacity-40'
+                }`}
+                style={{
+                  left: `${node.pos.x}%`,
+                  top: `${node.pos.y}%`,
+                  transform: [{ translateX: -28 }, { translateY: -28 }],
+                }}
               >
-                <Text className={`text-[8px] font-robotomono ${node.status === 'CLEAR' ? 'text-primary' : 'text-primary/40'}`}>
-                  {node.type}
-                </Text>
-                {node.status === "LOCKED" && (
-                   <View className="absolute inset-0 bg-black/60 items-center justify-center">
-                      <Text className="text-primary/20 text-[10px]">?</Text>
-                   </View>
+                <View className={`w-14 h-14 border-2 items-center justify-center ${style.border} ${style.bg}`}>
+                  <Text className="text-lg">{style.icon}</Text>
+                  <Text className={`text-[6px] font-robotomono ${
+                    node.type === 'BOSS' ? 'text-secondary' :
+                    node.type === 'COMBAT' ? 'text-destructive' :
+                    node.type === 'EVENT' ? 'text-accent' : 'text-primary'
+                  }`}>
+                    {node.type}
+                  </Text>
+                </View>
+                {node.status === 'CURRENT' && (
+                  <Animated.View style={pulseStyle} className="absolute -inset-1 border border-primary" />
+                )}
+                {node.label && (
+                  <Text className="text-primary/50 font-robotomono text-[6px] mt-[2px]">{node.label}</Text>
+                )}
+                {node.status === 'LOCKED' && (
+                  <View className="absolute inset-0 bg-background/70 items-center justify-center">
+                    <Text className="text-primary/20 font-robotomono text-xs">?</Text>
+                  </View>
                 )}
               </TouchableOpacity>
-            ))}
-
-            {/* Scanning Info Overlay */}
-            <View className="absolute bottom-4 left-4 border border-primary p-2 bg-muted/80">
-               <Text className="text-[8px] text-primary font-robotomono">SCANNER_RESULT:</Text>
-               <Text className="text-[10px] text-primary font-robotomono">TIPO: NO-MUERTO</Text>
-               <Text className="text-[10px] text-primary font-robotomono">AMENAZA: MEDIA</Text>
-            </View>
-         </View>
+            );
+          })}
+        </View>
       </View>
 
-      <TouchableOpacity 
-        onPress={() => navigation.goBack()}
-        className="absolute top-12 left-4 border border-primary p-2"
-      >
-        <Text className="text-primary font-robotomono text-[10px]">RETROCEDER</Text>
-      </TouchableOpacity>
+      {/* Bottom Info Panel */}
+      <View className="border-t border-primary/30 p-3 bg-muted/10">
+        <View className="flex-row justify-between items-center">
+          <View>
+            <Text className="text-primary font-robotomono text-[8px]">SCANNER_RESULTS:</Text>
+            <Text className="text-primary/60 font-robotomono text-[8px]">
+              NODES: {FLOOR_NODES.length} · COMBATS: {FLOOR_NODES.filter(n => n.type === 'COMBAT').length} · BOSS: 1
+            </Text>
+          </View>
+          <View className="flex-row">
+            <View className="flex-row items-center mr-3">
+              <View className="w-2 h-2 bg-destructive mr-1" />
+              <Text className="text-[7px] text-primary/40 font-robotomono">COMBAT</Text>
+            </View>
+            <View className="flex-row items-center mr-3">
+              <View className="w-2 h-2 bg-accent mr-1" />
+              <Text className="text-[7px] text-primary/40 font-robotomono">EVENT</Text>
+            </View>
+            <View className="flex-row items-center mr-3">
+              <View className="w-2 h-2 bg-primary mr-1" />
+              <Text className="text-[7px] text-primary/40 font-robotomono">SAFE</Text>
+            </View>
+            <View className="flex-row items-center">
+              <View className="w-2 h-2 bg-secondary mr-1" />
+              <Text className="text-[7px] text-primary/40 font-robotomono">BOSS</Text>
+            </View>
+          </View>
+        </View>
+      </View>
     </View>
   );
 };

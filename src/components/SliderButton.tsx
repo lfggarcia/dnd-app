@@ -1,13 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
   runOnJS,
   interpolate,
-  Extrapolate
 } from 'react-native-reanimated';
 
 interface Props {
@@ -40,7 +39,7 @@ export const SliderButton = ({ onConfirm, label, width = 300 }: Props) => {
   }));
 
   const textStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [0, trackWidth * 0.5], [1, 0], Extrapolate.CLAMP),
+    opacity: interpolate(translateX.value, [0, trackWidth * 0.5], [1, 0], 'clamp'),
   }));
 
   return (

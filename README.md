@@ -1,4 +1,115 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# CYBER_DND — Protocol DND v1.0.4-BETA
+
+Dungeon-crawler de estética cyberpunk/CRT construido en React Native. El jugador genera una partida mediante un seed, arma su equipo, explora un mapa de incursiones por nodos, combate enemigos y extrae recursos al finalizar cada ciclo.
+
+---
+
+## Stack Técnico
+
+| Tecnología | Versión |
+|---|---|
+| React Native | 0.84.0 |
+| React | 19.2.0 |
+| NativeWind | v4 (Tailwind CSS en RN) |
+| React Navigation (Native Stack) | v7 |
+| Reanimated | v4 |
+| Gesture Handler | v2 |
+| TypeScript | v5 |
+
+---
+
+## Estructura del Proyecto
+
+```
+src/
+├── components/
+│   ├── CRTOverlay.tsx      — Superposición visual CRT con scanlines y parpadeo animado
+│   ├── SliderButton.tsx    — Botón deslizable con gesture handler para confirmar acciones
+│   └── TypewriterText.tsx  — Texto con efecto máquina de escribir
+├── navigation/
+│   ├── AppNavigator.tsx    — Stack navigator principal
+│   └── types.ts            — RootStackParamList y ScreenProps tipados
+├── screens/
+│   ├── MainScreen.tsx      — Menú principal con ascii art y logs de sistema
+│   ├── SeedScreen.tsx      — Input del seed de partida con efecto Matrix de fondo
+│   ├── PartyScreen.tsx     — Creación de personaje: raza, stats y módulos psicológicos
+│   ├── VillageScreen.tsx   — Hub de pueblo con mapa de plano y leaderboard de squads
+│   ├── MapScreen.tsx       — Mapa de nodos con radar animado y rutas de incursión
+│   ├── BattleScreen.tsx    — Pantalla de combate por turnos con log de acciones
+│   ├── ReportScreen.tsx    — Reporte post-incursión con XP, integridad y alertas
+│   └── ExtractionScreen.tsx— Liquidación final de recursos con contador animado
+├── constants/              — (vacío — pendiente migrar datos hardcodeados)
+└── hooks/                  — (vacío — pendiente extraer lógica reutilizable)
+assets/
+└── fonts/                  — RobotoMono (fuente principal del sistema)
+```
+
+---
+
+## Flujo de Navegación
+
+```
+Main → Seed → Party → Village → Map → Battle → Report → Extraction → Main
+```
+
+---
+
+## Setup
+
+```sh
+# Instalar dependencias JS
+npm install
+
+# iOS — instalar pods (solo la primera vez o tras cambiar dependencias nativas)
+bundle install
+bundle exec pod install
+
+# Arrancar Metro
+npm start
+
+# Correr en iOS
+npm run ios
+
+# Correr en Android
+npm run android
+```
+
+**Requisito de Node:** >= 22.11.0
+
+---
+
+## Tests
+
+```sh
+npm test
+```
+
+> **Deuda técnica — testing:** Actualmente solo existe un test de render básico (`App.test.tsx`). No hay cobertura de pantallas individuales, lógica de navegación ni componentes. No hay tests E2E (Detox no instalado).
+
+---
+
+## Deuda Técnica Conocida
+
+| Área | Detalle |
+|---|---|
+| **Performance** | `CRTOverlay` genera 100 Views por pantalla para simular scanlines — candidato a optimización con canvas/SVG o reducción de elementos |
+| **Performance** | `SeedScreen` lanza 15 intervalos simultáneos (DataColumns) actualizando estado cada 100–300ms |
+| **Datos** | Toda la data del juego (enemies, loot, squads, stats) está hardcodeada en cada pantalla — sin capa de datos/servicios |
+| **Estado global** | Sin gestión de estado global — el seed, personaje y progreso no persisten entre pantallas |
+| **Funcionalidad** | `LOAD_STATE` y `SYSTEM_CONFIG` en `MainScreen` son placeholders sin implementar |
+| **Testing** | Cobertura de tests: ~0% |
+
+---
+
+## Paleta Visual
+
+El sistema de colores está definido en `global.css` via variables CSS y expuesto en `tailwind.config.js`:
+
+- `primary` — Verde terminal / ámbar principal
+- `secondary` — Color de acento (alertas, edificios)
+- `background` — Negro profundo
+- `muted` — Superficie con ligero contraste
+
 
 # Getting Started
 

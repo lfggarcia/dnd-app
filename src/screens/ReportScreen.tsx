@@ -28,9 +28,12 @@ export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
   const { t } = useI18n();
 
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.navigate('Extraction');
+      return true;
+    });
     return () => sub.remove();
-  }, []);
+  }, [navigation]);
 
 
   const headerText = `─── ${t('report.title')} · ${t('common.floor')} 01 · ${t('common.cycle')} 01 ───`;

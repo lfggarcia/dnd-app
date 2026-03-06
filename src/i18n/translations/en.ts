@@ -204,6 +204,7 @@ export const en = {
     saveExitTitle: 'Save & exit',
     saveExitMsg: 'Your current position on the map will be saved. Selecting "Continue" or loading the game will bring you back to this exact point.',
     saveExit: 'Save & exit',
+    safeZoneDesc: 'Safe zone reached. You can return to the village from here.',
     towerDisclaimerTitle: '⚠ Tower mechanic',
     towerDisclaimerMsg: 'Once inside, you can only return to the village from a Safe Zone or when cycle 60 is completed.\n\nIf you need to close the app before that, use the ✕ button on the map — your progress will be saved and you will resume from where you left off.',
   },

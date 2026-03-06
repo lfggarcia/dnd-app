@@ -7,7 +7,16 @@ Versiones siguiendo [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased] — 2026-03-06
 
-### Added (Fase 1 — post-beta)
+### Added (Fase 1 — navegación de regreso al menú)
+
+- **Zona Segura interactiva en MapScreen** — al tocar un nodo SAFE_ZONE disponible se despliega un panel de acciones en la parte inferior con el botón "Volver a la villa"; al confirmar se serializa el estado de nodos en `mapState` y se navega directamente a `VillageScreen` actualizando `location = 'village'`
+- **Return to Village habilitado en ExtractionScreen** — el botón "Volver a la villa" ahora se habilita automáticamente cuando `activeGame.cycle >= 60`; cuando está bloqueado sigue mostrando la nota `lockedNotice`; cuando está activo navega al village reseteando el stack y actualizando `location = 'village'`
+- **Traducciones** — clave `map.safeZoneDesc` añadida en ES (`'Zona segura alcanzada. Puedes regresar a la villa desde aquí.'`) y EN (`'Safe zone reached. You can return to the village from here.'`)
+
+### Changed (Fase 1 — navegación de regreso al menú)
+
+- **MapScreen** — `handleNodePress` ahora gestiona nodos SAFE_ZONE mostrando el panel de acción; el nuevo handler `handleReturnToVillageFromSafeZone` guarda el estado del mapa antes de navegar a vila; añadido estado `selectedSafeZone`
+- **ExtractionScreen** — conectado a `useGameStore`; `canReturnToVillage` derivado del ciclo actual; el botón cambia de estilo y se habilita cuando el ciclo llega a 60
 
 - **useGameStore (Zustand + SQLite)** — `src/stores/gameStore.ts`; persiste `activeGame` y `savedGames` en SQLite; acciones: `startNewGame`, `loadGame`, `updateProgress`, `endGame`, `hydrate`, `clearActive`
 - **gameRepository** — `src/database/gameRepository.ts`; tipos `SavedGame` + `CharacterSave` + `Stats`; CRUD completo (`createSavedGame`, `updateSavedGame`, `getSavedGame`, `getActiveSavedGame`, `getAllSavedGames`, `deleteSavedGame`)

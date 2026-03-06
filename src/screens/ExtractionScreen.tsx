@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-nat
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
+import { useGameStore } from '../stores/gameStore';
 import type { ScreenProps } from '../navigation/types';
 
 const LOOT_ITEMS = [
@@ -21,15 +22,27 @@ const RARITY_COLORS: Record<string, string> = {
 
 export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
   const { t } = useI18n();
+  const activeGame = useGameStore(s => s.activeGame);
+  const updateProgress = useGameStore(s => s.updateProgress);
 
   const [gold, setGold] = useState(0);
   const [phase, setPhase] = useState<'counting' | 'done'>('counting');
 
+  const canReturnToVillage = (activeGame?.cycle ?? 0) >= 60;
+
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.navigate('Map');
+      return true;
+    });
     return () => sub.remove();
-  }, []);
+  }, [navigation]);
   const targetGold = 120;
+
+  const handleReturnToVillage = () => {
+    updateProgress({ location: 'village' });
+    navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
+  };
 
   useEffect(() => {
     let current = 0;
@@ -123,14 +136,21 @@ export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
         >
           <Text className="text-background font-bold font-robotomono text-base">{t('extraction.continueExploring')}</Text>
         </TouchableOpacity>
-        <View className="border border-primary/20 p-3 items-center" style={{ opacity: 0.35 }}>
-          <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 12, color: '#00FF41' }}>
+        <TouchableOpacity
+          onPress={canReturnToVillage ? handleReturnToVillage : undefined}
+          disabled={!canReturnToVillage}
+          className={`p-3 items-center ${canReturnToVillage ? 'border border-accent' : 'border border-primary/20'}`}
+          style={canReturnToVillage ? {} : { opacity: 0.35 }}
+        >
+          <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 12, color: canReturnToVillage ? '#00E5FF' : '#00FF41' }}>
             {t('extraction.returnVillage')}
           </Text>
-          <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)', marginTop: 3 }}>
-            {t('extraction.lockedNotice')}
-          </Text>
-        </View>
+          {!canReturnToVillage && (
+            <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)', marginTop: 3 }}>
+              {t('extraction.lockedNotice')}
+            </Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       <GlossaryButton />

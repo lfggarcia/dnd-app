@@ -34,6 +34,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const cycle = activeGame?.cycle ?? 1;
 
   const [saveExitVisible, setSaveExitVisible] = useState(false);
+  const [selectedSafeZone, setSelectedSafeZone] = useState<MapNode | null>(null);
 
   // Generate nodes from seed+floor; restore statuses from persisted map state if available
   const [nodes, setNodes] = useState<MapNode[]>(() => {
@@ -54,10 +55,13 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Block hardware back button — once in the tower you cannot return to village
+  // Hardware back → open save/exit confirm (same as X button)
   useFocusEffect(
     useCallback(() => {
-      const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        setSaveExitVisible(true);
+        return true;
+      });
       return () => sub.remove();
     }, [])
   );
@@ -90,6 +94,8 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     if (node.status === 'LOCKED') return;
     if (node.type === 'COMBAT' || node.type === 'BOSS') {
       navigation.navigate('Battle');
+    } else if (node.type === 'SAFE_ZONE') {
+      setSelectedSafeZone(node);
     }
   };
 
@@ -98,6 +104,13 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     for (const n of nodes) nodeSave[n.id] = n.status;
     updateProgress({ location: 'map', mapState: JSON.stringify(nodeSave) });
     navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+  };
+
+  const handleReturnToVillageFromSafeZone = () => {
+    const nodeSave: Record<number, string> = {};
+    for (const n of nodes) nodeSave[n.id] = n.status;
+    updateProgress({ location: 'village', mapState: JSON.stringify(nodeSave) });
+    navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
   };
 
   return (
@@ -203,6 +216,37 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
           })}
         </View>
       </View>
+
+      {/* Safe Zone Action Panel */}
+      {selectedSafeZone && (
+        <View className="border-t border-primary p-3 bg-primary/5">
+          <Text className="text-primary font-robotomono text-[9px] font-bold mb-1">
+            ◆ {t('map.nodeTypes.SAFE_ZONE')}{selectedSafeZone.label ? ` — ${selectedSafeZone.label}` : ''}
+          </Text>
+          <Text className="text-primary/60 font-robotomono text-[8px] mb-2">
+            {t('map.safeZoneDesc')}
+          </Text>
+          <View className="flex-row">
+            <TouchableOpacity
+              onPress={handleReturnToVillageFromSafeZone}
+              className="flex-1 border border-accent p-2 items-center mr-2"
+            >
+              <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 11, color: '#00E5FF' }}>
+                {t('extraction.returnVillage')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setSelectedSafeZone(null)}
+              className="border border-primary/30 p-2 items-center"
+              style={{ width: 80 }}
+            >
+              <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 11, color: 'rgba(0,255,65,0.5)' }}>
+                {t('common.cancel')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Bottom Info Panel */}
       <View className="border-t border-primary/30 p-3 bg-muted/10">

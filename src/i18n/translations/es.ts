@@ -208,6 +208,7 @@ export const es = {
     saveExitTitle: 'Guardar y salir',
     saveExitMsg: 'Tu posición actual en el mapa se guardará. Al seleccionar "Continuar" o cargar la partida, regresarás directamente a este punto.',
     saveExit: 'Guardar y salir',
+    safeZoneDesc: 'Zona segura alcanzada. Puedes regresar a la villa desde aquí.',
     towerDisclaimerTitle: '⚠ Mecánica de la torre',
     towerDisclaimerMsg: 'Una vez dentro, solo puedes regresar a la villa desde una Zona Segura o al completar el ciclo 60.\n\nSi necesitas cerrar la app antes de eso, usa el botón ✕ en el mapa — tu progreso se guardará y continuarás desde donde lo dejaste.',
   },

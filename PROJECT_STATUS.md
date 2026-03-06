@@ -34,8 +34,8 @@
 | UI: GuildScreen | Roster completo de personajes con HP bar, stats grid, badges de estado (ACTIVO/HERIDO/MUERTO), navegación al WorldLog |
 | UI: BattleScreen | Vista táctica con área de enemigos, jugadores y log de combate (mock) |
 | UI: ReportScreen | Reporte con TypewriterText secuencial, gráfico de barras, alerta (mock) |
-| UI: ExtractionScreen | Contador animado de oro, lista de materiales, retorno al menú |
-| UI: WorldLogScreen | Feed de eventos con filtros (ALL/COMBAT/LORE/SYSTEM), multilingüe |
+| UI: ExtractionScreen | Botón "Volver a la villa" conectado a useGameStore; habilitado al ciclo 60 |
+| UI: MapScreen | Nodos SAFE_ZONE ahora son interactivos — panel de acción con "Volver a la villa" guardando el estado del mapa |
 | UI: CycleTransitionScreen | Transición de ciclo animada (Floor N → N+1) |
 | Estado global | `useGameStore` (Zustand) — persiste activeGame, savedGames en SQLite; `startNewGame`, `loadGame`, `updateProgress`, `endGame`, `hydrate` |
 | Persistencia de partida | Schema `saved_games` (migración v2+v3); `gameRepository.ts` con `SavedGame`, `CharacterSave`, CRUD completo; campos: seed, party, floor, cycle, phase, gold, status, location, mapState |

@@ -9,9 +9,12 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
   const { t } = useI18n();
 
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.navigate('Report');
+      return true;
+    });
     return () => sub.remove();
-  }, []);
+  }, [navigation]);
 
   const LOG_ENTRIES = [
     `INITIATIVE: PARTY (18) vs ENEMY (12)`,

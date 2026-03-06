@@ -74,10 +74,10 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
     PartyScreen.tsx      → creación de personaje con datos reales DnD 5e + tutorial + glosario. ✅ FUNCIONAL
     VillageScreen.tsx    → conectada a useGameStore real (gold, cycle, phase, maxFloor); rivals, market y amenazas determinísticos por seed; disclaimer Torre; BackHandler con confirmación. ✅ FUNCIONAL
     GuildScreen.tsx      → roster con CharacterCard (HP bar, stats, badges ACTIVO/HERIDO/MUERTO), navegación a WorldLog. ✅ FUNCIONAL
-    MapScreen.tsx        → 8 nodos generados por seed+floor (mapGenerator), radar Reanimated, header con piso/ciclo reales, estado persistido en SQLite. ✅ FUNCIONAL
+    MapScreen.tsx        → 8 nodos generados por seed+floor (mapGenerator), radar Reanimated, header con piso/ciclo reales, estado persistido en SQLite; SAFE_ZONE interactiva (panel "Volver a la villa"). ✅ FUNCIONAL
     BattleScreen.tsx     → log de combate estático. ⚠️ MOCK
     ReportScreen.tsx     → TypewriterText con valores hardcodeados. ⚠️ MOCK
-    ExtractionScreen.tsx → contador animado siempre = 15400G. ⚠️ MOCK
+    ExtractionScreen.tsx → contador animado + botón "Volver a la villa" habilitado en ciclo 60. ✅ CONECTADO
     WorldLogScreen.tsx   → feed de eventos con filtros (ALL/COMBAT/LORE/SYSTEM). ⚠️ MOCK DATA
     CycleTransitionScreen.tsx → transición de ciclo animada (Floor N → N+1). ⚠️ MOCK
 ```

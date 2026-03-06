@@ -29,34 +29,35 @@
 | UI: PartyScreen | Creación de personaje **REAL**: nombre, raza, clase, subclase, trasfondo, alineamiento con datos DnD 5e de API/DB |
 | UI: PartyScreen Tutorial | Tutorial step-by-step integrado con TutorialOverlay (next/prev/skip) |
 | UI: PartyScreen Glosario | GlossaryModal con búsqueda por categorías (stats, razas, clases, monstruos, mecánicas) |
-| UI: VillageScreen | Mapa de blueprint interactivo, leaderboard, SliderButton para lanzar incursión |
-| UI: MapScreen | Nodos de misión, radar rotativo Reanimated |
-| UI: BattleScreen | Vista táctica con área de enemigos, jugadores y log de combate |
-| UI: ReportScreen | Reporte con TypewriterText secuencial, gráfico de barras, alerta |
+| UI: VillageScreen | Conectada a useGameStore real (gold, cycle, floor, phase); rivals, market items y amenazas determinísticos por seed; disclaimer antes de entrar a la Torre; BackHandler con confirmación de salida |
+| UI: MapScreen | **8 nodos generados por seed + floor** (`mapGenerator.ts`); tipos y labels determinísticos por PRNG; radar rotativo Reanimated; botón X → ConfirmModal → guarda estado; restaura estados de nodos al reanudar; header muestra piso y ciclo reales; BackHandler bloqueado en torre |
+| UI: GuildScreen | Roster completo de personajes con HP bar, stats grid, badges de estado (ACTIVO/HERIDO/MUERTO), navegación al WorldLog |
+| UI: BattleScreen | Vista táctica con área de enemigos, jugadores y log de combate (mock) |
+| UI: ReportScreen | Reporte con TypewriterText secuencial, gráfico de barras, alerta (mock) |
 | UI: ExtractionScreen | Contador animado de oro, lista de materiales, retorno al menú |
 | UI: WorldLogScreen | Feed de eventos con filtros (ALL/COMBAT/LORE/SYSTEM), multilingüe |
 | UI: CycleTransitionScreen | Transición de ciclo animada (Floor N → N+1) |
-| Componentes | `CRTOverlay`, `TypewriterText`, `SliderButton`, `DatabaseGate`, `GlossaryModal`, `TorreLogo`, `TutorialOverlay` — 7 reutilizables y tipados |
+| Estado global | `useGameStore` (Zustand) — persiste activeGame, savedGames en SQLite; `startNewGame`, `loadGame`, `updateProgress`, `endGame`, `hydrate` |
+| Persistencia de partida | Schema `saved_games` (migración v2+v3); `gameRepository.ts` con `SavedGame`, `CharacterSave`, CRUD completo; campos: seed, party, floor, cycle, phase, gold, status, location, mapState |
+| Routing por estado | MainScreen enruta "Continuar" a MapScreen o VillageScreen según `location` guardado |
+| Componentes | `CRTOverlay`, `TypewriterText`, `SliderButton`, `DatabaseGate`, `GlossaryModal`, `TorreLogo`, `TutorialOverlay`, `ConfirmModal` — 8 reutilizables y tipados |
 | Hooks | `useDatabase`, `useGlossary`, `useResources`, `useTutorial` — 4 hooks custom |
-| Servicios | `api5e`, `syncService`, `translationBridge`, `rulesConfig`, `subclassSeed`, `backgroundSeed`, `translationSeed` — 7 servicios modulares |
+| Servicios | `api5e`, `syncService`, `translationBridge`, `rulesConfig`, `subclassSeed`, `backgroundSeed`, `translationSeed`, `rivalGenerator` — 8 servicios modulares |
 | Calidad | Imports limpios, navigation tipado, barrel exports en database/services/i18n |
 
 ### 🚧 En Progreso / Pendiente
 
 | Área | Detalle | Prioridad |
 |------|---------|-----------|
-| Estado global | Sin gestión de estado entre pantallas — seed, personaje, progreso se pierden en cada navegación | Alta |
 | Motor de simulación | No existe — corazón del juego, responsable de simular parties IA por ciclos | Alta |
-| Lógica de combate | Todo el gameplay es mock — log estático, sin tiradas reales, sin HP, sin turnos | Alta |
-| Persistencia de partida | DB existe pero solo para datos de referencia DnD 5e — no hay save/load de partidas | Alta |
-| Sistema temporal | Sin ciclos, sin temporadas, sin presión de "el ciclo 60 cierra la Torre" | Alta |
-| Generador por seed | Seed se ingresa pero se descarta — no genera nada | Media |
-| Parties IA | No existen — el leaderboard es hardcodeado, no hay simulación real | Media |
+| Lógica de combate | Todo el gameplay es mock — BattleScreen y ReportScreen con datos estáticos, sin tiradas reales, sin HP dinámico, sin turnos | Alta |
+| Sistema temporal | Ciclos y fases presentes en el modelo de datos pero sin mecánica de avance real | Alta |
+
+| Parties IA | Rivals generados determinísticamente pero sin simulación real de progreso | Media |
 | Sistema de política | Sin alianzas, sin bounty, sin moral, sin World Log real | Media |
 | Performance CRT | 100 Views por pantalla para scanlines | Media |
 | Testing | Solo 1 test de render básico — cobertura ~0% | Media |
-| Nodos muertos | LOOT, BOSS y START en MapScreen tienen `onPress` deshabilitado | Baja |
-| Funciones stub | `LOAD_STATE` y `SYSTEM_CONFIG` sin implementar | Baja |
+| Funciones stub | `SYSTEM_CONFIG` sin implementar | Baja |
 
 ---
 
@@ -73,9 +74,9 @@
 - [x] **Glosario interactivo** — GlossaryModal con búsqueda por categorías
 - [x] **Tutorial de creación** — TutorialOverlay step-by-step en PartyScreen
 - [x] **Capa de constantes/datos** — `dnd5eLevel1.ts`, `rulesConfig.ts`, seeds de datos
-- [ ] **Estado global (Zustand)** — persistir seed, party activa, progreso de ciclo y piso entre pantallas
-- [ ] **Modelo de datos de partida** — extender schema con Seeds, Parties, Characters
-- [ ] **Generador determinístico por seed** — mapa de nodos, tabla de enemigos, loot, dificultad via PRNG seeded
+- [x] **Estado global (Zustand)** — `useGameStore` persiste activeGame completo en SQLite entre sesiones; acciones: `startNewGame`, `loadGame`, `updateProgress`, `endGame`, `hydrate`
+- [x] **Modelo de datos de partida** — tabla `saved_games` con seed, party_data, floor, cycle, phase, gold, status, location, mapState; `gameRepository.ts` con tipos `SavedGame` + `CharacterSave` y CRUD completo
+- [x] **Generador determinístico por seed** — PRNG/LCG (djb2+LCG) usado en rivals, market, amenazas y layout de nodos del mapa; tipos y labels de nodo generados a partir de `seedHash + floor`; distribución de tipos ajustada por rango de piso (1-25 / 26-60 / 61-100)
 - [ ] **Motor de combate DnD 5e** — tiradas reales (d20 + modificadores), HP, AC, turnos por iniciativa, log dinámico
 
 ### Fase 2 — Motor de Simulación (TORRE toma forma)
@@ -143,15 +144,17 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Pantallas actuales | 10 |
+| Pantallas actuales | 11 (incluye GuildScreen) |
 | Pantallas proyectadas | 12-15 (gestión de alianzas, detalle de personaje, config) |
-| Componentes reutilizables | 7 |
+| Componentes reutilizables | 8 (incluye ConfirmModal) |
 | Hooks custom | 4 |
-| Servicios | 7 |
-| Sistemas de juego pendientes | 5 (simulación, combate, economía, social, temporal) |
-| Tablas en DB | 4 (resources, translations, sync_meta + indexes) |
+| Servicios | 8 (incluye rivalGenerator) |
+| Stores | 1 (useGameStore con SQLite) |
+| Sistemas de juego pendientes | 4 (combate real, generador de mapa, simulación IA, temporal) |
+| Tablas en DB | 5 (resources, translations, sync_meta, saved_games + indexes) |
+| Migraciones DB | 3 (v1 schema base, v2 saved_games, v3 location+mapState) |
 | Endpoints API sincronizados | 24 |
 | Idiomas soportados | 2 (ES, EN) |
-| Claves de traducción | ~100+ |
+| Claves de traducción | ~120+ |
 | Cobertura de tests | ~0% |
 | Dependencias de producción | ~15 |

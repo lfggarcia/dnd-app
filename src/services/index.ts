@@ -15,6 +15,10 @@ export {
   getTranslatedResource,
   getTranslatedName,
 } from './translationBridge';
+export { generateFloorNodes } from './mapGenerator';
+export type { MapNode, NodeType } from './mapGenerator';
+export { generateRivals, buildRivalPool } from './rivalGenerator';
+export type { RivalEntry } from './rivalGenerator';
 export {
   CLASS_SUBCLASS_MAP,
   ALL_CLASSES,

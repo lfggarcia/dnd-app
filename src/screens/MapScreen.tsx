@@ -14,17 +14,8 @@ import { GlossaryButton } from '../components/GlossaryModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
-
-type NodeType = 'COMBAT' | 'EVENT' | 'SAFE_ZONE' | 'BOSS' | 'UNKNOWN';
-
-type MapNode = {
-  id: number;
-  type: NodeType;
-  pos: { x: number; y: number };
-  status: 'CLEAR' | 'CURRENT' | 'LOCKED' | 'AVAILABLE';
-  label?: string;
-  connections: number[];
-};
+import { generateFloorNodes } from '../services/mapGenerator';
+import type { MapNode, NodeType } from '../services/mapGenerator';
 
 const NODE_STYLES: Record<NodeType, { border: string; bg: string; icon: string }> = {
   COMBAT: { border: 'border-destructive', bg: 'bg-destructive/15', icon: '⚔' },
@@ -34,34 +25,27 @@ const NODE_STYLES: Record<NodeType, { border: string; bg: string; icon: string }
   UNKNOWN: { border: 'border-primary/30', bg: 'bg-muted/20', icon: '·' },
 };
 
-const FLOOR_NODES: MapNode[] = [
-  { id: 1, type: 'SAFE_ZONE', pos: { x: 15, y: 85 }, status: 'CURRENT', label: 'ENTRANCE', connections: [2, 3] },
-  { id: 2, type: 'COMBAT', pos: { x: 35, y: 65 }, status: 'AVAILABLE', label: 'UNDEAD_PATROL', connections: [4, 5] },
-  { id: 3, type: 'EVENT', pos: { x: 35, y: 105 }, status: 'AVAILABLE', label: 'STRANGE_ALTAR', connections: [5] },
-  { id: 4, type: 'COMBAT', pos: { x: 55, y: 45 }, status: 'LOCKED', label: 'AMBUSH_POINT', connections: [6] },
-  { id: 5, type: 'UNKNOWN', pos: { x: 55, y: 85 }, status: 'LOCKED', connections: [6, 7] },
-  { id: 6, type: 'SAFE_ZONE', pos: { x: 75, y: 60 }, status: 'LOCKED', label: 'CAMP', connections: [8] },
-  { id: 7, type: 'COMBAT', pos: { x: 75, y: 105 }, status: 'LOCKED', connections: [8] },
-  { id: 8, type: 'BOSS', pos: { x: 90, y: 80 }, status: 'LOCKED', label: 'FLOOR_GUARDIAN', connections: [] },
-];
-
 export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const { t } = useI18n();
   const activeGame = useGameStore(s => s.activeGame);
   const updateProgress = useGameStore(s => s.updateProgress);
 
+  const floor = activeGame?.floor ?? 1;
+  const cycle = activeGame?.cycle ?? 1;
+
   const [saveExitVisible, setSaveExitVisible] = useState(false);
 
-  // Initialize nodes from persisted map state if available
+  // Generate nodes from seed+floor; restore statuses from persisted map state if available
   const [nodes, setNodes] = useState<MapNode[]>(() => {
+    const base = generateFloorNodes(activeGame?.seedHash ?? '0', activeGame?.floor ?? 1);
     try {
       const raw = activeGame?.mapState;
       if (raw) {
         const saved = JSON.parse(raw) as Record<number, MapNode['status']>;
-        return FLOOR_NODES.map(n => ({ ...n, status: saved[n.id] ?? n.status }));
+        return base.map(n => ({ ...n, status: saved[n.id] ?? n.status }));
       }
     } catch {}
-    return [...FLOOR_NODES];
+    return base;
   });
 
   // Mark player as being in the map
@@ -126,8 +110,8 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
         <TouchableOpacity onPress={() => setSaveExitVisible(true)} style={{ width: 60 }}>
           <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)' }}>✕ {t('map.exit')}</Text>
         </TouchableOpacity>
-        <Text className="text-primary font-bold font-robotomono text-xs">{t('common.floor')} 01 · {t('map.title')}</Text>
-        <Text className="text-secondary font-robotomono text-[9px]">{t('common.cycle')}: 01/60</Text>
+        <Text className="text-primary font-bold font-robotomono text-xs">{t('common.floor')} {String(floor).padStart(2, '0')} · {t('map.title')}</Text>
+        <Text className="text-secondary font-robotomono text-[9px]">{t('common.cycle')}: {String(cycle).padStart(2, '0')}/60</Text>
       </View>
 
       {/* Day/Night + Floor Info */}
@@ -154,9 +138,9 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
 
           {/* Connection Lines */}
           <View className="absolute inset-0" pointerEvents="none">
-            {FLOOR_NODES.map(node =>
+            {nodes.map(node =>
               node.connections.map(targetId => {
-                const target = FLOOR_NODES.find(n => n.id === targetId);
+                const target = nodes.find(n => n.id === targetId);
                 if (!target) return null;
                 return (
                   <View

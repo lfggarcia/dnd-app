@@ -61,15 +61,20 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
     subclassSeed.ts      → seed de subclases custom en init. ✅ Funcional
     backgroundSeed.ts    → seed de backgrounds custom en init. ✅ Funcional
     translationSeed.ts   → seed de traducciones ES en init. ✅ Funcional
+    rivalGenerator.ts    → PRNG/LCG determinístico; genera hasta 10 grupos rivales por seed. ✅ Funcional
+    mapGenerator.ts      → PRNG/LCG determinístico; genera 8 nodos de piso (DAG) por seed+floor. ✅ Funcional
   navigation/
-    AppNavigator.tsx     → stack de 10 pantallas, transición fade. ✅ Funcional
-    types.ts             → RootStackParamList tipado (10 rutas). ✅ Funcional
+    AppNavigator.tsx     → stack de 11 pantallas (incl. GuildScreen), transición fade. ✅ Funcional
+    types.ts             → RootStackParamList tipado (11 rutas). ✅ Funcional
+  stores/
+    gameStore.ts         → Zustand store con persistencia SQLite; acciones: startNewGame, loadGame, updateProgress, endGame, hydrate, clearActive. ✅ Funcional
   screens/
-    MainScreen.tsx       → menú con TorreLogo, boot sequence, toggle idioma. ✅
+    MainScreen.tsx       → menú con TorreLogo, boot sequence, toggle idioma; enruta a Map o Village según location guardada. ✅
     SeedScreen.tsx       → input seed + efecto Matrix. ⚠️ Seed se ingresa pero se DESCARTA
     PartyScreen.tsx      → creación de personaje con datos reales DnD 5e + tutorial + glosario. ✅ FUNCIONAL
-    VillageScreen.tsx    → blueprint con edificios, leaderboard hardcodeado. ⚠️ MOCK
-    MapScreen.tsx        → 4 nodos fijos, radar animado. ⚠️ MOCK
+    VillageScreen.tsx    → conectada a useGameStore real (gold, cycle, phase, maxFloor); rivals, market y amenazas determinísticos por seed; disclaimer Torre; BackHandler con confirmación. ✅ FUNCIONAL
+    GuildScreen.tsx      → roster con CharacterCard (HP bar, stats, badges ACTIVO/HERIDO/MUERTO), navegación a WorldLog. ✅ FUNCIONAL
+    MapScreen.tsx        → 8 nodos generados por seed+floor (mapGenerator), radar Reanimated, header con piso/ciclo reales, estado persistido en SQLite. ✅ FUNCIONAL
     BattleScreen.tsx     → log de combate estático. ⚠️ MOCK
     ReportScreen.tsx     → TypewriterText con valores hardcodeados. ⚠️ MOCK
     ExtractionScreen.tsx → contador animado siempre = 15400G. ⚠️ MOCK
@@ -78,22 +83,23 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
 ```
 
 ### Sistemas implementados
-- **Base de datos SQLite** (op-sqlite) — schema con 4 tablas: resources, translations, sync_meta + indexes
+- **Base de datos SQLite** (op-sqlite) — schema con 5 tablas: resources, translations, sync_meta, saved_games + indexes
+- **Persistencia de partida** — `useGameStore` (Zustand) persiste `activeGame` + `savedGames` en SQLite; `gameRepository.ts` con CRUD completo; campos: seed, party, floor, cycle, phase, gold, status, location, mapState
+- **Routing por estado** — MainScreen enruta a MapScreen o VillageScreen según `location` guardado
 - **Sincronización con DnD 5e API** — 24 endpoints, sync on demand, tracking de progreso
 - **i18n bilingüe** — ES (default) / EN, Context + hook, dot-notation keys
 - **Sistema de traducciones puente** — fallback chain: translations DB → raw API data
 - **Glosario interactivo** — búsqueda por categoría (stats, razas, clases, monstruos, mecánicas)
 - **Tutorial step-by-step** — integrado en PartyScreen para guiar creación de personaje
 - **Seed de datos en init** — traducciones ES, subclases custom, backgrounds custom
+- **Generador determinístico por seed** — PRNG djb2+LCG para rivals, market items, amenazas y layout de nodos del mapa
 
 ### Sin implementar aún
-- **Estado global** — sin Zustand/Context global. Cada pantalla vive aislada.
-- **Persistencia de partida** — LOAD_STATE no funciona, no hay save/load de progreso.
-- **Motor de simulación** — toda lógica de juego = texto fijo.
-- **Motor de combate** — sin tiradas reales, sin HP, sin turnos.
+- **Motor de simulación** — toda la lógica de gameplay es mock (BattleScreen, ReportScreen, ExtractionScreen).
+- **Motor de combate DnD 5e** — sin tiradas reales, sin HP dinámico, sin turnos por iniciativa.
 
 ### Bug conocido activo
-- `MapScreen`: LOOT, BOSS, START tienen `onPress` deshabilitado — visualmente tappable, sin acción.
+- La mayoría de nodos del mapa navegan a `BattleScreen` (COMBAT/BOSS) pero BattleScreen es estática; EVENT/SAFE_ZONE/UNKNOWN no tienen acción al tocar.
 
 ---
 

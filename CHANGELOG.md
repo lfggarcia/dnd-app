@@ -7,7 +7,34 @@ Versiones siguiendo [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased] — 2026-03-06
 
-### Added
+### Added (Fase 1 — post-beta)
+
+- **useGameStore (Zustand + SQLite)** — `src/stores/gameStore.ts`; persiste `activeGame` y `savedGames` en SQLite; acciones: `startNewGame`, `loadGame`, `updateProgress`, `endGame`, `hydrate`, `clearActive`
+- **gameRepository** — `src/database/gameRepository.ts`; tipos `SavedGame` + `CharacterSave` + `Stats`; CRUD completo (`createSavedGame`, `updateSavedGame`, `getSavedGame`, `getActiveSavedGame`, `getAllSavedGames`, `deleteSavedGame`)
+- **DB migración v2** — tabla `saved_games` con campos: id, seed, seed_hash, party_data, floor, cycle, phase, gold, status, created_at, updated_at
+- **DB migración v3** — columnas `location TEXT DEFAULT 'village'` y `map_state TEXT` en `saved_games` para persistir dónde está el jugador y el estado de nodos del mapa
+- **GuildScreen** — pantalla de gremio (`src/screens/GuildScreen.tsx`): roster completo con `CharacterCard` (HP bar, stats grid 6 atributos, badges ACTIVO/HERIDO/MUERTO), opciones de navegación (Rankings, Bounty Board, WorldLog)
+- **rivalGenerator** — `src/services/rivalGenerator.ts`: PRNG/LCG determinístico por seed; genera hasta 10 grupos rivales con nombre, piso, reputación y estado; también exporta `buildRivalPool`
+- **ConfirmModal** — componente reutilizable `src/components/ConfirmModal.tsx` para diálogos de confirmación con título, mensaje, botón confirmar/cancelar, estilo CRT
+
+### Added (Fase 1 — generador de mapas)
+
+- **mapGenerator** — `src/services/mapGenerator.ts`: generador determinístico de layouts de piso; 8 nodos en DAG ramificado (entrada → 2 caminos → convergencia → jefe); tipos de nodo (COMBAT/EVENT/SAFE_ZONE/UNKNOWN) y labels asignados por PRNG djb2+LCG igual que `rivalGenerator.ts`; distribución de tipos ajustada por piso (1–25 / 26–60 / 61–100); 15 labels COMBAT, 9 EVENT, 7 SAFE_ZONE, 8 BOSS
+- **services/index.ts** — añadidos barrel exports para `generateFloorNodes`, `MapNode`, `NodeType` (mapGenerator) y `generateRivals`, `buildRivalPool`, `RivalEntry` (rivalGenerator)
+
+### Changed (Fase 1 — generador de mapas)
+
+- **MapScreen** — nodos del mapa ahora generados por `generateFloorNodes(seedHash, floor)` en lugar de `FLOOR_NODES` hardcodeados; header muestra piso y ciclo reales desde `activeGame`; líneas de conexión usan estado `nodes` en lugar de constante eliminada; `NodeType` + `MapNode` importados desde `mapGenerator`
+
+### Changed (Fase 1 — post-beta)
+
+- **VillageScreen** — conectada a `useGameStore` real: muestra gold, cycle, phase, maxFloor del estado activo; rivals generados deterministicamente por seedHash; market items y amenazas seeded; disclaimer modal antes de entrar a la Torre; `BackHandler` con modal de confirmación de salida a menú principal; `updateProgress({ location: 'village' })` al montar
+- **MapScreen** — botón X en header abre `ConfirmModal` para guardar y salir; al confirmar: serializa estado de nodos a `mapState` via `updateProgress` y navega al menú; restaura estado de nodos desde `mapState` al re-entrar; `BackHandler` bloqueado mientras se está en la Torre; `updateProgress({ location: 'map' })` al montar
+- **MainScreen** — "Continuar expedición" enruta a `MapScreen` si `activeGame.location === 'map'`, a `VillageScreen` si `location === 'village'`; muestra lista de partidas guardadas en modal de carga; botón eliminar partida con confirmación; `hydrate()` en `useFocusEffect` para refrescar al volver al menú
+- **AppNavigator** — añadida ruta `Guild: undefined` y registro de `GuildScreen`
+- **navigation/types.ts** — añadida `Guild: undefined` a `RootStackParamList`
+
+### Added (base — ya documentado)
 - **Base de datos SQLite** — `@op-engineering/op-sqlite` v15 integrado con schema v1 (tables: `resources`, `translations`, `sync_meta`)
 - **Sincronización DnD 5e API** — `syncService.ts` orquesta fetch de 24 endpoints de `dnd5eapi.co` con tracking de progreso
 - **DatabaseGate** — componente wrapper que bloquea la UI hasta que la DB esté inicializada y los datos de la API sincronizados, con barra de progreso

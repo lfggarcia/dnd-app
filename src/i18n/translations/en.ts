@@ -44,6 +44,11 @@ export const en = {
     bootUplink: '[UPLINK] ................ SECURE',
     footer: 'TORRE_OS v2.0 | DND_5E',
     protocolActive: 'PROTOCOL_ACTIVE',
+    seed: 'Seed',
+    deleteSave: 'Delete save',
+    deleteSaveConfirm: 'Permanently delete save',
+    noSaves: 'No saved games found',
+    completed: 'Completed',
   },
 
   seed: {
@@ -122,6 +127,19 @@ export const en = {
     align_LE: 'Lawful Evil',
     align_NE: 'Neutral Evil',
     align_CE: 'Chaotic Evil',
+  },
+
+  guild: {
+    title: 'Mercenary Guild',
+    description: 'Operations center. Check your party status, manage level-ups and review available contracts.',
+    partyRoster: 'Party roster',
+    noParty: 'No active party. Start a game first.',
+    options: 'Guild services',
+    rankingsDesc: 'Check rival party rankings.',
+    bountyDesc: 'Active contracts and available bounties.',
+    worldLogDesc: 'World event log.',
+    levelUpNotice: 'Level management',
+    levelUpDesc: 'Stat improvements apply immediately on level up. However, new abilities and traits can only be activated while in a safe zone (village).',
   },
 
   village: {
@@ -262,10 +280,12 @@ export const en = {
   glossary: {
     title: 'Glossary & Dex',
     searchPlaceholder: 'Search term...',
+    loading: 'Syncing data...',
     categories: {
       stats: 'Attributes',
       races: 'Races',
       classes: 'Classes',
+      monsters: 'Enemies',
       mechanics: 'Mechanics',
       alignments: 'Alignments',
     },
@@ -323,6 +343,61 @@ export const en = {
       xp: { name: 'XP (Experience)', desc: 'Points earned by defeating enemies. Level up by accumulating enough.' },
       rivalry: { name: 'Rivalry', desc: '8 AI parties compete with you. They can ally, betray or be eliminated.' },
       rarity: { name: 'Rarity', desc: 'Loot quality: Common < Uncommon < Rare < Legendary.' },
+    },
+  },
+
+  tutorial: {
+    header: 'CREATION GUIDE',
+    next: 'NEXT',
+    prev: 'PREV',
+    skip: 'Skip tutorial',
+    finish: 'DONE',
+    button: '?',
+    steps: {
+      welcome: {
+        title: 'Welcome, Adventurer',
+        desc: 'Here you will create your party of up to 4 characters to explore the tower. Every decision matters — choose wisely.',
+      },
+      roster: {
+        title: 'Party Slots',
+        desc: 'Your party can have 1 to 4 members. Use the top tabs to switch between characters. More members = more power, but XP is split.',
+      },
+      name: {
+        title: 'Character Name',
+        desc: 'Give your character a name. Max 16 characters. This will be their identifier in combat and logs.',
+      },
+      race: {
+        title: 'Race',
+        desc: 'Each race grants attribute bonuses and unique abilities. For example: Human gives +1 to all, Elf gives +2 DEX and darkvision.',
+      },
+      class: {
+        title: 'Class',
+        desc: 'Class defines your combat role. Fighter for tank, Rogue for damage, Wizard for spells, Cleric for healing. Choose based on your strategy.',
+      },
+      subclass: {
+        title: 'Subclass',
+        desc: 'Each class has specializations with unique abilities that unlock as you level up. Review the features before choosing.',
+      },
+      background: {
+        title: 'Background',
+        desc: 'Background provides narrative context and extra bonuses. Soldier for combat, Criminal for stealth, Sage for knowledge.',
+      },
+      stats: {
+        title: 'Ability Scores',
+        desc: 'Your 6 base attributes (STR, DEX, CON, INT, WIS, CHA). Use "Standard" for safe values [15,14,13,12,10,8] or "4d6" for random rolls.',
+      },
+      summary: {
+        title: 'Level 1 Summary',
+        desc: 'Review your character\'s HP, proficiency bonus, hit die, class features and racial traits before continuing.',
+      },
+      alignment: {
+        title: 'Alignment',
+        desc: 'Your moral compass: Lawful/Neutral/Chaotic × Good/Neutral/Evil. Affects narrative events and how NPCs react to you.',
+      },
+      actions: {
+        title: 'To the Tower!',
+        desc: 'Add more members or remove those you don\'t need. When your party is ready, press "Start expedition" to enter the tower.',
+      },
     },
   },
 } as const;

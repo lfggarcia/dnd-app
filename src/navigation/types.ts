@@ -3,8 +3,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 export type RootStackParamList = {
   Main: undefined;
   Seed: undefined;
-  Party: undefined;
+  Party: { seed: string; seedHash: string };
   Village: undefined;
+  Guild: undefined;
   Map: undefined;
   Battle: undefined;
   Report: undefined;

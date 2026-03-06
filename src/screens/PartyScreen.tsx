@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, memo, type ReactNode } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
+import { TutorialOverlay } from '../components/TutorialOverlay';
 import { useI18n, type Lang } from '../i18n';
+import { useTutorial, PARTY_TUTORIAL_STEPS } from '../hooks/useTutorial';
 import {
   useRaces,
   useClasses,
@@ -27,6 +29,20 @@ import {
   useSubclasses,
 } from '../hooks/useResources';
 import { getTranslatedField } from '../services/translationBridge';
+import { CharacterActionsPanel } from '../components/CharacterActionsPanel';
+import {
+  DnaIcon,
+  SwordIcon,
+  TridentIcon,
+  ScrollIcon,
+  DiceIcon,
+  StatsIcon,
+  ScaleIcon,
+  TagIcon,
+  BrainIcon,
+  LightningIcon,
+  ChevronRightIcon,
+} from '../components/Icons';
 import type { ScreenProps } from '../navigation/types';
 import {
   SUBCLASS_FEATURES,
@@ -37,6 +53,8 @@ import {
   LVL1_RULES,
   type FeatureEntry,
 } from '../constants/dnd5eLevel1';
+import { useGameStore } from '../stores/gameStore';
+import type { CharacterSave } from '../database/gameRepository';
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -51,6 +69,7 @@ type CharacterDraft = {
   alignment: string;
   baseStats: Stats;
   statMethod: 'standard' | 'rolled';
+  featureChoices: Record<string, string | string[]>;
 };
 
 const STAT_KEYS: (keyof Stats)[] = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
@@ -162,6 +181,7 @@ function mkDefault(i: number): CharacterDraft {
     alignment: 'neutral',
     baseStats: assignStandardArray(cls),
     statMethod: 'standard',
+    featureChoices: {},
   };
 }
 
@@ -252,8 +272,11 @@ const SectionCard = memo(({ children, borderColor = 'border-primary/30' }: { chi
   <View className={`mb-5 border ${borderColor} rounded-md bg-muted/10 p-4`}>{children}</View>
 ));
 
-const SectionHeader = memo(({ icon, label, color = 'text-primary' }: { icon: string; label: string; color?: string }) => (
-  <Text className={`${color} font-robotomono text-sm font-bold mb-1`}>{icon}  {label}</Text>
+const SectionHeader = memo(({ icon, label, color = 'text-primary' }: { icon: ReactNode; label: string; color?: string }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+    {icon}
+    <Text className={`${color} font-robotomono text-sm font-bold`} style={{ marginLeft: 6 }}>{label}</Text>
+  </View>
 ));
 
 const SectionHint = memo(({ text, color = 'text-primary/50' }: { text: string; color?: string }) => (
@@ -290,17 +313,20 @@ const SubclassAbilitiesPanel = memo(({
       </Text>
       {features.length > 0 ? (
         <View className="border-t border-secondary/20 pt-2 mt-1">
-          <Text className="text-secondary font-robotomono text-[9px] font-bold mb-1">
-            {lang === 'es' ? '⚡ HABILIDADES DESBLOQUEADAS:' : '⚡ UNLOCKED FEATURES:'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+            <LightningIcon size={9} color="rgba(255,176,0,0.9)" />
+            <Text className="text-secondary font-robotomono text-[9px] font-bold" style={{ marginLeft: 4 }}>
+              {lang === 'es' ? 'HABILIDADES DESBLOQUEADAS:' : 'UNLOCKED FEATURES:'}
+            </Text>
+          </View>
           {features.map(f => (
-            <View key={`${f.name}-${f.level}`} className="flex-row items-center mb-1">
+            <View key={`${f.en}-${f.level}`} className="flex-row items-center mb-1">
               <Text className="text-accent font-robotomono text-[8px] w-10">Lv.{f.level}</Text>
               <Text
                 style={S.featureName}
                 className="font-robotomono text-[9px] flex-1"
               >
-                {f.name}
+                {f[lang]}
               </Text>
             </View>
           ))}
@@ -312,8 +338,10 @@ const SubclassAbilitiesPanel = memo(({
 
 // ─── Main Screen ──────────────────────────────────────────
 
-export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
+export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   const { t, lang } = useI18n();
+  const { seed, seedHash } = route.params;
+  const startNewGame = useGameStore(s => s.startNewGame);
 
   // DB-driven data hooks
   const { data: races, loading: racesLoading } = useRaces();
@@ -321,6 +349,8 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
   const { data: backgrounds, loading: bgLoading } = useBackgrounds();
   const { data: alignments, loading: alignLoading } = useAlignments();
   const { data: allSubclasses, loading: subLoading } = useSubclasses();
+
+  const tutorial = useTutorial(PARTY_TUTORIAL_STEPS);
 
   const [roster, setRoster] = useState<CharacterDraft[]>([mkDefault(0)]);
   const [activeSlot, setActiveSlot] = useState(0);
@@ -364,11 +394,17 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
     const subs = subsByClass.get(classIndex) || [];
     setRoster(prev => prev.map((c, i) => {
       if (i !== activeSlot) return c;
+      // Clear class/subclass-related choices, keep race choices
+      const kept: Record<string, string | string[]> = {};
+      for (const [k, v] of Object.entries(c.featureChoices)) {
+        if (k.startsWith('dragonborn-') || k.startsWith('half-elf-')) kept[k] = v;
+      }
       return {
         ...c,
         charClass: classIndex,
         subclass: subs[0]?.index || '',
         baseStats: c.statMethod === 'standard' ? assignStandardArray(classIndex) : c.baseStats,
+        featureChoices: kept,
       };
     }));
   }, [activeSlot, subsByClass]);
@@ -455,6 +491,15 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
     <View className="flex-1 bg-background">
       <GlossaryButton />
       <CRTOverlay />
+      <TutorialOverlay
+        visible={tutorial.visible}
+        steps={tutorial.steps}
+        currentStep={tutorial.currentStep}
+        onNext={tutorial.next}
+        onPrev={tutorial.prev}
+        onSkip={tutorial.close}
+        onClose={tutorial.close}
+      />
 
       {/* Header */}
       <View className="p-3 border-b border-primary/40 flex-row justify-between items-center">
@@ -462,9 +507,17 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           <Text className="text-primary font-robotomono text-xs">{'<'} {t('common.back')}</Text>
         </TouchableOpacity>
         <Text className="text-primary font-robotomono text-[10px]">{t('party.title')}</Text>
-        <Text style={S.slotsCount} className="font-robotomono text-[9px]">
-          {roster.length}/4 {t('party.slots')}
-        </Text>
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={tutorial.start}
+            className="mr-3 border border-primary/40 rounded px-2 py-1"
+          >
+            <Text className="text-primary font-robotomono text-[10px] font-bold">{t('tutorial.button')}</Text>
+          </TouchableOpacity>
+          <Text style={S.slotsCount} className="font-robotomono text-[9px]">
+            {roster.length}/4 {t('party.slots')}
+          </Text>
+        </View>
       </View>
 
       {/* Roster Tabs */}
@@ -520,7 +573,7 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
 
         {/* ── 1. Race ── */}
         <SectionCard borderColor="border-primary/40">
-          <SectionHeader icon="🧬" label={t('party.raceSelect')} />
+          <SectionHeader icon={<DnaIcon size={14} color="rgba(0,255,65,0.9)" />} label={t('party.raceSelect')} />
           <SectionHint text={t('party.raceDesc')} />
           <View className="flex-row flex-wrap">
             {races.map(r => {
@@ -528,7 +581,14 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
               return (
                 <TouchableOpacity
                   key={r.index}
-                  onPress={() => updateCurrent({ race: r.index })}
+                  onPress={() => {
+                    // Clear race-related choices, keep class choices
+                    const kept: Record<string, string | string[]> = {};
+                    for (const [k, v] of Object.entries(current.featureChoices)) {
+                      if (!k.startsWith('dragonborn-') && !k.startsWith('half-elf-')) kept[k] = v;
+                    }
+                    updateCurrent({ race: r.index, featureChoices: kept });
+                  }}
                   className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
                     selected ? 'bg-primary border-primary' : 'border-primary bg-muted'
                   }`}
@@ -568,7 +628,7 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
 
         {/* ── 2. Class ── */}
         <SectionCard borderColor="border-secondary/40">
-          <SectionHeader icon="⚔" label={t('party.classSelect')} color="text-secondary" />
+          <SectionHeader icon={<SwordIcon size={14} color="rgba(255,176,0,0.9)" />} label={t('party.classSelect')} color="text-secondary" />
           <SectionHint text={t('party.classDesc')} color="text-secondary/50" />
           <View className="flex-row flex-wrap">
             {classes.map(c => {
@@ -606,7 +666,7 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
         {currentSubs.length > 0 && (
           <SectionCard borderColor="border-secondary/40">
             <SectionHeader
-              icon="🔱"
+              icon={<TridentIcon size={14} color="rgba(255,176,0,0.9)" />}
               label={lang === 'es' ? 'SUBCLASE' : 'SUBCLASS'}
               color="text-secondary"
             />
@@ -648,7 +708,7 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
 
         {/* ── 4. Background ── */}
         <SectionCard borderColor="border-accent/40">
-          <SectionHeader icon="📜" label={t('party.background')} color="text-accent" />
+          <SectionHeader icon={<ScrollIcon size={14} color="rgba(0,229,255,0.9)" />} label={t('party.background')} color="text-accent" />
           <SectionHint text={t('party.backgroundDesc')} color="text-accent/50" />
           <View className="flex-row flex-wrap">
             {backgrounds.map(b => {
@@ -682,7 +742,7 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
         {/* ── 5. Attributes ── */}
         <SectionCard borderColor="border-primary/40">
           <View className="flex-row justify-between items-center mb-1">
-            <SectionHeader icon="🎲" label={t('party.abilityScores')} />
+            <SectionHeader icon={<DiceIcon size={14} color="rgba(0,255,65,0.9)" />} label={t('party.abilityScores')} />
             <View className="flex-row">
               <TouchableOpacity
                 onPress={useStdArray}
@@ -748,7 +808,7 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
         {/* ── 6. Level 1 Summary ── */}
         <SectionCard borderColor="border-accent/40">
           <SectionHeader
-            icon="📊"
+            icon={<StatsIcon size={14} color="rgba(0,229,255,0.9)" />}
             label={lang === 'es' ? 'RESUMEN NIVEL 1' : 'LEVEL 1 SUMMARY'}
             color="text-accent"
           />
@@ -784,12 +844,15 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           {/* Class Features */}
           {CLASS_LVL1_FEATURES[current.charClass] && (
             <View className="mb-3">
-              <Text className="text-secondary font-robotomono text-[9px] font-bold mb-1">
-                ⚔ {lang === 'es' ? 'HABILIDADES DE CLASE (Nv.1):' : 'CLASS FEATURES (Lv.1):'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <SwordIcon size={9} color="rgba(255,176,0,0.9)" />
+                <Text className="text-secondary font-robotomono text-[9px] font-bold mb-1" style={{ marginLeft: 4 }}>
+                  {lang === 'es' ? 'HABILIDADES DE CLASE (Nv.1):' : 'CLASS FEATURES (Lv.1):'}
+                </Text>
+              </View>
               {CLASS_LVL1_FEATURES[current.charClass].map((f, i) => (
                 <View key={i} className="flex-row items-center mb-1 ml-2">
-                  <Text style={S.classFeatureBullet} className="font-robotomono text-[8px] mr-2">▸</Text>
+                <View style={{ marginRight: 4 }}><ChevronRightIcon size={8} color="rgba(255,176,0,0.6)" /></View>
                   <Text style={S.featureName} className="font-robotomono text-[9px]">
                     {lang === 'es' ? f.es : f.en}
                   </Text>
@@ -801,12 +864,15 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           {/* Race Traits */}
           {RACE_TRAITS[current.race] && (
             <View className="mb-1">
-              <Text className="text-primary font-robotomono text-[9px] font-bold mb-1">
-                🧬 {lang === 'es' ? 'RASGOS RACIALES:' : 'RACE TRAITS:'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <DnaIcon size={9} color="rgba(0,255,65,0.9)" />
+                <Text className="text-primary font-robotomono text-[9px] font-bold mb-1" style={{ marginLeft: 4 }}>
+                  {lang === 'es' ? 'RASGOS RACIALES:' : 'RACE TRAITS:'}
+                </Text>
+              </View>
               {RACE_TRAITS[current.race].map((t2, i) => (
                 <View key={i} className="flex-row items-center mb-1 ml-2">
-                  <Text style={S.raceTraitBullet} className="font-robotomono text-[8px] mr-2">▸</Text>
+                  <View style={{ marginRight: 4 }}><ChevronRightIcon size={8} color="rgba(0,255,65,0.6)" /></View>
                   <Text style={S.raceTraitText} className="font-robotomono text-[9px]">
                     {lang === 'es' ? t2.es : t2.en}
                   </Text>
@@ -816,9 +882,23 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           )}
         </SectionCard>
 
-        {/* ── 7. Alignment ── */}
+        {/* ── 7. Available Actions ── */}
+        <CharacterActionsPanel
+          race={current.race}
+          charClass={current.charClass}
+          subclass={current.subclass}
+          lang={lang}
+          featureChoices={current.featureChoices}
+          onChoiceSelect={(choiceKey, value) =>
+            updateCurrent({
+              featureChoices: { ...current.featureChoices, [choiceKey]: value },
+            })
+          }
+        />
+
+        {/* ── 8. Alignment ── */}
         <SectionCard borderColor="border-primary/40">
-          <SectionHeader icon="⚖" label={t('party.alignment')} />
+          <SectionHeader icon={<ScaleIcon size={14} color="rgba(0,255,65,0.9)" />} label={t('party.alignment')} />
           <SectionHint text={t('party.alignmentDesc')} />
           <View className="flex-row flex-wrap justify-between">
             {sortedAlignments.map(a => {
@@ -853,13 +933,14 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           )}
         </SectionCard>
 
-        {/* ── 8. Traits Preview ── */}
+        {/* ── 9. Traits Preview ── */}
         <SectionCard borderColor="border-primary">
-          <SectionHeader icon="🏷" label={t('party.traitPreview')} />
+          <SectionHeader icon={<TagIcon size={14} color="rgba(0,255,65,0.9)" />} label={t('party.traitPreview')} />
           <View className="flex-row flex-wrap mt-2">
             <View className="flex-row items-center mr-6 mb-1">
-              <Text className="text-secondary font-robotomono text-sm">
-                ⚖ {t('party.moral')}: {(() => {
+              <ScaleIcon size={14} color="rgba(255,176,0,0.9)" />
+              <Text className="text-secondary font-robotomono text-sm" style={{ marginLeft: 4 }}>
+                {t('party.moral')}: {(() => {
                   const idx = ALIGNMENT_ORDER.indexOf(current.alignment);
                   const row = idx >= 0 ? Math.floor(idx / 3) : 1;
                   return [t('party.honorable'), t('party.neutral'), t('party.chaotic')][row] || t('party.neutral');
@@ -867,8 +948,9 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
               </Text>
             </View>
             <View className="flex-row items-center mb-1">
-              <Text className="text-accent font-robotomono text-sm">
-                🧠 {t('party.mental')}: {t('party.stable')}
+              <BrainIcon size={14} color="rgba(0,229,255,0.9)" />
+              <Text className="text-accent font-robotomono text-sm" style={{ marginLeft: 4 }}>
+                {t('party.mental')}: {t('party.stable')}
               </Text>
             </View>
           </View>
@@ -900,7 +982,31 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           </TouchableOpacity>
         </View>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Village')}
+          onPress={() => {
+            // Convert roster to CharacterSave with computed HP
+            const party: CharacterSave[] = roster.map(c => {
+              const race = races.find(r => r.index === c.race);
+              const rb = race ? getRacialBonuses(race.raw as Record<string, unknown>) : {};
+              const fs = computeFinalStats(c.baseStats, rb);
+              const hp = calcLvl1HP(c.charClass, fs.CON);
+              return {
+                name: c.name,
+                race: c.race,
+                charClass: c.charClass,
+                subclass: c.subclass,
+                background: c.background,
+                alignment: c.alignment,
+                baseStats: c.baseStats,
+                statMethod: c.statMethod,
+                featureChoices: c.featureChoices,
+                hp,
+                maxHp: hp,
+                alive: true,
+              };
+            });
+            startNewGame(seed, seedHash, party);
+            navigation.navigate('Village');
+          }}
           className="bg-primary p-3 items-center"
         >
           <Text className="text-background font-bold font-robotomono">{t('party.startExpedition')}</Text>

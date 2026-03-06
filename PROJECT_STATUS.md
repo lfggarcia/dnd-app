@@ -1,9 +1,8 @@
 # PROJECT STATUS — TORRE (CYBER_DND)
 
-**Versión actual:** `v1.0.4-BETA` (según `MainScreen`)
 **Rama:** `main`
-**Fecha:** 2026-03-05
-**Estado general:** 🟡 **PROTOTIPO VISUAL — Cáscara funcional, sin mecánicas**
+**Fecha:** 2026-03-06
+**Estado general:** 🟡 **PROTOTIPO FUNCIONAL — Creación de personaje real, resto mock**
 
 > Ver `GAME_CONTEXT.md` para la visión completa y `SYSTEMS.MD` como documento fundacional.
 
@@ -15,20 +14,32 @@
 
 | Área | Detalle |
 |------|---------|
-| Infraestructura | RN 0.84 + NativeWind v4 + Reanimated v4 + Gesture Handler v2 configurados |
+| Infraestructura | RN 0.84 + NativeWind v4 + Reanimated v4 + Gesture Handler v2 + op-sqlite v15 + react-native-svg v15 |
 | Fuentes | RobotoMono completa integrada en iOS y Android |
 | Sistema de color | Paleta CRT cyberpunk completa via CSS variables + Tailwind tokens |
-| Navegación | Stack de 8 pantallas con transición `fade`, tipado completo (`RootStackParamList`) |
-| UI: Menú principal | ASCII art + logs de sistema + botón NEW_REPLICATION funcional |
+| Navegación | Stack de 10 pantallas con transición `fade`, tipado completo (`RootStackParamList`) |
+| Base de datos | SQLite con op-sqlite: schema v1 (resources, translations, sync_meta), CRUD completo, batch upsert |
+| Sincronización API | DnD 5e API (24 endpoints), sync on demand, tracking de progreso, DatabaseGate como wrapper |
+| i18n | Sistema bilingüe ES/EN con Context + useI18n() hook, dot-notation keys, ~100+ claves |
+| Sistema de traducciones | Puente de traducción con fallback chain (DB → API raw data) |
+| Seed de datos | Traducciones ES, subclases custom (26), backgrounds custom se siembran en init |
+| Reglas DnD 5e | Constantes nivel 1 completas: 13 clases, 26 subclases, 9 razas, features con traducciones |
+| UI: Menú principal | TorreLogo SVG con neón roto + boot sequence TypewriterText + toggle idioma |
 | UI: SeedScreen | Input de seed + efecto Matrix + transición ámbar animada |
-| UI: PartyScreen | Selección de raza, stats display, módulos psicológicos seleccionables |
+| UI: PartyScreen | Creación de personaje **REAL**: nombre, raza, clase, subclase, trasfondo, alineamiento con datos DnD 5e de API/DB |
+| UI: PartyScreen Tutorial | Tutorial step-by-step integrado con TutorialOverlay (next/prev/skip) |
+| UI: PartyScreen Glosario | GlossaryModal con búsqueda por categorías (stats, razas, clases, monstruos, mecánicas) |
 | UI: VillageScreen | Mapa de blueprint interactivo, leaderboard, SliderButton para lanzar incursión |
-| UI: MapScreen | Nodos de misión, radar rotativo Reanimated, nodo ENEMY navega a batalla |
-| UI: BattleScreen | Vista táctica con área de enemigos, jugadores y log de combate estático |
+| UI: MapScreen | Nodos de misión, radar rotativo Reanimated |
+| UI: BattleScreen | Vista táctica con área de enemigos, jugadores y log de combate |
 | UI: ReportScreen | Reporte con TypewriterText secuencial, gráfico de barras, alerta |
 | UI: ExtractionScreen | Contador animado de oro, lista de materiales, retorno al menú |
-| Componentes | `CRTOverlay`, `TypewriterText`, `SliderButton` reutilizables y tipados |
-| Calidad | Imports limpios, navigation tipado con `RootStackParamList` |
+| UI: WorldLogScreen | Feed de eventos con filtros (ALL/COMBAT/LORE/SYSTEM), multilingüe |
+| UI: CycleTransitionScreen | Transición de ciclo animada (Floor N → N+1) |
+| Componentes | `CRTOverlay`, `TypewriterText`, `SliderButton`, `DatabaseGate`, `GlossaryModal`, `TorreLogo`, `TutorialOverlay` — 7 reutilizables y tipados |
+| Hooks | `useDatabase`, `useGlossary`, `useResources`, `useTutorial` — 4 hooks custom |
+| Servicios | `api5e`, `syncService`, `translationBridge`, `rulesConfig`, `subclassSeed`, `backgroundSeed`, `translationSeed` — 7 servicios modulares |
+| Calidad | Imports limpios, navigation tipado, barrel exports en database/services/i18n |
 
 ### 🚧 En Progreso / Pendiente
 
@@ -37,18 +48,15 @@
 | Estado global | Sin gestión de estado entre pantallas — seed, personaje, progreso se pierden en cada navegación | Alta |
 | Motor de simulación | No existe — corazón del juego, responsable de simular parties IA por ciclos | Alta |
 | Lógica de combate | Todo el gameplay es mock — log estático, sin tiradas reales, sin HP, sin turnos | Alta |
-| Stats del personaje | Prototipo usa STR/DEX/INT/VIT/SPD (5) — migrar a DnD 5e estándar: STR/DEX/CON/INT/WIS/CHA (6) cuando se implemente gameplay | Alta |
-| Persistencia local | Sin SQLite/Realm — LOAD_STATE no funciona, no hay save/load | Alta |
+| Persistencia de partida | DB existe pero solo para datos de referencia DnD 5e — no hay save/load de partidas | Alta |
 | Sistema temporal | Sin ciclos, sin temporadas, sin presión de "el ciclo 60 cierra la Torre" | Alta |
-| Parties IA | No existen — el leaderboard es hardcodeado, no hay simulación real | Media |
-| Sistema de política | Sin alianzas, sin bounty, sin moral, sin World Log | Media |
 | Generador por seed | Seed se ingresa pero se descarta — no genera nada | Media |
+| Parties IA | No existen — el leaderboard es hardcodeado, no hay simulación real | Media |
+| Sistema de política | Sin alianzas, sin bounty, sin moral, sin World Log real | Media |
 | Performance CRT | 100 Views por pantalla para scanlines | Media |
-| Performance Matrix | 15 intervalos simultáneos en SeedScreen | Media |
 | Testing | Solo 1 test de render básico — cobertura ~0% | Media |
-| Nodos muertos | LOOT, BOSS y START en MapScreen tienen `onPress` muerto | Baja |
+| Nodos muertos | LOOT, BOSS y START en MapScreen tienen `onPress` deshabilitado | Baja |
 | Funciones stub | `LOAD_STATE` y `SYSTEM_CONFIG` sin implementar | Baja |
-| Typo en UI | "ENAMBLAJE_ALFA" en PartyScreen — revisar ortografía | Baja |
 
 ---
 
@@ -56,14 +64,19 @@
 
 ### Fase 1 — Fundación (MVP técnico)
 
-> Objetivo: conectar las 8 pantallas con datos reales. El juego se puede "jugar" en modo básico.
+> Objetivo: conectar las 10 pantallas con datos reales. El juego se puede "jugar" en modo básico.
 
+- [x] **Base de datos SQLite (op-sqlite)** — schema v1 con resources, translations, sync_meta
+- [x] **Sincronización DnD 5e API** — 24 endpoints, DatabaseGate como wrapper de inicialización
+- [x] **i18n bilingüe** — ES/EN con Context + hook, traducciones seeded + dinámicas
+- [x] **Creación de personaje real** — stats DnD 5e, 13 clases, 26 subclases, 9 razas, trasfondos, alineamientos
+- [x] **Glosario interactivo** — GlossaryModal con búsqueda por categorías
+- [x] **Tutorial de creación** — TutorialOverlay step-by-step en PartyScreen
+- [x] **Capa de constantes/datos** — `dnd5eLevel1.ts`, `rulesConfig.ts`, seeds de datos
 - [ ] **Estado global (Zustand)** — persistir seed, party activa, progreso de ciclo y piso entre pantallas
-- [ ] **Creación de personaje real** — stats DnD 5e (STR/DEX/CON/INT/WIS/CHA), clase, raza, alineamiento, módulo psíquico
+- [ ] **Modelo de datos de partida** — extender schema con Seeds, Parties, Characters
 - [ ] **Generador determinístico por seed** — mapa de nodos, tabla de enemigos, loot, dificultad via PRNG seeded
 - [ ] **Motor de combate DnD 5e** — tiradas reales (d20 + modificadores), HP, AC, turnos por iniciativa, log dinámico
-- [ ] **Persistencia local (SQLite/Realm)** — modelo de datos completo: Seed, Party, Character, Item, Event
-- [ ] **Capa de constantes/datos** — migrar toda la data hardcodeada a `src/constants/` y `src/data/`
 
 ### Fase 2 — Motor de Simulación (TORRE toma forma)
 
@@ -73,7 +86,8 @@
 - [ ] **Parties IA generadas** — nombres, niveles, personalidades derivadas del seed
 - [ ] **`simulateWorld(cycle)`** — cuando el jugador avanza ciclo, el motor simula todas las IAs hasta ese punto
 - [ ] **Combate abstracto IA vs IA** — fórmula de poder: `Σ(nivel × stat_mult × equip_factor)`, probabilístico
-- [ ] **World Log** — eventos registrados: jefes caídos, parties eliminadas, alianzas, bounties
+- [x] **World Log** — pantalla creada (`WorldLogScreen`) con filtros ALL/COMBAT/LORE/SYSTEM (falta conectar datos reales)
+- [x] **Cycle Transition** — pantalla creada (`CycleTransitionScreen`) con animación de transición (falta conectar datos reales)
 - [ ] **100 pisos con escalado** — `MonsterStats = BaseStats × (1 + piso × 0.05)`
 - [ ] **Jefes únicos por seed** — loot único que solo se obtiene la primera vez
 
@@ -118,12 +132,10 @@
 |--------|-------|----------------------|
 | Motor de simulación: 10 parties × 60 ciclos cada vez que el jugador avanza — necesita ser ultra-eficiente | 🔴 Alto | Batch processing, cálculos vectorizados, sin loops por individuo |
 | Sin estado global — cualquier navegación hacia atrás pierde datos | 🔴 Alto | Zustand con persistencia local desde Fase 1 |
-| Performance por 100 Views de CRTOverlay × 8+ pantallas | 🔴 Alto | Migrar a Skia canvas o reducir scanlines a 40 |
-| 15 intervalos en SeedScreen cada ~150ms | 🔴 Alto | Un único intervalo consolidado |
+| Performance por 100 Views de CRTOverlay × 10+ pantallas | 🔴 Alto | Migrar a Skia canvas o reducir scanlines a 40 |
 | DnD 5e completo es un sistema con muchas reglas de borde — bugs de combate son probables | 🟡 Medio | Implementar por capas (base primero, spell slots después), tests exhaustivos |
 | Sistema de política + moral + bounty: alto acoplamiento entre sistemas | 🟡 Medio | Definir interfaces claras entre módulos antes de implementar |
 | Sin ErrorBoundary — crash en runtime crashea toda la app | 🟡 Medio | Añadir en App.tsx desde Fase 1 |
-| Datos hardcodeados en pantallas — imposible escalar contenido | 🟡 Medio | Migrar a `src/constants/` y `src/data/` en Fase 1 |
 
 ---
 
@@ -131,12 +143,15 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Pantallas actuales | 8 |
-| Pantallas proyectadas | 12-15 (World Log, combate detallado, gestión de alianzas, config) |
-| Componentes actuales | 3 |
-| Sistemas de juego pendientes | 7 (simulación, combate, economía, social, temporal, datos, política) |
-| Líneas de código (aprox.) | ~950 |
+| Pantallas actuales | 10 |
+| Pantallas proyectadas | 12-15 (gestión de alianzas, detalle de personaje, config) |
+| Componentes reutilizables | 7 |
+| Hooks custom | 4 |
+| Servicios | 7 |
+| Sistemas de juego pendientes | 5 (simulación, combate, economía, social, temporal) |
+| Tablas en DB | 4 (resources, translations, sync_meta + indexes) |
+| Endpoints API sincronizados | 24 |
+| Idiomas soportados | 2 (ES, EN) |
+| Claves de traducción | ~100+ |
 | Cobertura de tests | ~0% |
-| Commits | 4 + cambios sin commitear |
-| Dependencias de producción | 12 |
-| Deuda técnica estimada | ~8-12 sprints para Fase 1+2+3 (MVP jugable con capa social) |
+| Dependencias de producción | ~15 |

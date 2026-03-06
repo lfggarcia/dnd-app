@@ -1,6 +1,6 @@
-# CYBER_DND — Protocol DND v1.0.4-BETA
+# TORRE — Protocol DND
 
-Dungeon-crawler de estética cyberpunk/CRT construido en React Native. El jugador genera una partida mediante un seed, arma su equipo, explora un mapa de incursiones por nodos, combate enemigos y extrae recursos al finalizar cada ciclo.
+RPG de simulación social con estética CRT/cyberpunk construido en React Native. El jugador genera un mundo mediante un seed, crea una party con reglas DnD 5e, explora una torre de 100 pisos, combate enemigos y compite contra parties controladas por IA.
 
 ---
 
@@ -8,12 +8,14 @@ Dungeon-crawler de estética cyberpunk/CRT construido en React Native. El jugado
 
 | Tecnología | Versión |
 |---|---|
-| React Native | 0.84.0 |
-| React | 19.2.0 |
+| React Native | 0.84.0 (New Architecture / Fabric) |
+| React | 19.2.3 |
 | NativeWind | v4 (Tailwind CSS en RN) |
 | React Navigation (Native Stack) | v7 |
 | Reanimated | v4 |
 | Gesture Handler | v2 |
+| op-sqlite | v15 (SQLite) |
+| react-native-svg | v15 |
 | TypeScript | v5 |
 
 ---
@@ -23,25 +25,57 @@ Dungeon-crawler de estética cyberpunk/CRT construido en React Native. El jugado
 ```
 src/
 ├── components/
-│   ├── CRTOverlay.tsx      — Superposición visual CRT con scanlines y parpadeo animado
-│   ├── SliderButton.tsx    — Botón deslizable con gesture handler para confirmar acciones
-│   └── TypewriterText.tsx  — Texto con efecto máquina de escribir
+│   ├── CRTOverlay.tsx         — Superposición visual CRT con scanlines y parpadeo animado
+│   ├── DatabaseGate.tsx       — Wrapper que bloquea UI hasta que la DB y sync estén listos
+│   ├── GlossaryModal.tsx      — Modal de glosario DnD 5e con búsqueda por categorías
+│   ├── SliderButton.tsx       — Botón deslizable con gesture handler para confirmar acciones
+│   ├── TorreLogo.tsx          — Logo SVG "TORRE" con efecto neón roto y flicker
+│   ├── TutorialOverlay.tsx    — Overlay tutorial paso a paso con navegación (next/prev/skip)
+│   └── TypewriterText.tsx     — Texto con efecto máquina de escribir
+├── constants/
+│   └── dnd5eLevel1.ts         — Reglas DnD 5e nivel 1: subclases, features, razas, stats
+├── database/
+│   ├── connection.ts          — Conexión SQLite (op-sqlite)
+│   ├── migrations.ts          — Schema v1: resources, translations, sync_meta
+│   ├── repository.ts          — CRUD para resources, translations, sync metadata
+│   └── index.ts               — Barrel exports
+├── hooks/
+│   ├── useDatabase.ts         — Init DB + seed traducciones + subclases en mount
+│   ├── useGlossary.ts         — Estado de visibilidad del modal de glosario
+│   ├── useResources.ts        — Fetch DnD 5e con traducción automática (useRaces, useClasses, etc.)
+│   └── useTutorial.ts         — Navegación de pasos del tutorial de PartyScreen
+├── i18n/
+│   ├── context.tsx            — I18nProvider + useI18n() hook
+│   ├── index.ts               — Barrel exports
+│   └── translations/
+│       ├── en.ts              — Traducciones inglés
+│       └── es.ts              — Traducciones español (default)
 ├── navigation/
-│   ├── AppNavigator.tsx    — Stack navigator principal
-│   └── types.ts            — RootStackParamList y ScreenProps tipados
+│   ├── AppNavigator.tsx       — Stack navigator principal (10 pantallas)
+│   └── types.ts               — RootStackParamList y ScreenProps tipados
 ├── screens/
-│   ├── MainScreen.tsx      — Menú principal con ascii art y logs de sistema
-│   ├── SeedScreen.tsx      — Input del seed de partida con efecto Matrix de fondo
-│   ├── PartyScreen.tsx     — Creación de personaje: raza, stats y módulos psicológicos
-│   ├── VillageScreen.tsx   — Hub de pueblo con mapa de plano y leaderboard de squads
-│   ├── MapScreen.tsx       — Mapa de nodos con radar animado y rutas de incursión
-│   ├── BattleScreen.tsx    — Pantalla de combate por turnos con log de acciones
-│   ├── ReportScreen.tsx    — Reporte post-incursión con XP, integridad y alertas
-│   └── ExtractionScreen.tsx— Liquidación final de recursos con contador animado
-├── constants/              — (vacío — pendiente migrar datos hardcodeados)
-└── hooks/                  — (vacío — pendiente extraer lógica reutilizable)
+│   ├── MainScreen.tsx         — Menú principal con TorreLogo SVG, boot sequence, toggle idioma
+│   ├── SeedScreen.tsx         — Input del seed con efecto Matrix de fondo
+│   ├── PartyScreen.tsx        — Creación de personaje con datos reales DnD 5e + tutorial + glosario
+│   ├── VillageScreen.tsx      — Hub de pueblo con mapa de plano y leaderboard
+│   ├── MapScreen.tsx          — Mapa de nodos con radar animado y rutas de incursión
+│   ├── BattleScreen.tsx       — Pantalla de combate por turnos con log de acciones
+│   ├── ReportScreen.tsx       — Reporte post-incursión con XP, integridad y alertas
+│   ├── ExtractionScreen.tsx   — Liquidación final de recursos con contador animado
+│   ├── WorldLogScreen.tsx     — Feed de eventos globales con filtros por categoría
+│   └── CycleTransitionScreen.tsx — Transición animada entre ciclos
+├── services/
+│   ├── api5e.ts               — Fetch de D&D 5e API (24 endpoints)
+│   ├── syncService.ts         — Orquestación de sync DB ↔ API con progreso
+│   ├── translationBridge.ts   — Lookup de traducción con fallback chain
+│   ├── rulesConfig.ts         — Reglas DnD 5e: subclases, XP, proficiency, hit dice
+│   ├── subclassSeed.ts        — Seed de subclases custom en init
+│   ├── backgroundSeed.ts      — Seed de backgrounds custom en init
+│   ├── translationSeed.ts     — Seed de traducciones ES en init
+│   └── index.ts               — Barrel exports
+└── theme/                     — (tema via Tailwind tokens en tailwind.config.js)
 assets/
-└── fonts/                  — RobotoMono (fuente principal del sistema)
+└── fonts/                     — RobotoMono (fuente principal del sistema)
 ```
 
 ---
@@ -49,7 +83,9 @@ assets/
 ## Flujo de Navegación
 
 ```
-Main → Seed → Party → Village → Map → Battle → Report → Extraction → Main
+Main → Seed → Party → Village → Map → Battle → Report → Extraction
+                                                              ↓
+                                          WorldLog ← CycleTransition
 ```
 
 ---
@@ -58,20 +94,20 @@ Main → Seed → Party → Village → Map → Battle → Report → Extraction
 
 ```sh
 # Instalar dependencias JS
-npm install
+yarn install
 
-# iOS — instalar pods (solo la primera vez o tras cambiar dependencias nativas)
+# iOS — instalar pods
 bundle install
 bundle exec pod install
 
 # Arrancar Metro
-npm start
+yarn start
 
 # Correr en iOS
-npm run ios
+yarn ios
 
 # Correr en Android
-npm run android
+yarn android
 ```
 
 **Requisito de Node:** >= 22.11.0
@@ -81,10 +117,21 @@ npm run android
 ## Tests
 
 ```sh
-npm test
+yarn test
 ```
 
-> **Deuda técnica — testing:** Actualmente solo existe un test de render básico (`App.test.tsx`). No hay cobertura de pantallas individuales, lógica de navegación ni componentes. No hay tests E2E (Detox no instalado).
+---
+
+## Características Implementadas
+
+| Área | Detalle |
+|---|---|
+| **Creación de personaje** | Selección real de raza, clase, subclase, trasfondo y alineamiento con datos de D&D 5e API |
+| **Base de datos** | SQLite local con sincronización de 24 endpoints de la API DnD 5e |
+| **Internacionalización** | Sistema bilingüe ES/EN con hot-switch, traducciones seeded + dinámicas |
+| **Glosario** | Modal interactivo con búsqueda por categorías (stats, razas, clases, monstruos, mecánicas) |
+| **Tutorial** | Overlay paso a paso en PartyScreen para guiar la creación de personaje |
+| **Estética CRT** | Scanlines animadas, neón roto, efecto Matrix, typewriter text, radar rotativo |
 
 ---
 
@@ -92,11 +139,9 @@ npm test
 
 | Área | Detalle |
 |---|---|
-| **Performance** | `CRTOverlay` genera 100 Views por pantalla para simular scanlines — candidato a optimización con canvas/SVG o reducción de elementos |
-| **Performance** | `SeedScreen` lanza 15 intervalos simultáneos (DataColumns) actualizando estado cada 100–300ms |
-| **Datos** | Toda la data del juego (enemies, loot, squads, stats) está hardcodeada en cada pantalla — sin capa de datos/servicios |
-| **Estado global** | Sin gestión de estado global — el seed, personaje y progreso no persisten entre pantallas |
-| **Funcionalidad** | `LOAD_STATE` y `SYSTEM_CONFIG` en `MainScreen` son placeholders sin implementar |
+| **Estado global** | Sin gestión de estado global — seed, personaje y progreso no persisten entre pantallas |
+| **Gameplay** | Pantallas de combate, mapa, village, report y extraction usan datos mock/hardcodeados |
+| **Performance** | `CRTOverlay` genera 100 Views por pantalla para simular scanlines |
 | **Testing** | Cobertura de tests: ~0% |
 
 ---

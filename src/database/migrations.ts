@@ -1,6 +1,6 @@
 import { getDB } from './connection';
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 const migrations: Record<number, string[]> = {
   1: [
@@ -37,6 +37,26 @@ const migrations: Record<number, string[]> = {
     `CREATE INDEX IF NOT EXISTS idx_resources_endpoint_index ON resources(endpoint, index_key)`,
     `CREATE INDEX IF NOT EXISTS idx_translations_lookup ON translations(endpoint, index_key, lang)`,
     `CREATE INDEX IF NOT EXISTS idx_translations_lang ON translations(lang)`,
+  ],
+
+  2: [
+    // Saved games — persists seed + party roster + game progress
+    `CREATE TABLE IF NOT EXISTS saved_games (
+      id TEXT PRIMARY KEY,
+      seed TEXT NOT NULL,
+      seed_hash TEXT NOT NULL,
+      party_data TEXT NOT NULL,
+      floor INTEGER NOT NULL DEFAULT 1,
+      cycle INTEGER NOT NULL DEFAULT 1,
+      phase TEXT NOT NULL DEFAULT 'DAY',
+      gold INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`,
+
+    `CREATE INDEX IF NOT EXISTS idx_saved_games_status ON saved_games(status)`,
+    `CREATE INDEX IF NOT EXISTS idx_saved_games_updated ON saved_games(updated_at DESC)`,
   ],
 };
 

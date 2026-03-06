@@ -1,29 +1,63 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
+import { GuildIcon, DiamondIcon, HammerIcon, ShieldIcon, MoonIcon, CrossIcon } from '../components/Icons';
+import { useGameStore } from '../stores/gameStore';
 import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
 const BUILDING_KEYS = ['guild', 'market', 'blacksmith', 'armory', 'inn', 'church'] as const;
-const BUILDING_ICONS: Record<string, string> = {
-  guild: '⚔', market: '◈', blacksmith: '⚒', armory: '🛡', inn: '☽', church: '✟',
+const BUILDING_ICON_COMPONENTS: Record<string, React.FC<{ size?: number; color?: string }>> = {
+  guild: GuildIcon,
+  market: DiamondIcon,
+  blacksmith: HammerIcon,
+  armory: ShieldIcon,
+  inn: MoonIcon,
+  church: CrossIcon,
 };
 
-const RIVAL_PARTIES = [
-  { name: 'IRON_WOLVES', floor: 8, status: 'active', rep: 92 },
-  { name: 'SHADOW_PACT', floor: 6, status: 'active', rep: 78 },
-  { name: 'CRIMSON_OATH', floor: 5, status: 'active', rep: 71 },
-  { name: 'DEAD_RECKONING', floor: 4, status: 'active', rep: 65 },
-  { name: 'LAST_LIGHT', floor: 3, status: 'defeated', rep: 45 },
+// ─── Rival generation from seedHash ───────────────────────
+const RIVAL_NAMES = [
+  'IRON_WOLVES', 'SHADOW_PACT', 'CRIMSON_OATH', 'DEAD_RECKONING', 'LAST_LIGHT',
+  'BLOOD_FANGS', 'NIGHT_REAPERS', 'STORM_GUARD', 'BONE_LEGION', 'VOID_WALKERS',
 ];
+
+function generateRivals(seedHash: string, playerFloor: number) {
+  // Simple deterministic pick from seedHash
+  const hashNum = seedHash.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  const picked: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const idx = (hashNum + i * 7) % RIVAL_NAMES.length;
+    const name = RIVAL_NAMES[idx];
+    if (!picked.includes(name)) picked.push(name);
+    else picked.push(RIVAL_NAMES[(idx + 3) % RIVAL_NAMES.length]);
+  }
+  return picked.map((name, i) => {
+    // Rivals scale loosely around player progress
+    const baseFloor = Math.max(1, playerFloor + 2 - i + ((hashNum + i) % 3));
+    const rep = Math.min(99, Math.max(10, 90 - i * 12 + ((hashNum + i) % 10)));
+    const defeated = i === 4 && playerFloor > 1; // last rival defeated after floor 1
+    return { name, floor: baseFloor, status: defeated ? 'defeated' as const : 'active' as const, rep };
+  });
+}
+
+const BUILDING_NAV: Partial<Record<string, keyof import('../navigation/types').RootStackParamList>> = {
+  guild: 'Guild',
+};
 
 export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const { t } = useI18n();
+  const activeGame = useGameStore(s => s.activeGame);
 
-  const [gold] = useState(340);
-  const [cycle] = useState(3);
-  const [maxFloor] = useState(5);
+  const gold = activeGame?.gold ?? 0;
+  const cycle = activeGame?.cycle ?? 1;
+  const maxFloor = activeGame?.floor ?? 1;
+
+  const rivals = useMemo(
+    () => generateRivals(activeGame?.seedHash ?? '0', maxFloor),
+    [activeGame?.seedHash, maxFloor],
+  );
 
   return (
     <View className="flex-1 bg-background">
@@ -57,8 +91,14 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
           <TouchableOpacity
             key={key}
             className="border border-primary/30 p-3 bg-muted/10 mb-2 flex-row items-center"
+            onPress={() => {
+              const screen = BUILDING_NAV[key];
+              if (screen) navigation.navigate(screen as any);
+            }}
           >
-            <Text className="text-xl mr-3">{BUILDING_ICONS[key]}</Text>
+            <View className="mr-3">
+              {React.createElement(BUILDING_ICON_COMPONENTS[key], { size: 20 })}
+            </View>
             <View className="flex-1">
               <Text className="text-primary font-robotomono text-[11px] font-bold">
                 {t(`village.${key}`)}
@@ -75,7 +115,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
         <Text className="text-primary font-robotomono text-xs font-bold mt-6 mb-3">{t('village.rivalryMonitor')}</Text>
 
         <View className="border border-primary/20 p-3 bg-muted/5 mb-4">
-          {RIVAL_PARTIES.map((rival, i) => (
+          {rivals.map((rival, i) => (
             <View key={i} className="flex-row items-center py-2 border-b border-primary/10">
               <Text className="text-primary/40 font-robotomono text-[9px] w-5">{i + 1}.</Text>
               <View className="flex-1">
@@ -109,7 +149,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
         </TouchableOpacity>
       </View>
 
-      <GlossaryButton />
+      <GlossaryButton bottomOffset={120} />
     </View>
   );
 };

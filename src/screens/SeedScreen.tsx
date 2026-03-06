@@ -53,8 +53,10 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
     if (!seed || isProcessing) return;
     Keyboard.dismiss();
     setIsProcessing(true);
+    const hash = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0).toString(16).toUpperCase();
+    const navToParty = () => navigation.navigate('Party', { seed, seedHash: hash });
     processingAnim.value = withTiming(1, { duration: 2000 }, () => {
-      runOnJS(navigation.navigate)('Party' as any);
+      runOnJS(navToParty)();
     });
   };
 

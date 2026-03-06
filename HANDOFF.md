@@ -9,7 +9,7 @@
 
 TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React Native. Una torre de 100 pisos, 60 ciclos por temporada, ~10 parties simultáneas (1-2 jugador + resto IA), combate táctico DnD 5e, sistema de política y alianzas, motor de simulación determinístico por seed.
 
-**Estado hoy:** prototipo visual de 8 pantallas completamente navegable, estética funcional, cero mecánicas implementadas. Todo el gameplay es mock/hardcoded.
+**Estado hoy:** 10 pantallas navegables, base de datos SQLite con sincronización de la API DnD 5e, sistema i18n bilingüe (ES/EN), creación de personaje funcional con datos reales (razas, clases, subclases, trasfondos, alineamientos), glosario interactivo, tutorial integrado en PartyScreen. El resto de pantallas de gameplay (combate, mapa, village) siguen con datos mock.
 
 **Lo más urgente:** estado global (nada persiste entre pantallas), motor de simulación (corazón del juego), combate DnD 5e real.
 
@@ -30,32 +30,70 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
 ```
 /src
   components/
-    CRTOverlay.tsx     → overlay visual CRT (scanlines + flicker Reanimated). ✅ Funcional
-    TypewriterText.tsx → texto carácter por carácter. ✅ Funcional
-    SliderButton.tsx   → botón deslizable (Gesture Handler). ✅ Funcional
+    CRTOverlay.tsx       → overlay visual CRT (scanlines + flicker Reanimated). ✅ Funcional
+    TypewriterText.tsx   → texto carácter por carácter. ✅ Funcional
+    SliderButton.tsx     → botón deslizable (Gesture Handler). ✅ Funcional
+    DatabaseGate.tsx     → wrapper que bloquea UI hasta que la DB esté lista + sync API. ✅ Funcional
+    GlossaryModal.tsx    → modal de glosario DnD 5e con búsqueda, categorías, datos de DB. ✅ Funcional
+    TorreLogo.tsx        → logo SVG "TORRE" con efecto neón roto + flicker. ✅ Funcional
+    TutorialOverlay.tsx  → overlay paso a paso con navegación (next/prev/skip). ✅ Funcional
+  constants/
+    dnd5eLevel1.ts       → reglas DnD 5e nivel 1: subclases, features, razas, stats. ✅ Completo
+  database/
+    connection.ts        → conexión SQLite (op-sqlite). ✅ Funcional
+    migrations.ts        → schema v1: resources, translations, sync_meta. ✅ Funcional
+    repository.ts        → CRUD: upsert/get/search resources + translations + sync_meta. ✅ Funcional
+    index.ts             → barrel exports. ✅
+  hooks/
+    useDatabase.ts       → init DB + seed traducciones + subclases en mount. ✅ Funcional
+    useGlossary.ts       → estado de visibilidad del modal de glosario. ✅ Funcional
+    useResources.ts      → fetch DnD 5e con traducción automática (useRaces, useClasses, etc.). ✅ Funcional
+    useTutorial.ts       → navegación de pasos del tutorial de PartyScreen. ✅ Funcional
+  i18n/
+    context.tsx          → I18nProvider + useI18n() hook. ✅ Funcional
+    translations/en.ts   → traducciones inglés (~100+ keys). ✅ Completo
+    translations/es.ts   → traducciones español (~100+ keys). ✅ Completo
+  services/
+    api5e.ts             → fetch DnD 5e API (24 endpoints). ✅ Funcional
+    syncService.ts       → orquestación de sync DB ↔ API con progreso. ✅ Funcional
+    translationBridge.ts → lookup traducción con fallback chain. ✅ Funcional
+    rulesConfig.ts       → reglas DnD 5e hardcoded (subclases, XP, proficiency). ✅ Completo
+    subclassSeed.ts      → seed de subclases custom en init. ✅ Funcional
+    backgroundSeed.ts    → seed de backgrounds custom en init. ✅ Funcional
+    translationSeed.ts   → seed de traducciones ES en init. ✅ Funcional
   navigation/
-    AppNavigator.tsx   → stack de 8 pantallas, transición fade. ✅ Funcional
-    types.ts           → RootStackParamList tipado. ✅ Funcional
+    AppNavigator.tsx     → stack de 10 pantallas, transición fade. ✅ Funcional
+    types.ts             → RootStackParamList tipado (10 rutas). ✅ Funcional
   screens/
-    MainScreen.tsx     → menú, ASCII art, NEW_REPLICATION funcional. ✅
-    SeedScreen.tsx     → input seed + efecto Matrix. Seed se ingresa pero se DESCARTA. ⚠️
-    PartyScreen.tsx    → UI de personaje, raza seleccionable, stats HARDCODEADOS. ⚠️
-    VillageScreen.tsx  → blueprint con edificios, leaderboard hardcodeado. ⚠️
-    MapScreen.tsx      → 4 nodos fijos, radar animado. Solo ENEMY navega a Battle. ⚠️
-    BattleScreen.tsx   → log de combate ESTÁTICO (4 strings hardcodeados). ⚠️
-    ReportScreen.tsx   → TypewriterText con valores HARDCODEADOS. ⚠️
-    ExtractionScreen.tsx → contador animado siempre = 15400G. ⚠️
+    MainScreen.tsx       → menú con TorreLogo, boot sequence, toggle idioma. ✅
+    SeedScreen.tsx       → input seed + efecto Matrix. ⚠️ Seed se ingresa pero se DESCARTA
+    PartyScreen.tsx      → creación de personaje con datos reales DnD 5e + tutorial + glosario. ✅ FUNCIONAL
+    VillageScreen.tsx    → blueprint con edificios, leaderboard hardcodeado. ⚠️ MOCK
+    MapScreen.tsx        → 4 nodos fijos, radar animado. ⚠️ MOCK
+    BattleScreen.tsx     → log de combate estático. ⚠️ MOCK
+    ReportScreen.tsx     → TypewriterText con valores hardcodeados. ⚠️ MOCK
+    ExtractionScreen.tsx → contador animado siempre = 15400G. ⚠️ MOCK
+    WorldLogScreen.tsx   → feed de eventos con filtros (ALL/COMBAT/LORE/SYSTEM). ⚠️ MOCK DATA
+    CycleTransitionScreen.tsx → transición de ciclo animada (Floor N → N+1). ⚠️ MOCK
 ```
 
-**Sin estado global.** Zustand/Context: no existe. Cada pantalla vive aislada.
-**Sin persistencia.** LOAD_STATE no funciona.
-**Sin motor.** Toda lógica de juego = texto fijo.
+### Sistemas implementados
+- **Base de datos SQLite** (op-sqlite) — schema con 4 tablas: resources, translations, sync_meta + indexes
+- **Sincronización con DnD 5e API** — 24 endpoints, sync on demand, tracking de progreso
+- **i18n bilingüe** — ES (default) / EN, Context + hook, dot-notation keys
+- **Sistema de traducciones puente** — fallback chain: translations DB → raw API data
+- **Glosario interactivo** — búsqueda por categoría (stats, razas, clases, monstruos, mecánicas)
+- **Tutorial step-by-step** — integrado en PartyScreen para guiar creación de personaje
+- **Seed de datos en init** — traducciones ES, subclases custom, backgrounds custom
+
+### Sin implementar aún
+- **Estado global** — sin Zustand/Context global. Cada pantalla vive aislada.
+- **Persistencia de partida** — LOAD_STATE no funciona, no hay save/load de progreso.
+- **Motor de simulación** — toda lógica de juego = texto fijo.
+- **Motor de combate** — sin tiradas reales, sin HP, sin turnos.
 
 ### Bug conocido activo
-- `MapScreen`: LOOT, BOSS, START tienen `onPress={() => false && navigate(...)}` — visualmente tappable, sin acción.
-
-### Bug ya corregido (esta sesión)
-- `PartyScreen`: stat Views absolutas sin `pointerEvents="none"` bloqueaban todos los toques en New Architecture (Fabric). Ya corregido.
+- `MapScreen`: LOOT, BOSS, START tienen `onPress` deshabilitado — visualmente tappable, sin acción.
 
 ---
 
@@ -72,19 +110,14 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
 | Herencia de nivel | Nueva party: nivel máx = promedio de party anterior |
 
 ### Stats de Personaje (DnD 5e estándar)
-`STR · DEX · CON · INT · WIS · CHA`
+`STR · DEX · CON · INT · WIS · CHA` — ✅ Ya implementado en PartyScreen con datos reales.
 
-⚠️ El prototipo usa STR/DEX/INT/VIT/SPD — **migrar cuando se implemente gameplay**.
+### Clases (13 clases DnD 5e completas)
+`Barbarian · Bard · Cleric · Druid · Fighter · Monk · Paladin · Ranger · Rogue · Sorcerer · Warlock · Wizard` + datos de API
+- 2 subclases por clase definidas en `rulesConfig.ts` (26 total)
+- Features de subclase con traducciones ES/EN en `dnd5eLevel1.ts`
 
-### Clases MVP (6 de 12)
-`Fighter · Rogue · Wizard · Cleric · Ranger · Warlock`
-
-Arquitectura data-driven para escalar sin reescribir:
-```ts
-ClassDefinition { name, hitDice, primaryStats, proficiency, featuresByLevel }
-SpellDefinition { name, school, level, castingTime, range, components, damage, effects }
-```
-Clases futuras: Barbarian, Paladin, Monk, Bard, Sorcerer, Druid.
+Arquitectura data-driven: datos vienen de la API DnD 5e + DB local.
 
 ### Flujo de Combate — Pantalla separada (confirmado)
 ```
@@ -252,8 +285,9 @@ GameState { currentSeed, currentCycle, parties[], events[], activeCombat, worldL
 | Reanimated | v4 | Animaciones |
 | Gesture Handler | v2 | Gestos (SliderButton) |
 | React Navigation | v7 Native Stack | Navegación |
+| op-sqlite | v15 | Base de datos SQLite |
+| react-native-svg | v15 | SVG para logo y gráficos |
 | Zustand | (por instalar) | Estado global |
-| SQLite/Realm | (por instalar) | Persistencia |
 | RobotoMono | custom font | Estética terminal |
 
 ### Decisión de arquitectura crítica
@@ -278,20 +312,20 @@ GameState { currentSeed, currentCycle, parties[], events[], activeCombat, worldL
 
 ---
 
-## Pantallas Proyectadas (MVP completo)
+## Pantallas Actuales y Proyectadas
 
 | Pantalla | Estado hoy | Descripción |
 |----------|-----------|-------------|
-| MainScreen | ✅ UI lista | Menú principal |
+| MainScreen | ✅ Funcional | Menú principal con TorreLogo SVG, boot sequence, toggle idioma |
 | SeedScreen | ⚠️ UI lista | Input seed (seed se descarta) |
-| PartyScreen | ⚠️ UI lista | Crear/ver personaje |
-| VillageScreen | ⚠️ UI lista | Hub pueblo (6 edificios) |
-| MapScreen | ⚠️ UI lista | Mapa de nodos del piso actual |
-| BattleScreen | ⚠️ UI lista | Combate táctico (log estático) |
-| ReportScreen | ⚠️ UI lista | Resumen post-batalla |
-| ExtractionScreen | ⚠️ UI lista | Loot + retorno (hardcoded) |
-| WorldLogScreen | ❌ no existe | Feed de eventos globales |
-| CycleTransitionScreen | ❌ no existe | DAY → NIGHT (2-3s) |
+| PartyScreen | ✅ Funcional | Creación de personaje con datos reales DnD 5e + tutorial + glosario |
+| VillageScreen | ⚠️ Mock | Hub pueblo con edificios y leaderboard hardcodeado |
+| MapScreen | ⚠️ Mock | Mapa de nodos del piso actual (nodos deshabilitados) |
+| BattleScreen | ⚠️ Mock | Combate táctico (log estático) |
+| ReportScreen | ⚠️ Mock | Resumen post-batalla (hardcoded) |
+| ExtractionScreen | ⚠️ Mock | Loot + retorno (hardcoded) |
+| WorldLogScreen | ⚠️ Mock data | Feed de eventos con filtros (ALL/COMBAT/LORE/SYSTEM) |
+| CycleTransitionScreen | ⚠️ Mock | Transición de ciclo animada |
 | AllianceScreen | ❌ no existe | Negociación en el pueblo |
 | CharacterDetailScreen | ❌ no existe | Stats full de un personaje |
 
@@ -303,11 +337,13 @@ GameState { currentSeed, currentCycle, parties[], events[], activeCombat, worldL
 Sin esto, nada más funciona. Debe persistir:
 `seed · partyId · characters[] · currentFloor · currentCycle · gameLog[]`
 
-### 2. Modelo de datos + SQLite/Realm
-Implementar tablas: Seeds, Parties, Characters. Items y Events después.
+### 2. Modelo de datos de partida
+Extender schema SQLite con tablas: Seeds, Parties, Characters. Items y Events después.
+(La DB ya existe con op-sqlite — extender migrations.ts)
 
-### 3. Creación de personaje real
-Stats DnD 5e (STR/DEX/CON/INT/WIS/CHA), clase (6 MVP), raza, alineamiento.
+### 3. ✅ Creación de personaje real — COMPLETADO
+Stats DnD 5e reales, 13 clases, 26 subclases, 9 razas, trasfondos, alineamientos.
+Datos de API DnD 5e + traducciones ES/EN.
 
 ### 4. Generador determinístico por seed
 PRNG seeded para: stats iniciales, mapa de nodos, tabla de enemigos, loot.
@@ -318,8 +354,8 @@ Hit/miss, damage, HP, turnos por iniciativa, log dinámico. Sin spells primero.
 ### 6. simulateWorld() — motor de IA
 Sistema de ciclos + batch simulation de parties IA.
 
-### 7. World Log + CycleTransitionScreen
-Pantallas nuevas que dan vida al mundo.
+### 7. ✅ World Log + CycleTransitionScreen — COMPLETADO (UI)
+Pantallas creadas con mock data. Falta conectar a datos reales.
 
 ---
 

@@ -5,22 +5,52 @@ Versiones siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased] — 2026-03-04
+## [Unreleased] — 2026-03-06
+
+### Added
+- **Base de datos SQLite** — `@op-engineering/op-sqlite` v15 integrado con schema v1 (tables: `resources`, `translations`, `sync_meta`)
+- **Sincronización DnD 5e API** — `syncService.ts` orquesta fetch de 24 endpoints de `dnd5eapi.co` con tracking de progreso
+- **DatabaseGate** — componente wrapper que bloquea la UI hasta que la DB esté inicializada y los datos de la API sincronizados, con barra de progreso
+- **Sistema i18n bilingüe** — `I18nProvider` + `useI18n()` hook con ES (default) / EN, dot-notation keys, ~100+ claves de traducción
+- **Traducciones seeded** — `translationSeed.ts` siembra traducciones ES al iniciar la app
+- **Translation bridge** — `translationBridge.ts` con fallback chain: translations DB → raw API data
+- **Creación de personaje real** — `PartyScreen` con selección de raza, clase, subclase, trasfondo y alineamiento usando datos reales de la API DnD 5e
+- **Sub-hooks de recursos** — `useRaces()`, `useClasses()`, `useSubclasses()`, `useBackgrounds()`, `useAlignments()` en `useResources.ts`
+- **Constantes DnD 5e nivel 1** — `dnd5eLevel1.ts` con features de 26 subclases, traits de 9 razas, features de 13 clases, reglas de stats
+- **Reglas DnD 5e** — `rulesConfig.ts` con CLASS_SUBCLASS_MAP, XP tables, proficiency bonuses, hit dice, primary abilities, saving throws, spellcasting classes
+- **Subclass seed** — `subclassSeed.ts` para subclases custom en init
+- **Background seed** — `backgroundSeed.ts` para backgrounds custom en init
+- **GlossaryModal** — modal interactivo con búsqueda por categorías (stats, razas, clases, monstruos, mecánicas, alineamientos), datos de DB
+- **useGlossary** — hook de estado de visibilidad del glosario
+- **TutorialOverlay** — overlay paso a paso con navegación (next/prev/skip) para guiar creación de personaje
+- **useTutorial** — hook de navegación de pasos del tutorial con `PARTY_TUTORIAL_STEPS` predefinidos
+- **TorreLogo** — logo SVG "TORRE" con efecto neón roto + flicker dual (blur glow + crisp text)
+- **WorldLogScreen** — feed de eventos globales con filtros (ALL/COMBAT/LORE/SYSTEM), entradas multilingües
+- **CycleTransitionScreen** — transición animada entre ciclos (Floor N → N+1) con fases de animación
+- **Toggle de idioma** — botón ES/EN en MainScreen para cambiar idioma en caliente
+- **react-native-svg** v15 para soporte SVG (TorreLogo)
+
+### Changed
+- **Navegación** — expandida de 8 a 10 pantallas (`WorldLogScreen`, `CycleTransitionScreen`)
+- **PartyScreen** — reescrita completamente: de stats hardcodeados a datos reales DnD 5e con selectores de búsqueda, subclase con preview de habilidad, tutorial integrado
+- **MainScreen** — reemplazada ASCII art por TorreLogo SVG animada, añadido toggle de idioma
+- **App.tsx** — envuelve app en `I18nProvider` y `DatabaseGate`
+- Migrado de npm a yarn como package manager preferido en documentación
 
 ### Fixed
 - Eliminado dead state `turn` en `BattleScreen` (declarado pero nunca leído)
 - Eliminado dead state `showButton` y `useEffect` huérfano en `ReportScreen`
 - Eliminado import no usado `Image` en `PartyScreen`
 - Eliminado import no usado `ScrollView` en `ExtractionScreen`
-
-### Changed
-- Navegación completamente tipada: creado `RootStackParamList` y `ScreenProps<T>` en `src/navigation/types.ts`
-- Todos los `{ navigation }: any` reemplazados por `ScreenProps<'ScreenName'>` en las 8 pantallas
-- `GestureHandlerRootView` en `App.tsx`: inline style `{{ flex: 1 }}` extraído a `StyleSheet.create`
-- `AppNavigator` tipado con `createNativeStackNavigator<RootStackParamList>()`
+- NativeWind opacity bug: reemplazado `/` opacity modifier por inline `rgba()` donde necesario
+- `PartyScreen`: stat Views absolutas sin `pointerEvents="none"` bloqueaban toques en New Architecture (Fabric)
+- Safe area handling en iOS para todas las pantallas
 
 ### Documentation
-- `README.md` reescrito completamente — descripción real del proyecto, stack, flujo de navegación, setup, deuda técnica conocida
+- `README.md` reescrito — stack actualizado, estructura completa del proyecto, características implementadas
+- `HANDOFF.md` actualizado — refleja estado real del código con DB, i18n, servicios, 10 pantallas
+- `PROJECT_STATUS.md` actualizado — roadmap con items completados marcados, métricas actualizadas
+- Navegación completamente tipada: `RootStackParamList` con 10 rutas y `ScreenProps<T>` en todas las pantallas
 
 ---
 

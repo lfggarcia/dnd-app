@@ -44,6 +44,11 @@ export const es = {
     bootUplink: '[UPLINK] ................ SEGURO',
     footer: 'TORRE_OS v2.0 | DND_5E',
     protocolActive: 'PROTOCOLO_ACTIVO',
+    seed: 'Semilla',
+    deleteSave: 'Borrar partida',
+    deleteSaveConfirm: 'Borrar permanentemente la partida',
+    noSaves: 'No se encontraron partidas guardadas',
+    completed: 'Completada',
   },
 
   seed: {
@@ -126,6 +131,19 @@ export const es = {
     align_LE: 'Legal Malvado',
     align_NE: 'Neutral Malvado',
     align_CE: 'Caótico Malvado',
+  },
+
+  guild: {
+    title: 'Gremio de Mercenarios',
+    description: 'Centro de operaciones. Consulta el estado de tu grupo, gestiona subidas de nivel y revisa contratos disponibles.',
+    partyRoster: 'Roster del grupo',
+    noParty: 'No hay grupo activo. Inicia una partida primero.',
+    options: 'Servicios del gremio',
+    rankingsDesc: 'Consulta la clasificación de grupos rivales.',
+    bountyDesc: 'Contratos activos y recompensas disponibles.',
+    worldLogDesc: 'Registro de eventos del mundo.',
+    levelUpNotice: 'Gestión de nivel',
+    levelUpDesc: 'Las mejoras de estadísticas se aplican inmediatamente al subir de nivel. Sin embargo, las nuevas habilidades y rasgos solo pueden activarse mientras estés en una zona segura (villa).',
   },
 
   village: {
@@ -266,10 +284,12 @@ export const es = {
   glossary: {
     title: 'Glosario y Dex',
     searchPlaceholder: 'Buscar término...',
+    loading: 'Sincronizando datos...',
     categories: {
       stats: 'Atributos',
       races: 'Razas',
       classes: 'Clases',
+      monsters: 'Enemigos',
       mechanics: 'Mecánicas',
       alignments: 'Alineamientos',
     },
@@ -327,6 +347,61 @@ export const es = {
       xp: { name: 'XP (Experiencia)', desc: 'Puntos que ganas al derrotar enemigos. Subes de nivel al acumular suficiente.' },
       rivalry: { name: 'Rivalidad', desc: '8 grupos IA compiten contigo. Pueden aliarse, traicionarse o ser eliminados.' },
       rarity: { name: 'Rareza', desc: 'Calidad del botín: Común < Poco común < Raro < Legendario.' },
+    },
+  },
+
+  tutorial: {
+    header: 'GUÍA DE CREACIÓN',
+    next: 'SIG',
+    prev: 'ANT',
+    skip: 'Saltar tutorial',
+    finish: 'LISTO',
+    button: '?',
+    steps: {
+      welcome: {
+        title: 'Bienvenido, Aventurero',
+        desc: 'Aquí crearás tu grupo de hasta 4 personajes para explorar la torre. Cada decisión importa — elige sabiamente.',
+      },
+      roster: {
+        title: 'Slots del Grupo',
+        desc: 'Tu grupo puede tener de 1 a 4 miembros. Usa las pestañas superiores para cambiar entre personajes. Más miembros = más poder, pero el XP se divide.',
+      },
+      name: {
+        title: 'Nombre del Personaje',
+        desc: 'Dale un nombre a tu personaje. Máximo 16 caracteres. Este será su identificador en combate y registros.',
+      },
+      race: {
+        title: 'Raza',
+        desc: 'Cada raza otorga bonificaciones a atributos y habilidades únicas. Por ejemplo: Humano da +1 a todo, Elfo da +2 DES y visión nocturna.',
+      },
+      class: {
+        title: 'Clase',
+        desc: 'La clase define tu rol en combate. Guerrero para tanque, Pícaro para daño, Mago para hechizos, Clérigo para curación. Elige según tu estrategia.',
+      },
+      subclass: {
+        title: 'Subclase',
+        desc: 'Cada clase tiene especializaciones con habilidades únicas que se desbloquean al subir de nivel. Revisa las habilidades antes de elegir.',
+      },
+      background: {
+        title: 'Trasfondo',
+        desc: 'El trasfondo da contexto narrativo y bonificaciones extra. Soldado para combate, Criminal para sigilo, Sabio para conocimiento.',
+      },
+      stats: {
+        title: 'Atributos',
+        desc: 'Tus 6 atributos base (FUE, DES, CON, INT, SAB, CAR). Usa "Estándar" para valores seguros [15,14,13,12,10,8] o "4d6" para tirar dados al azar.',
+      },
+      summary: {
+        title: 'Resumen Nivel 1',
+        desc: 'Revisa los PV, bonificador de competencia, dado de golpe y las habilidades de clase y rasgos raciales de tu personaje antes de continuar.',
+      },
+      alignment: {
+        title: 'Alineamiento',
+        desc: 'Tu brújula moral: Legal/Neutral/Caótico × Bueno/Neutral/Malvado. Afecta eventos narrativos y cómo reaccionan los NPCs ante ti.',
+      },
+      actions: {
+        title: '¡A la Torre!',
+        desc: 'Añade más miembros o quita los que no necesites. Cuando tu grupo esté listo, pulsa "Iniciar expedición" para entrar a la torre.',
+      },
     },
   },
 } as const;

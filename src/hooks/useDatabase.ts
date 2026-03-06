@@ -4,6 +4,7 @@ import { seedSpanishTranslations } from '../services/translationSeed';
 import { seedCustomSubclasses } from '../services/subclassSeed';
 import { seedCustomBackgrounds } from '../services/backgroundSeed';
 import { syncAll, getSyncStatus, type FullSyncProgress } from '../services/syncService';
+import { useGameStore } from '../stores/gameStore';
 
 type DbStatus = 'initializing' | 'ready' | 'syncing' | 'error';
 
@@ -37,6 +38,7 @@ export function useDatabase(): UseDatabase {
       seedSpanishTranslations();
       seedCustomSubclasses();
       seedCustomBackgrounds();
+      useGameStore.getState().hydrate();
       setStatus('ready');
       setSyncStat(getSyncStatus());
     } catch (err) {

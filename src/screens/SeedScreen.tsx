@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import type { ScreenProps } from '../navigation/types';
 import Animated, {
   useSharedValue,
@@ -8,8 +8,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
-import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
-import { useGlossary } from '../hooks/useGlossary';
+import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 
 const DataColumn = ({ index }: { index: number }) => {
@@ -36,7 +35,7 @@ const DataColumn = ({ index }: { index: number }) => {
 
 export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
   const { t } = useI18n();
-  const glossary = useGlossary();
+
   const [seed, setSeed] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const processingAnim = useSharedValue(0);
@@ -59,9 +58,10 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
     : '----';
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
     <View className="flex-1 bg-background">
       <CRTOverlay />
-      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
+
 
       {/* Matrix background */}
       <View className="absolute inset-0 flex-row justify-center opacity-15" pointerEvents="none">
@@ -80,7 +80,8 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
         </View>
       </View>
 
-      <View className="flex-1 justify-center px-6">
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView className="flex-1" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 }} keyboardShouldPersistTaps="handled">
         {/* Seed Name Input */}
         <View className="mb-8">
           <Text className="text-secondary font-robotomono text-[10px] mb-2">
@@ -88,11 +89,11 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
           </Text>
           <View className="border-2 border-secondary p-4 bg-muted/30">
             <TextInput
-              className="text-2xl text-secondary font-robotomono h-10"
+              style={{ fontSize: 24, color: '#FFB000', fontFamily: 'RobotoMono', height: 40, padding: 0 }}
               value={seed}
               onChangeText={setSeed}
               placeholder={t('seed.enterSeed')}
-              placeholderTextColor="#FFB00030"
+              placeholderTextColor="rgba(255,176,0,0.2)"
               autoCapitalize="characters"
               maxLength={16}
             />
@@ -144,7 +145,8 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
             {t('seed.createPartyDesc')}
           </Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Processing Overlay */}
       <Animated.View
@@ -152,7 +154,8 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
         pointerEvents="none"
       />
 
-      <GlossaryButton onPress={glossary.open} />
+      <GlossaryButton />
     </View>
+    </TouchableWithoutFeedback>
   );
 };

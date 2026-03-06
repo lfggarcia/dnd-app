@@ -3,12 +3,14 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
   ScrollView,
   TextInput,
+  Pressable,
+  SafeAreaView,
+  StatusBar,
+  Dimensions,
 } from 'react-native';
 import { useI18n } from '../i18n';
-import type { Lang } from '../i18n';
 
 type GlossaryCategory = 'stats' | 'races' | 'classes' | 'mechanics' | 'alignments';
 
@@ -40,8 +42,6 @@ export const GlossaryModal = ({
   ];
 
   const getEntries = (): { key: string; name: string; desc: string }[] => {
-    const raw = t(`glossary.${activeCategory}`) as any;
-    // Since t() returns string for leaf nodes, we need to fetch manually
     const entries: { key: string; name: string; desc: string }[] = [];
 
     const termKeys: Record<GlossaryCategory, string[]> = {
@@ -82,45 +82,94 @@ export const GlossaryModal = ({
     return entries;
   };
 
+  if (!visible) return null;
+
   const entries = getEntries();
+  const { height: screenHeight } = Dimensions.get('window');
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
+    <View
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: screenHeight,
+        backgroundColor: '#0A0E0A',
+        zIndex: 999999,
+        elevation: 999999,
+      }}
     >
-      <View className="flex-1 bg-background/95">
+      <SafeAreaView style={{ flex: 1 }}>
         {/* Header */}
-        <View className="p-4 border-b border-primary/40 flex-row justify-between items-center">
+        <View
+          style={{
+            padding: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: 'rgba(0,255,65,0.4)',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <TouchableOpacity onPress={onClose}>
-            <Text className="text-primary font-robotomono text-sm">✕ {t('common.close')}</Text>
+            <Text style={{ color: '#00FF41', fontFamily: 'RobotoMono', fontSize: 14 }}>
+              ✕ {t('common.close')}
+            </Text>
           </TouchableOpacity>
-          <Text className="text-primary font-robotomono text-sm font-bold">
+          <Text style={{ color: '#00FF41', fontFamily: 'RobotoMono', fontSize: 14, fontWeight: 'bold' }}>
             📖 {t('glossary.title')}
           </Text>
-          {/* Language toggle */}
           <TouchableOpacity
             onPress={() => setLang(lang === 'es' ? 'en' : 'es')}
-            className="border border-accent/50 px-2 py-1"
+            style={{
+              borderWidth: 1,
+              borderColor: 'rgba(0,229,255,0.5)',
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+            }}
           >
-            <Text className="text-accent font-robotomono text-xs font-bold">
+            <Text style={{ color: '#00E5FF', fontFamily: 'RobotoMono', fontSize: 12, fontWeight: 'bold' }}>
               {lang === 'es' ? 'EN' : 'ES'}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Search */}
-        <View className="px-4 py-2 border-b border-primary/20">
-          <View className="border border-primary/30 bg-muted/20 px-3 py-2 flex-row items-center">
-            <Text className="text-primary/40 mr-2">🔍</Text>
+        <View
+          style={{
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: 'rgba(0,255,65,0.2)',
+          }}
+        >
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: 'rgba(0,255,65,0.3)',
+              backgroundColor: 'rgba(26,46,26,0.2)',
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{ color: 'rgba(0,255,65,0.4)', marginRight: 8 }}>🔍</Text>
             <TextInput
-              className="flex-1 text-primary font-robotomono text-sm h-6 p-0"
+              style={{
+                flex: 1,
+                color: '#00FF41',
+                fontFamily: 'RobotoMono',
+                fontSize: 14,
+                height: 24,
+                padding: 0,
+              }}
               value={search}
               onChangeText={setSearch}
               placeholder={t('glossary.searchPlaceholder')}
-              placeholderTextColor="#00FF4130"
+              placeholderTextColor="rgba(0,255,65,0.3)"
             />
           </View>
         </View>
@@ -129,7 +178,7 @@ export const GlossaryModal = ({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="border-b border-primary/20"
+          style={{ borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.2)', maxHeight: 48 }}
           contentContainerStyle={{ paddingHorizontal: 8 }}
         >
           {categories.map((cat) => {
@@ -138,10 +187,22 @@ export const GlossaryModal = ({
               <TouchableOpacity
                 key={cat}
                 onPress={() => setActiveCategory(cat)}
-                className={`px-4 py-3 mr-1 ${isActive ? 'border-b-2 border-primary bg-primary/10' : ''}`}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  marginRight: 4,
+                  borderBottomWidth: isActive ? 2 : 0,
+                  borderBottomColor: '#00FF41',
+                  backgroundColor: isActive ? 'rgba(0,255,65,0.1)' : 'transparent',
+                }}
               >
                 <Text
-                  className={`font-robotomono text-xs ${isActive ? 'text-primary font-bold' : 'text-primary/50'}`}
+                  style={{
+                    fontFamily: 'RobotoMono',
+                    fontSize: 12,
+                    color: isActive ? '#00FF41' : 'rgba(0,255,65,0.5)',
+                    fontWeight: isActive ? 'bold' : 'normal',
+                  }}
                 >
                   {CATEGORY_ICONS[cat]} {t(`glossary.categories.${cat}`)}
                 </Text>
@@ -152,45 +213,89 @@ export const GlossaryModal = ({
 
         {/* Entries */}
         <ScrollView
-          className="flex-1 px-4 py-2"
+          style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
         >
           {entries.map((entry) => (
             <View
               key={entry.key}
-              className="border border-primary/20 p-3 mb-2 bg-muted/10"
+              style={{
+                borderWidth: 1,
+                borderColor: 'rgba(0,255,65,0.2)',
+                padding: 12,
+                marginBottom: 8,
+                backgroundColor: 'rgba(26,46,26,0.1)',
+              }}
             >
-              <Text className="text-primary font-robotomono text-sm font-bold mb-1">
+              <Text
+                style={{
+                  color: '#00FF41',
+                  fontFamily: 'RobotoMono',
+                  fontSize: 14,
+                  fontWeight: 'bold',
+                  marginBottom: 4,
+                }}
+              >
                 {entry.name}
               </Text>
-              <Text className="text-primary/70 font-robotomono text-xs leading-5">
+              <Text
+                style={{
+                  color: 'rgba(0,255,65,0.7)',
+                  fontFamily: 'RobotoMono',
+                  fontSize: 12,
+                  lineHeight: 20,
+                }}
+              >
                 {entry.desc}
               </Text>
             </View>
           ))}
           {entries.length === 0 && (
-            <View className="items-center py-8">
-              <Text className="text-primary/30 font-robotomono text-sm">
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <Text style={{ color: 'rgba(0,255,65,0.3)', fontFamily: 'RobotoMono', fontSize: 14 }}>
                 —
               </Text>
             </View>
           )}
-          <View className="h-8" />
+          <View style={{ height: 32 }} />
         </ScrollView>
-      </View>
-    </Modal>
+      </SafeAreaView>
+    </View>
   );
 };
 
-/** Floating button to open glossary from any screen */
-export const GlossaryButton = ({ onPress }: { onPress: () => void }) => {
+/** Self-contained glossary floating button — manages its own modal */
+export const GlossaryButton = ({ onPress }: { onPress?: () => void }) => {
+  const [showModal, setShowModal] = useState(false);
+
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      className="absolute bottom-6 right-4 w-12 h-12 bg-primary/20 border border-primary/60 rounded-full items-center justify-center z-50"
-      activeOpacity={0.7}
-    >
-      <Text className="text-primary text-lg">📖</Text>
-    </TouchableOpacity>
+    <>
+      {showModal && (
+        <GlossaryModal visible={true} onClose={() => setShowModal(false)} />
+      )}
+      <Pressable
+        onPress={() => {
+          setShowModal(true);
+          onPress?.();
+        }}
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          right: 16,
+          width: 48,
+          height: 48,
+          borderRadius: 24,
+          backgroundColor: 'rgba(0,255,65,0.25)',
+          borderWidth: 1.5,
+          borderColor: 'rgba(0,255,65,0.7)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          elevation: 99999,
+        }}
+      >
+        <Text style={{ fontSize: 20 }}>📖</Text>
+      </Pressable>
+    </>
   );
 };

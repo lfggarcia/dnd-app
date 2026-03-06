@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { TypewriterText } from '../components/TypewriterText';
 import { CRTOverlay } from '../components/CRTOverlay';
-import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
-import { useGlossary } from '../hooks/useGlossary';
+import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
@@ -21,7 +20,7 @@ const MENU_ITEMS = [
 
 export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
   const { t, lang, setLang } = useI18n();
-  const glossary = useGlossary();
+
   const [bootComplete, setBootComplete] = useState(false);
 
   useEffect(() => {
@@ -38,7 +37,7 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
-      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
+
 
       {/* Language Toggle */}
       <TouchableOpacity
@@ -128,7 +127,7 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
         </Text>
       </View>
 
-      <GlossaryButton onPress={glossary.open} />
+      <GlossaryButton />
     </View>
   );
 };

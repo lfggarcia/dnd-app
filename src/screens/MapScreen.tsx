@@ -9,8 +9,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
-import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
-import { useGlossary } from '../hooks/useGlossary';
+import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 
 type NodeType = 'COMBAT' | 'EVENT' | 'SAFE_ZONE' | 'BOSS' | 'UNKNOWN';
@@ -45,7 +44,7 @@ const FLOOR_NODES: MapNode[] = [
 
 export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const { t } = useI18n();
-  const glossary = useGlossary();
+
   const rotation = useSharedValue(0);
   const pulse = useSharedValue(0.3);
 
@@ -80,7 +79,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
-      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
+
 
       {/* Top Bar */}
       <View className="bg-primary/10 px-4 py-2 flex-row justify-between items-center border-b border-primary/30">
@@ -211,7 +210,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
         </View>
       </View>
 
-      <GlossaryButton onPress={glossary.open} />
+      <GlossaryButton />
     </View>
   );
 };

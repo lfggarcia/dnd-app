@@ -1,14 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
-import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
-import { useGlossary } from '../hooks/useGlossary';
+import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
 export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
   const { t } = useI18n();
-  const glossary = useGlossary();
 
   const LOG_ENTRIES = [
     `INITIATIVE: PARTY (18) vs ENEMY (12)`,
@@ -20,7 +18,7 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
   return (
     <View className="flex-1 bg-background p-4">
       <CRTOverlay />
-      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
+
 
       {/* Enemies Area (Top) */}
       <View className="h-1/3 flex-row items-center justify-around">
@@ -77,7 +75,7 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
         <Text className="text-background font-bold text-[10px] font-robotomono">{t('battle.forceEnd')}</Text>
       </TouchableOpacity>
 
-      <GlossaryButton onPress={glossary.open} />
+      <GlossaryButton />
     </View>
   );
 };

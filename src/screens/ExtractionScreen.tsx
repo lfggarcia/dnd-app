@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
-import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
-import { useGlossary } from '../hooks/useGlossary';
+import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
@@ -22,7 +21,7 @@ const RARITY_COLORS: Record<string, string> = {
 
 export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
   const { t } = useI18n();
-  const glossary = useGlossary();
+
   const [gold, setGold] = useState(0);
   const [phase, setPhase] = useState<'counting' | 'done'>('counting');
   const targetGold = 120;
@@ -46,7 +45,7 @@ export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
-      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
+
 
       {/* Header */}
       <View className="p-4 border-b border-primary/30">
@@ -136,7 +135,7 @@ export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
         </TouchableOpacity>
       </View>
 
-      <GlossaryButton onPress={glossary.open} />
+      <GlossaryButton />
     </View>
   );
 };

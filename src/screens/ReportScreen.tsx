@@ -2,8 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { TypewriterText } from '../components/TypewriterText';
-import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
-import { useGlossary } from '../hooks/useGlossary';
+import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
@@ -27,14 +26,14 @@ const REPORT_DATA = {
 
 export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
   const { t } = useI18n();
-  const glossary = useGlossary();
+
 
   const headerText = `─── ${t('report.title')} · ${t('common.floor')} 01 · ${t('common.cycle')} 01 ───`;
 
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
-      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
+
 
       {/* Header */}
       <View className="p-4 border-b border-primary/30">
@@ -158,7 +157,7 @@ export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
         </TouchableOpacity>
       </View>
 
-      <GlossaryButton onPress={glossary.open} />
+      <GlossaryButton />
     </View>
   );
 };

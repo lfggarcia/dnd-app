@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
-import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
-import { useGlossary } from '../hooks/useGlossary';
+import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
@@ -79,7 +78,7 @@ const DescriptionBox = ({ text, borderColor = 'border-primary/40', textColor = '
 
 export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
   const { t } = useI18n();
-  const glossary = useGlossary();
+
   const [roster, setRoster] = useState<CharacterDraft[]>([defaultCharacter(0)]);
   const [activeSlot, setActiveSlot] = useState(0);
 
@@ -113,8 +112,9 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
 
   return (
     <View className="flex-1 bg-background">
+			<GlossaryButton />
       <CRTOverlay />
-      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
+
 
       {/* Header */}
       <View className="p-3 border-b border-primary/40 flex-row justify-between items-center">
@@ -183,12 +183,12 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
                   className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
                     selected
                       ? 'bg-primary border-primary'
-                      : 'border-primary/30 bg-muted/20'
+                      : 'border-primary bg-muted'
                   }`}
                 >
                   <Text
                     className={`text-xs font-robotomono font-bold ${
-                      selected ? 'text-background' : 'text-primary/70'
+                      selected ? 'text-background' : 'text-primary'
                     }`}
                   >
                     {t(`party.race_${rk}`)}
@@ -199,8 +199,8 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           </View>
           <DescriptionBox
             text={t(`glossary.races.${RACES[current.race]}.desc`)}
-            borderColor="border-primary/50"
-            textColor="text-primary/70"
+            borderColor="border-primary"
+            textColor="text-primary"
           />
         </SectionCard>
 
@@ -218,12 +218,12 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
                   className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
                     selected
                       ? 'bg-secondary border-secondary'
-                      : 'border-secondary/30 bg-muted/20'
+                      : 'border-secondary bg-muted'
                   }`}
                 >
                   <Text
                     className={`text-xs font-robotomono font-bold ${
-                      selected ? 'text-background' : 'text-secondary/70'
+                      selected ? 'text-background' : 'text-secondary'
                     }`}
                   >
                     {t(`party.class_${c}`)}
@@ -234,8 +234,8 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           </View>
           <DescriptionBox
             text={t(`glossary.classes.${CLASSES[current.charClass]}.desc`)}
-            borderColor="border-secondary/50"
-            textColor="text-secondary/70"
+            borderColor="border-secondary"
+            textColor="text-secondary"
           />
         </SectionCard>
 
@@ -253,12 +253,13 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
                   className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
                     selected
                       ? 'bg-accent border-accent'
-                      : 'border-accent/30 bg-muted/20'
+                      : 'border-accent bg-muted'
                   }`}
                 >
                   <Text
                     className={`text-xs font-robotomono font-bold ${
-                      selected ? 'text-background' : 'text-accent/70'
+                      selected ? 'text-background' : 'text-accent'
+
                     }`}
                   >
                     {t(`party.bg_${b}`)}
@@ -269,8 +270,8 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           </View>
           <DescriptionBox
             text={t(`glossary.backgrounds.${BACKGROUNDS[current.background]}.desc`)}
-            borderColor="border-accent/50"
-            textColor="text-accent/70"
+            borderColor="border-accent"
+            textColor="text-accent"
           />
         </SectionCard>
 
@@ -278,7 +279,7 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
         <SectionCard borderColor="border-primary/40">
           <View className="flex-row justify-between items-center mb-1">
             <SectionHeader icon="🎲" label={t('party.abilityScores')} />
-            <TouchableOpacity onPress={rerollStats} className="border border-primary/50 rounded-sm px-3 py-1 bg-primary/10">
+            <TouchableOpacity onPress={rerollStats} className="border border-primary rounded-sm px-3 py-1 bg-muted">
               <Text className="text-primary font-robotomono text-xs">{t('party.reroll')}</Text>
             </TouchableOpacity>
           </View>
@@ -301,13 +302,13 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
                   onPress={() => updateCurrent({ alignment: i })}
                   className={`w-[31%] mb-2 py-3 border rounded-sm items-center ${
                     selected
-                      ? 'bg-primary/20 border-primary'
-                      : 'border-primary/15 bg-muted/10'
+                      ? 'bg-primary border-primary'
+                      : 'border-primary bg-muted'
                   }`}
                 >
                   <Text
                     className={`text-xs font-robotomono ${
-                      selected ? 'text-primary font-bold' : 'text-primary/40'
+                      selected ? 'text-background font-bold' : 'text-primary'
                     }`}
                   >
                     {t(`party.align_${a}`)}
@@ -318,13 +319,13 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           </View>
           <DescriptionBox
             text={t(`glossary.alignments.${ALIGNMENTS[current.alignment]}.desc`)}
-            borderColor="border-primary/50"
-            textColor="text-primary/70"
+            borderColor="border-primary"
+            textColor="text-primary"
           />
         </SectionCard>
 
         {/* ── 6. Traits Preview ── */}
-        <SectionCard borderColor="border-primary/20">
+        <SectionCard borderColor="border-primary">
           <SectionHeader icon="🏷" label={t('party.traitPreview')} />
           <View className="flex-row flex-wrap mt-2">
             <View className="flex-row items-center mr-6 mb-1">
@@ -344,22 +345,22 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
       </ScrollView>
 
       {/* Bottom Action Bar */}
-      <View className="border-t border-primary/40 p-3 bg-background">
+      <View className="border-t border-primary p-3 bg-background">
         <View className="flex-row justify-between mb-3">
           <TouchableOpacity
             onPress={addCharacter}
             disabled={roster.length >= 4}
             className={`flex-1 mr-2 border border-primary p-2 items-center ${
-              roster.length >= 4 ? 'opacity-30' : 'bg-primary/10'
+              roster.length >= 4 ? 'opacity-30' : 'bg-primary'
             }`}
           >
-            <Text className="text-primary font-robotomono text-[10px]">+ {t('party.addMember')}</Text>
+            <Text className="text-background font-robotomono text-[10px]">+ {t('party.addMember')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={removeCharacter}
             disabled={roster.length <= 1}
             className={`flex-1 ml-2 border border-destructive p-2 items-center ${
-              roster.length <= 1 ? 'opacity-30' : 'bg-destructive/10'
+              roster.length <= 1 ? 'opacity-30' : 'bg-destructive/80'
             }`}
           >
             <Text className="text-destructive font-robotomono text-[10px]">- {t('party.removeMember')}</Text>
@@ -372,8 +373,6 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           <Text className="text-background font-bold font-robotomono">{t('party.startExpedition')}</Text>
         </TouchableOpacity>
       </View>
-
-      <GlossaryButton onPress={glossary.open} />
     </View>
   );
 };

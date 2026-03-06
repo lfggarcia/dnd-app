@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
-import { GlossaryModal, GlossaryButton } from '../components/GlossaryModal';
-import { useGlossary } from '../hooks/useGlossary';
+import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
@@ -21,7 +20,7 @@ const RIVAL_PARTIES = [
 
 export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const { t } = useI18n();
-  const glossary = useGlossary();
+
   const [gold] = useState(340);
   const [cycle] = useState(3);
   const [maxFloor] = useState(5);
@@ -29,7 +28,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
-      <GlossaryModal visible={glossary.visible} onClose={glossary.close} />
+
 
       {/* Header */}
       <View className="p-4 border-b border-primary/30">
@@ -110,7 +109,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
         </TouchableOpacity>
       </View>
 
-      <GlossaryButton onPress={glossary.open} />
+      <GlossaryButton />
     </View>
   );
 };

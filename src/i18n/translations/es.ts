@@ -85,6 +85,7 @@ export const es = {
     removeMember: 'Quitar',
     startExpedition: 'Iniciar expedición',
     portrait: 'Retrato',
+    namePlaceholder: 'Nombre del personaje',
     chaotic: 'Caótico',
     neutral: 'Neutral',
     honorable: 'Honorable',

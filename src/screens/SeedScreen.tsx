@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import type { ScreenProps } from '../navigation/types';
+import { useFocusEffect } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -40,16 +41,25 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const processingAnim = useSharedValue(0);
 
+  // Reset overlay when returning to this screen
+  useFocusEffect(
+    useCallback(() => {
+      processingAnim.value = 0;
+      setIsProcessing(false);
+    }, []),
+  );
+
   const onExecute = () => {
     if (!seed || isProcessing) return;
+    Keyboard.dismiss();
     setIsProcessing(true);
-    processingAnim.value = withTiming(1, { duration: 1500 }, () => {
+    processingAnim.value = withTiming(1, { duration: 2000 }, () => {
       runOnJS(navigation.navigate)('Party' as any);
     });
   };
 
   const overlayStyle = useAnimatedStyle(() => ({
-    opacity: processingAnim.value * 0.8,
+    opacity: processingAnim.value,
     backgroundColor: '#FFB000',
   }));
 

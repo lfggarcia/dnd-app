@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing,
+  withSequence,
+} from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
@@ -39,17 +47,49 @@ const defaultCharacter = (index: number): CharacterDraft => ({
 
 const STAT_KEYS = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] as const;
 
-const StatBar = ({ statKey, value, t }: { statKey: string; value: number; t: (k: string) => string }) => {
+const AnimatedStatBar = ({ statKey, value, index, t }: { statKey: string; value: number; index: number; t: (k: string) => string }) => {
   const mod = Math.floor((value - 10) / 2);
   const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
-  const pct = ((value - 3) / 15) * 100;
+  const pct = Math.min(((value - 3) / 15) * 100, 100);
   const label = t(`glossary.stats.${statKey}.name`).split(' ')[0];
+
+  const barWidth = useSharedValue(0);
+  const barGlow = useSharedValue(0);
+
+  useEffect(() => {
+    // Staggered fill animation + brief glow pulse
+    barWidth.value = withDelay(
+      index * 80,
+      withTiming(pct, { duration: 500, easing: Easing.out(Easing.cubic) }),
+    );
+    barGlow.value = withDelay(
+      index * 80,
+      withSequence(
+        withTiming(1, { duration: 250, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: 400, easing: Easing.in(Easing.quad) }),
+      ),
+    );
+  }, [value]);
+
+  const barStyle = useAnimatedStyle(() => ({
+    width: `${barWidth.value}%`,
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    shadowColor: '#00FF41',
+    shadowOpacity: barGlow.value * 0.8,
+    shadowRadius: 6,
+    elevation: barGlow.value > 0 ? 4 : 0,
+  }));
 
   return (
     <View className="flex-row items-center mb-2">
       <Text className="text-primary font-robotomono text-xs w-10 font-bold">{label}</Text>
-      <View className="flex-1 h-4 bg-muted/40 border border-primary/30 mx-2 rounded-sm">
-        <View className="h-full bg-primary/50 rounded-sm" style={{ width: `${Math.min(pct, 100)}%` }} />
+      <View className="flex-1 h-4 bg-muted/40 border border-primary/30 mx-2 rounded-sm overflow-hidden">
+        <Animated.View
+          className="h-full bg-primary/50 rounded-sm"
+          style={[barStyle, glowStyle]}
+        />
       </View>
       <Text className="text-primary font-robotomono text-sm w-7 text-right font-bold">{value}</Text>
       <Text className="text-secondary font-robotomono text-xs w-7 text-right">{modStr}</Text>
@@ -157,8 +197,17 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
 
         {/* ── Character Summary Banner ── */}
         <View className="mb-5 border border-primary/30 rounded-md bg-primary/5 px-4 py-3 flex-row items-center justify-between">
-          <View>
-            <Text className="text-primary font-robotomono text-base font-bold">{current.name}</Text>
+          <View className="flex-1 mr-3">
+            <TextInput
+              value={current.name}
+              onChangeText={(text) => updateCurrent({ name: text })}
+              maxLength={16}
+              className="text-primary font-robotomono text-base font-bold p-0"
+              style={{ color: '#00FF41', fontFamily: 'RobotoMono-Bold', fontSize: 16, fontWeight: 'bold', padding: 0, margin: 0, borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.3)', paddingBottom: 2 }}
+              placeholderTextColor="rgba(0,255,65,0.3)"
+              placeholder={t('party.namePlaceholder')}
+              selectionColor="#00FF41"
+            />
             <Text className="text-primary/50 font-robotomono text-xs mt-1">
               {t(`party.race_${raceKey}`)} · {t(`party.class_${classKey}`)} · {t(`party.align_${alignKey}`)}
             </Text>
@@ -284,8 +333,8 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
             </TouchableOpacity>
           </View>
           <SectionHint text={t('party.abilityDesc')} />
-          {STAT_KEYS.map(key => (
-            <StatBar key={key} statKey={key} value={current.stats[key]} t={t} />
+          {STAT_KEYS.map((key, i) => (
+            <AnimatedStatBar key={key} statKey={key} value={current.stats[key]} index={i} t={t} />
           ))}
         </SectionCard>
 

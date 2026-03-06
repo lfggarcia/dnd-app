@@ -85,6 +85,7 @@ export const en = {
     removeMember: 'Remove',
     startExpedition: 'Start expedition',
     portrait: 'Portrait',
+    namePlaceholder: 'Character name',
     chaotic: 'Chaotic',
     neutral: 'Neutral',
     honorable: 'Honorable',

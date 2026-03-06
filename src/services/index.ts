@@ -9,6 +9,7 @@ export {
 export type { SyncProgress, FullSyncProgress } from './syncService';
 export { seedSpanishTranslations } from './translationSeed';
 export { seedCustomSubclasses } from './subclassSeed';
+export { seedCustomBackgrounds } from './backgroundSeed';
 export {
   getTranslatedField,
   getTranslatedResource,

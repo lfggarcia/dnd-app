@@ -1,5 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,54 +18,193 @@ import Animated, {
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
-import { useI18n } from '../i18n';
+import { useI18n, type Lang } from '../i18n';
+import {
+  useRaces,
+  useClasses,
+  useBackgrounds,
+  useAlignments,
+  useSubclasses,
+} from '../hooks/useResources';
+import { getTranslatedField } from '../services/translationBridge';
 import type { ScreenProps } from '../navigation/types';
+import {
+  SUBCLASS_FEATURES,
+  CLASS_LVL1_FEATURES,
+  RACE_TRAITS,
+  CLASS_HIT_DICE,
+  calcLvl1HP,
+  LVL1_RULES,
+  type FeatureEntry,
+} from '../constants/dnd5eLevel1';
 
-const RACES = ['HUMAN', 'ELF', 'DWARF', 'HALFLING', 'HALF-ORC', 'TIEFLING'];
-const CLASSES = ['FIGHTER', 'ROGUE', 'WIZARD', 'CLERIC', 'RANGER', 'WARLOCK'];
-const BACKGROUNDS = ['SOLDIER', 'CRIMINAL', 'SAGE', 'ACOLYTE', 'OUTLANDER', 'NOBLE'];
-const ALIGNMENTS = ['LG', 'NG', 'CG', 'LN', 'TN', 'CN', 'LE', 'NE', 'CE'];
+// ─── Types ────────────────────────────────────────────────
+
+type Stats = { STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number };
 
 type CharacterDraft = {
   name: string;
-  race: number;
-  charClass: number;
-  background: number;
-  alignment: number;
-  stats: { STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number };
+  race: string;
+  charClass: string;
+  subclass: string;
+  background: string;
+  alignment: string;
+  baseStats: Stats;
+  statMethod: 'standard' | 'rolled';
 };
 
-const generateStats = () => ({
-  STR: 8 + Math.floor(Math.random() * 10),
-  DEX: 8 + Math.floor(Math.random() * 10),
-  CON: 8 + Math.floor(Math.random() * 10),
-  INT: 8 + Math.floor(Math.random() * 10),
-  WIS: 8 + Math.floor(Math.random() * 10),
-  CHA: 8 + Math.floor(Math.random() * 10),
+const STAT_KEYS: (keyof Stats)[] = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
+
+// ─── D&D 5e Stat Generation ──────────────────────────────
+
+const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
+
+const CLASS_STAT_PRIORITY: Record<string, (keyof Stats)[]> = {
+  barbarian: ['STR', 'CON', 'DEX', 'WIS', 'CHA', 'INT'],
+  bard:      ['CHA', 'DEX', 'CON', 'WIS', 'INT', 'STR'],
+  cleric:    ['WIS', 'CON', 'STR', 'DEX', 'CHA', 'INT'],
+  druid:     ['WIS', 'CON', 'DEX', 'INT', 'CHA', 'STR'],
+  fighter:   ['STR', 'CON', 'DEX', 'WIS', 'CHA', 'INT'],
+  monk:      ['DEX', 'WIS', 'CON', 'STR', 'CHA', 'INT'],
+  paladin:   ['STR', 'CHA', 'CON', 'WIS', 'DEX', 'INT'],
+  ranger:    ['DEX', 'WIS', 'CON', 'STR', 'INT', 'CHA'],
+  rogue:     ['DEX', 'CON', 'WIS', 'CHA', 'INT', 'STR'],
+  sorcerer:  ['CHA', 'CON', 'DEX', 'WIS', 'INT', 'STR'],
+  warlock:   ['CHA', 'CON', 'DEX', 'WIS', 'INT', 'STR'],
+  wizard:    ['INT', 'CON', 'DEX', 'WIS', 'CHA', 'STR'],
+};
+
+function assignStandardArray(classIndex: string): Stats {
+  const priority = CLASS_STAT_PRIORITY[classIndex] || STAT_KEYS;
+  const stats: Stats = { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
+  priority.forEach((key, i) => { stats[key] = STANDARD_ARRAY[i]; });
+  return stats;
+}
+
+/** Roll 4d6, drop lowest — standard D&D 5e method */
+function roll4d6DropLowest(): number {
+  const dice = Array.from({ length: 4 }, () => Math.floor(Math.random() * 6) + 1);
+  dice.sort((a, b) => a - b);
+  return dice[1] + dice[2] + dice[3];
+}
+
+function generateRolledStats(): Stats {
+  return {
+    STR: roll4d6DropLowest(), DEX: roll4d6DropLowest(), CON: roll4d6DropLowest(),
+    INT: roll4d6DropLowest(), WIS: roll4d6DropLowest(), CHA: roll4d6DropLowest(),
+  };
+}
+
+/** Generate rolled stats within D&D 5e lvl1 balanced range (total 70-80) */
+function generateValidRolledStats(): Stats {
+  for (let i = 0; i < 100; i++) {
+    const stats = generateRolledStats();
+    const total = STAT_KEYS.reduce((sum, k) => sum + stats[k], 0);
+    if (total >= LVL1_RULES.MIN_ROLL_TOTAL && total <= LVL1_RULES.MAX_ROLL_TOTAL) {
+      return stats;
+    }
+  }
+  return assignStandardArray('fighter');
+}
+
+function getRacialBonuses(raceRaw: Record<string, unknown>): Partial<Stats> {
+  const bonuses: Partial<Stats> = {};
+  const ab = raceRaw.ability_bonuses as
+    | Array<{ ability_score: { index: string }; bonus: number }>
+    | undefined;
+  if (ab) {
+    for (const b of ab) {
+      const key = b.ability_score.index.toUpperCase() as keyof Stats;
+      if (STAT_KEYS.includes(key)) bonuses[key] = b.bonus;
+    }
+  }
+  return bonuses;
+}
+
+function computeFinalStats(base: Stats, racial: Partial<Stats>): Stats {
+  const s = { ...base };
+  for (const k of STAT_KEYS) s[k] = Math.min(20, s[k] + (racial[k] || 0));
+  return s;
+}
+
+function getDescFromRaw(raw: Record<string, unknown>): string {
+  const d = raw.desc;
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d)) return d.join(' ');
+  return '';
+}
+
+/** Look up subclass features from local PHB data (instant, no network) */
+function getSubclassFeatures(idx: string): FeatureEntry[] {
+  return SUBCLASS_FEATURES[idx] || [];
+}
+
+// ─── Alignment Sort Order ─────────────────────────────────
+
+const ALIGNMENT_ORDER = [
+  'lawful-good', 'neutral-good', 'chaotic-good',
+  'lawful-neutral', 'neutral', 'chaotic-neutral',
+  'lawful-evil', 'neutral-evil', 'chaotic-evil',
+];
+
+// ─── Default Character ────────────────────────────────────
+
+const INIT_CLASSES = ['fighter', 'rogue', 'wizard', 'cleric'];
+
+function mkDefault(i: number): CharacterDraft {
+  const cls = INIT_CLASSES[i % INIT_CLASSES.length];
+  return {
+    name: `UNIT_${String(i + 1).padStart(2, '0')}`,
+    race: 'human',
+    charClass: cls,
+    subclass: '',
+    background: 'acolyte',
+    alignment: 'neutral',
+    baseStats: assignStandardArray(cls),
+    statMethod: 'standard',
+  };
+}
+
+// ─── Stable Styles (avoid inline object re-creation) ─────
+
+const S = StyleSheet.create({
+  bonusText: { color: 'rgba(0,229,255,0.9)' },
+  subFlavor: { color: 'rgba(255,176,0,0.5)' },
+  subDesc: { color: 'rgba(255,176,0,0.7)' },
+  featureName: { color: 'rgba(255,176,0,0.8)' },
+  slotsCount: { color: 'rgba(0,255,65,0.5)' },
+  bannerInput: {
+    color: '#00FF41', fontFamily: 'RobotoMono-Bold', fontSize: 16,
+    fontWeight: 'bold', padding: 0, margin: 0,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.3)', paddingBottom: 2,
+  },
+  bannerSub: { color: 'rgba(0,255,65,0.5)' },
+  portraitLabel: { color: 'rgba(0,255,65,0.3)' },
+  statTotal: { color: 'rgba(0,255,65,0.5)' },
+  statTotalRacial: { color: 'rgba(0,229,255,0.7)' },
+  summaryLabel: { color: 'rgba(0,229,255,0.5)' },
+  classFeatureBullet: { color: 'rgba(255,176,0,0.6)' },
+  raceTraitBullet: { color: 'rgba(0,255,65,0.5)' },
+  raceTraitText: { color: 'rgba(0,255,65,0.7)' },
 });
 
-const defaultCharacter = (index: number): CharacterDraft => ({
-  name: `UNIT_${String(index + 1).padStart(2, '0')}`,
-  race: 0,
-  charClass: index % CLASSES.length,
-  background: 0,
-  alignment: 4,
-  stats: generateStats(),
-});
+// ─── Animated Stat Bar ────────────────────────────────────
 
-const STAT_KEYS = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] as const;
-
-const AnimatedStatBar = ({ statKey, value, index, t }: { statKey: string; value: number; index: number; t: (k: string) => string }) => {
-  const mod = Math.floor((value - 10) / 2);
+const AnimatedStatBar = memo(({
+  statKey, base, bonus, index, lang,
+}: {
+  statKey: keyof Stats; base: number; bonus: number; index: number; lang: Lang;
+}) => {
+  const final = Math.min(20, base + bonus);
+  const mod = Math.floor((final - 10) / 2);
   const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
-  const pct = Math.min(((value - 3) / 15) * 100, 100);
-  const label = t(`glossary.stats.${statKey}.name`).split(' ')[0];
+  const pct = Math.min(((final - 3) / 17) * 100, 100);
+  const label = getTranslatedField('ability-scores', statKey.toLowerCase(), 'name', lang) || statKey;
 
   const barWidth = useSharedValue(0);
   const barGlow = useSharedValue(0);
 
   useEffect(() => {
-    // Staggered fill animation + brief glow pulse
     barWidth.value = withDelay(
       index * 80,
       withTiming(pct, { duration: 500, easing: Easing.out(Easing.cubic) }),
@@ -69,12 +216,9 @@ const AnimatedStatBar = ({ statKey, value, index, t }: { statKey: string; value:
         withTiming(0, { duration: 400, easing: Easing.in(Easing.quad) }),
       ),
     );
-  }, [value]);
+  }, [final]);
 
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${barWidth.value}%`,
-  }));
-
+  const barStyle = useAnimatedStyle(() => ({ width: `${barWidth.value}%` }));
   const glowStyle = useAnimatedStyle(() => ({
     shadowColor: '#00FF41',
     shadowOpacity: barGlow.value * 0.8,
@@ -86,52 +230,184 @@ const AnimatedStatBar = ({ statKey, value, index, t }: { statKey: string; value:
     <View className="flex-row items-center mb-2">
       <Text className="text-primary font-robotomono text-xs w-10 font-bold">{label}</Text>
       <View className="flex-1 h-4 bg-muted/40 border border-primary/30 mx-2 rounded-sm overflow-hidden">
-        <Animated.View
-          className="h-full bg-primary/50 rounded-sm"
-          style={[barStyle, glowStyle]}
-        />
+        <Animated.View className="h-full bg-primary/50 rounded-sm" style={[barStyle, glowStyle]} />
       </View>
-      <Text className="text-primary font-robotomono text-sm w-7 text-right font-bold">{value}</Text>
+      <Text className="text-primary font-robotomono text-sm w-7 text-right font-bold">{final}</Text>
+      {bonus > 0 && (
+        <Text
+          style={S.bonusText}
+          className="font-robotomono text-[9px] w-6 text-right"
+        >
+          +{bonus}
+        </Text>
+      )}
       <Text className="text-secondary font-robotomono text-xs w-7 text-right">{modStr}</Text>
     </View>
   );
-};
+});
 
-/** Reusable section card wrapper */
-const SectionCard = ({ children, borderColor = 'border-primary/30' }: { children: React.ReactNode; borderColor?: string }) => (
+// ─── UI Helpers (memoized) ────────────────────────────────
+
+const SectionCard = memo(({ children, borderColor = 'border-primary/30' }: { children: React.ReactNode; borderColor?: string }) => (
   <View className={`mb-5 border ${borderColor} rounded-md bg-muted/10 p-4`}>{children}</View>
-);
+));
 
-const SectionHeader = ({ icon, label, color = 'text-primary' }: { icon: string; label: string; color?: string }) => (
+const SectionHeader = memo(({ icon, label, color = 'text-primary' }: { icon: string; label: string; color?: string }) => (
   <Text className={`${color} font-robotomono text-sm font-bold mb-1`}>{icon}  {label}</Text>
-);
+));
 
-const SectionHint = ({ text, color = 'text-primary/50' }: { text: string; color?: string }) => (
+const SectionHint = memo(({ text, color = 'text-primary/50' }: { text: string; color?: string }) => (
   <Text className={`${color} font-robotomono text-xs mb-3`}>{text}</Text>
-);
+));
 
-const DescriptionBox = ({ text, borderColor = 'border-primary/40', textColor = 'text-primary/70' }: { text: string; borderColor?: string; textColor?: string }) => (
+const DescriptionBox = memo(({ text, borderColor = 'border-primary/40', textColor = 'text-primary/70' }: { text: string; borderColor?: string; textColor?: string }) => (
   <View className={`mt-3 border-l-2 ${borderColor} pl-3 py-2 bg-background/60 rounded-r-sm`}>
     <Text className={`${textColor} font-robotomono text-[11px] leading-4`}>{text}</Text>
   </View>
-);
+));
+
+// ─── Subclass Abilities Panel (sync, no network) ─────────
+
+const SubclassAbilitiesPanel = memo(({
+  subclassIndex, raw, lang,
+}: {
+  subclassIndex: string; raw: Record<string, unknown>; lang: Lang;
+}) => {
+  const features = useMemo(() => getSubclassFeatures(subclassIndex), [subclassIndex]);
+
+  const desc = getTranslatedField('subclasses', subclassIndex, 'desc', lang) || getDescFromRaw(raw);
+  const flavor = raw.subclass_flavor as string || '';
+
+  return (
+    <View className="mt-3 border border-secondary/20 rounded-sm bg-muted/5 p-3">
+      {flavor ? (
+        <Text style={S.subFlavor} className="font-robotomono text-[9px] mb-1 uppercase">
+          {flavor}
+        </Text>
+      ) : null}
+      <Text style={S.subDesc} className="font-robotomono text-[10px] leading-4 mb-2">
+        {desc}
+      </Text>
+      {features.length > 0 ? (
+        <View className="border-t border-secondary/20 pt-2 mt-1">
+          <Text className="text-secondary font-robotomono text-[9px] font-bold mb-1">
+            {lang === 'es' ? '⚡ HABILIDADES DESBLOQUEADAS:' : '⚡ UNLOCKED FEATURES:'}
+          </Text>
+          {features.map(f => (
+            <View key={`${f.name}-${f.level}`} className="flex-row items-center mb-1">
+              <Text className="text-accent font-robotomono text-[8px] w-10">Lv.{f.level}</Text>
+              <Text
+                style={S.featureName}
+                className="font-robotomono text-[9px] flex-1"
+              >
+                {f.name}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+});
+
+// ─── Main Screen ──────────────────────────────────────────
 
 export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
-  const [roster, setRoster] = useState<CharacterDraft[]>([defaultCharacter(0)]);
+  // DB-driven data hooks
+  const { data: races, loading: racesLoading } = useRaces();
+  const { data: classes, loading: classesLoading } = useClasses();
+  const { data: backgrounds, loading: bgLoading } = useBackgrounds();
+  const { data: alignments, loading: alignLoading } = useAlignments();
+  const { data: allSubclasses, loading: subLoading } = useSubclasses();
+
+  const [roster, setRoster] = useState<CharacterDraft[]>([mkDefault(0)]);
   const [activeSlot, setActiveSlot] = useState(0);
 
   const current = roster[activeSlot];
+  const loading = racesLoading || classesLoading || bgLoading || alignLoading || subLoading;
 
-  const updateCurrent = (updates: Partial<CharacterDraft>) => {
+  // ── Helpers ──
+
+  const updateCurrent = useCallback((updates: Partial<CharacterDraft>) => {
     setRoster(prev => prev.map((c, i) => (i === activeSlot ? { ...c, ...updates } : c)));
-  };
+  }, [activeSlot]);
+
+  const subsByClass = useMemo(() => {
+    const map = new Map<string, typeof allSubclasses>();
+    for (const s of allSubclasses) {
+      const cls = (s.raw as { class?: { index?: string } }).class?.index;
+      if (cls) {
+        const arr = map.get(cls) || [];
+        if (arr.length < 2) arr.push(s);
+        map.set(cls, arr);
+      }
+    }
+    return map;
+  }, [allSubclasses]);
+
+  const subsForClass = useCallback(
+    (classIndex: string) => subsByClass.get(classIndex) || [],
+    [subsByClass],
+  );
+
+  // Auto-select first subclass when data loads
+  useEffect(() => {
+    if (!current.subclass && allSubclasses.length > 0) {
+      const subs = subsForClass(current.charClass);
+      if (subs.length > 0) updateCurrent({ subclass: subs[0].index });
+    }
+  }, [allSubclasses, current.charClass, current.subclass, subsForClass, updateCurrent]);
+
+  const onClassChange = useCallback((classIndex: string) => {
+    const subs = subsByClass.get(classIndex) || [];
+    setRoster(prev => prev.map((c, i) => {
+      if (i !== activeSlot) return c;
+      return {
+        ...c,
+        charClass: classIndex,
+        subclass: subs[0]?.index || '',
+        baseStats: c.statMethod === 'standard' ? assignStandardArray(classIndex) : c.baseStats,
+      };
+    }));
+  }, [activeSlot, subsByClass]);
+
+  // ── Computed values ──
+
+  const racialBonuses = useMemo(() => {
+    const race = races.find(r => r.index === current.race);
+    return race ? getRacialBonuses(race.raw as Record<string, unknown>) : {};
+  }, [current.race, races]);
+
+  const finalStats = useMemo(
+    () => computeFinalStats(current.baseStats, racialBonuses),
+    [current.baseStats, racialBonuses],
+  );
+
+  const totalBase = useMemo(
+    () => STAT_KEYS.reduce((sum, k) => sum + current.baseStats[k], 0),
+    [current.baseStats],
+  );
+
+  const totalFinal = useMemo(
+    () => STAT_KEYS.reduce((sum, k) => sum + finalStats[k], 0),
+    [finalStats],
+  );
+
+  const sortedAlignments = useMemo(() => {
+    return [...alignments].sort((a, b) => {
+      const ai = ALIGNMENT_ORDER.indexOf(a.index);
+      const bi = ALIGNMENT_ORDER.indexOf(b.index);
+      return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+    });
+  }, [alignments]);
+
+  // ── Actions ──
 
   const addCharacter = () => {
     if (roster.length >= 4) return;
-    const newChar = defaultCharacter(roster.length);
-    setRoster(prev => [...prev, newChar]);
+    setRoster(prev => [...prev, mkDefault(prev.length)]);
     setActiveSlot(roster.length);
   };
 
@@ -141,20 +417,44 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
     setActiveSlot(a => Math.max(0, a - 1));
   };
 
-  const rerollStats = () => {
-    updateCurrent({ stats: generateStats() });
-  };
+  const rerollStats = () => updateCurrent({ baseStats: generateValidRolledStats(), statMethod: 'rolled' });
+  const useStdArray = () => updateCurrent({ baseStats: assignStandardArray(current.charClass), statMethod: 'standard' });
 
-  const raceKey = RACES[current.race].replace('-', '_');
-  const classKey = CLASSES[current.charClass];
-  const bgKey = BACKGROUNDS[current.background];
-  const alignKey = ALIGNMENTS[current.alignment];
+  // ── Current selections ──
+
+  const currentRace = races.find(r => r.index === current.race);
+  const currentClass = classes.find(c => c.index === current.charClass);
+  const currentBg = backgrounds.find(b => b.index === current.background);
+  const currentAlign = sortedAlignments.find(a => a.index === current.alignment);
+  const currentSubs = subsForClass(current.charClass);
+  const currentSubData = allSubclasses.find(s => s.index === current.subclass);
+
+  const bgDescription = useMemo(() => {
+    if (!currentBg) return '';
+    const bgRaw = currentBg.raw as Record<string, unknown>;
+    const feature = bgRaw.feature as { name?: string; desc?: string[] } | undefined;
+    return getTranslatedField('backgrounds', current.background, 'desc', lang)
+      || feature?.desc?.join(' ')
+      || '';
+  }, [currentBg, current.background, lang]);
+
+  // ── Loading State ──
+
+  if (loading) {
+    return (
+      <View className="flex-1 bg-background items-center justify-center">
+        <ActivityIndicator size="large" color="#00FF41" />
+        <Text className="text-primary font-robotomono text-xs mt-4">
+          {lang === 'es' ? 'CARGANDO DATOS...' : 'LOADING DATA...'}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-background">
-			<GlossaryButton />
+      <GlossaryButton />
       <CRTOverlay />
-
 
       {/* Header */}
       <View className="p-3 border-b border-primary/40 flex-row justify-between items-center">
@@ -162,16 +462,17 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           <Text className="text-primary font-robotomono text-xs">{'<'} {t('common.back')}</Text>
         </TouchableOpacity>
         <Text className="text-primary font-robotomono text-[10px]">{t('party.title')}</Text>
-        <Text className="text-primary/50 font-robotomono text-[9px]">
+        <Text style={S.slotsCount} className="font-robotomono text-[9px]">
           {roster.length}/4 {t('party.slots')}
         </Text>
       </View>
 
-      {/* Party Roster Tabs */}
+      {/* Roster Tabs */}
       <View className="flex-row border-b border-primary/20">
         {[0, 1, 2, 3].map(i => {
           const char = roster[i];
           const isActive = activeSlot === i;
+          const cls = char ? classes.find(c => c.index === char.charClass) : null;
           return (
             <TouchableOpacity
               key={i}
@@ -183,10 +484,8 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
               <Text className={`font-robotomono text-[8px] ${isActive ? 'text-primary' : 'text-primary/50'}`}>
                 {char ? char.name : `SLOT_${i + 1}`}
               </Text>
-              {char && (
-                <Text className="text-secondary font-robotomono text-[7px]">
-                  {t(`party.class_${CLASSES[char.charClass]}`)}
-                </Text>
+              {char && cls && (
+                <Text className="text-secondary font-robotomono text-[7px]">{cls.name}</Text>
               )}
             </TouchableOpacity>
           );
@@ -200,57 +499,71 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           <View className="flex-1 mr-3">
             <TextInput
               value={current.name}
-              onChangeText={(text) => updateCurrent({ name: text })}
+              onChangeText={text => updateCurrent({ name: text })}
               maxLength={16}
-              className="text-primary font-robotomono text-base font-bold p-0"
-              style={{ color: '#00FF41', fontFamily: 'RobotoMono-Bold', fontSize: 16, fontWeight: 'bold', padding: 0, margin: 0, borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.3)', paddingBottom: 2 }}
+              style={S.bannerInput}
               placeholderTextColor="rgba(0,255,65,0.3)"
               placeholder={t('party.namePlaceholder')}
               selectionColor="#00FF41"
             />
-            <Text className="text-primary/50 font-robotomono text-xs mt-1">
-              {t(`party.race_${raceKey}`)} · {t(`party.class_${classKey}`)} · {t(`party.align_${alignKey}`)}
+            <Text style={S.bannerSub} className="font-robotomono text-xs mt-1">
+              {currentRace?.name || current.race} · {currentClass?.name || current.charClass}
+              {currentSubData ? ` · ${currentSubData.name}` : ''}
             </Text>
           </View>
           <View className="items-center border border-primary/20 rounded px-2 py-1">
-            <Text className="text-primary/30 font-robotomono text-[8px]">{t('party.portrait')}</Text>
+            <Text style={S.portraitLabel} className="font-robotomono text-[8px]">
+              {t('party.portrait')}
+            </Text>
           </View>
         </View>
 
         {/* ── 1. Race ── */}
         <SectionCard borderColor="border-primary/40">
-          <SectionHeader icon="🧬" label={t('party.raceSelect')} color="text-primary" />
+          <SectionHeader icon="🧬" label={t('party.raceSelect')} />
           <SectionHint text={t('party.raceDesc')} />
           <View className="flex-row flex-wrap">
-            {RACES.map((r, i) => {
-              const rk = r.replace('-', '_');
-              const selected = current.race === i;
+            {races.map(r => {
+              const selected = current.race === r.index;
               return (
                 <TouchableOpacity
-                  key={r}
-                  onPress={() => updateCurrent({ race: i })}
+                  key={r.index}
+                  onPress={() => updateCurrent({ race: r.index })}
                   className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
-                    selected
-                      ? 'bg-primary border-primary'
-                      : 'border-primary bg-muted'
+                    selected ? 'bg-primary border-primary' : 'border-primary bg-muted'
                   }`}
                 >
-                  <Text
-                    className={`text-xs font-robotomono font-bold ${
-                      selected ? 'text-background' : 'text-primary'
-                    }`}
-                  >
-                    {t(`party.race_${rk}`)}
+                  <Text className={`text-xs font-robotomono font-bold ${
+                    selected ? 'text-background' : 'text-primary'
+                  }`}>
+                    {r.name}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          <DescriptionBox
-            text={t(`glossary.races.${RACES[current.race]}.desc`)}
-            borderColor="border-primary"
-            textColor="text-primary"
-          />
+          {currentRace && (
+            <DescriptionBox
+              text={
+                getTranslatedField('races', current.race, 'desc', lang) ||
+                getDescFromRaw(currentRace.raw as Record<string, unknown>)
+              }
+              borderColor="border-primary"
+              textColor="text-primary"
+            />
+          )}
+          {/* Racial ability bonuses */}
+          {Object.keys(racialBonuses).length > 0 && (
+            <View className="mt-2 flex-row flex-wrap">
+              {Object.entries(racialBonuses).map(([key, val]) => (
+                <View key={key} className="mr-2 mb-1 border border-accent/30 rounded px-2 py-1 bg-accent/5">
+                  <Text className="text-accent font-robotomono text-[9px] font-bold">
+                    {getTranslatedField('ability-scores', key.toLowerCase(), 'name', lang) || key} +{val}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </SectionCard>
 
         {/* ── 2. Class ── */}
@@ -258,128 +571,299 @@ export const PartyScreen = ({ navigation }: ScreenProps<'Party'>) => {
           <SectionHeader icon="⚔" label={t('party.classSelect')} color="text-secondary" />
           <SectionHint text={t('party.classDesc')} color="text-secondary/50" />
           <View className="flex-row flex-wrap">
-            {CLASSES.map((c, i) => {
-              const selected = current.charClass === i;
+            {classes.map(c => {
+              const selected = current.charClass === c.index;
               return (
                 <TouchableOpacity
-                  key={c}
-                  onPress={() => updateCurrent({ charClass: i })}
+                  key={c.index}
+                  onPress={() => onClassChange(c.index)}
                   className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
-                    selected
-                      ? 'bg-secondary border-secondary'
-                      : 'border-secondary bg-muted'
+                    selected ? 'bg-secondary border-secondary' : 'border-secondary bg-muted'
                   }`}
                 >
-                  <Text
-                    className={`text-xs font-robotomono font-bold ${
-                      selected ? 'text-background' : 'text-secondary'
-                    }`}
-                  >
-                    {t(`party.class_${c}`)}
+                  <Text className={`text-xs font-robotomono font-bold ${
+                    selected ? 'text-background' : 'text-secondary'
+                  }`}>
+                    {c.name}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          <DescriptionBox
-            text={t(`glossary.classes.${CLASSES[current.charClass]}.desc`)}
-            borderColor="border-secondary"
-            textColor="text-secondary"
-          />
+          {currentClass && (
+            <DescriptionBox
+              text={
+                getTranslatedField('classes', current.charClass, 'desc', lang) ||
+                getDescFromRaw(currentClass.raw as Record<string, unknown>)
+              }
+              borderColor="border-secondary"
+              textColor="text-secondary"
+            />
+          )}
         </SectionCard>
 
-        {/* ── 3. Background ── */}
+        {/* ── 3. Subclass ── */}
+        {currentSubs.length > 0 && (
+          <SectionCard borderColor="border-secondary/40">
+            <SectionHeader
+              icon="🔱"
+              label={lang === 'es' ? 'SUBCLASE' : 'SUBCLASS'}
+              color="text-secondary"
+            />
+            <SectionHint
+              text={lang === 'es'
+                ? 'Elige tu especialización (máx. 2 por clase)'
+                : 'Choose your specialization (max 2 per class)'}
+              color="text-secondary/50"
+            />
+            <View className="flex-row flex-wrap">
+              {currentSubs.map(s => {
+                const selected = current.subclass === s.index;
+                return (
+                  <TouchableOpacity
+                    key={s.index}
+                    onPress={() => updateCurrent({ subclass: s.index })}
+                    className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
+                      selected ? 'bg-secondary border-secondary' : 'border-secondary bg-muted'
+                    }`}
+                  >
+                    <Text className={`text-xs font-robotomono font-bold ${
+                      selected ? 'text-background' : 'text-secondary'
+                    }`}>
+                      {s.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {currentSubData && (
+              <SubclassAbilitiesPanel
+                subclassIndex={current.subclass}
+                raw={currentSubData.raw as Record<string, unknown>}
+                lang={lang}
+              />
+            )}
+          </SectionCard>
+        )}
+
+        {/* ── 4. Background ── */}
         <SectionCard borderColor="border-accent/40">
           <SectionHeader icon="📜" label={t('party.background')} color="text-accent" />
           <SectionHint text={t('party.backgroundDesc')} color="text-accent/50" />
           <View className="flex-row flex-wrap">
-            {BACKGROUNDS.map((b, i) => {
-              const selected = current.background === i;
+            {backgrounds.map(b => {
+              const selected = current.background === b.index;
               return (
                 <TouchableOpacity
-                  key={b}
-                  onPress={() => updateCurrent({ background: i })}
+                  key={b.index}
+                  onPress={() => updateCurrent({ background: b.index })}
                   className={`mr-2 mb-2 px-4 py-2 border rounded-sm ${
-                    selected
-                      ? 'bg-accent border-accent'
-                      : 'border-accent bg-muted'
+                    selected ? 'bg-accent border-accent' : 'border-accent bg-muted'
                   }`}
                 >
-                  <Text
-                    className={`text-xs font-robotomono font-bold ${
-                      selected ? 'text-background' : 'text-accent'
-
-                    }`}
-                  >
-                    {t(`party.bg_${b}`)}
+                  <Text className={`text-xs font-robotomono font-bold ${
+                    selected ? 'text-background' : 'text-accent'
+                  }`}>
+                    {b.name}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          <DescriptionBox
-            text={t(`glossary.backgrounds.${BACKGROUNDS[current.background]}.desc`)}
-            borderColor="border-accent"
-            textColor="text-accent"
-          />
+          {bgDescription ? (
+            <DescriptionBox
+              text={bgDescription}
+              borderColor="border-accent"
+              textColor="text-accent"
+            />
+          ) : null}
         </SectionCard>
 
-        {/* ── 4. Attributes ── */}
+        {/* ── 5. Attributes ── */}
         <SectionCard borderColor="border-primary/40">
           <View className="flex-row justify-between items-center mb-1">
             <SectionHeader icon="🎲" label={t('party.abilityScores')} />
-            <TouchableOpacity onPress={rerollStats} className="border border-primary rounded-sm px-3 py-1 bg-muted">
-              <Text className="text-primary font-robotomono text-xs">{t('party.reroll')}</Text>
-            </TouchableOpacity>
+            <View className="flex-row">
+              <TouchableOpacity
+                onPress={useStdArray}
+                className={`mr-2 border rounded-sm px-2 py-1 ${
+                  current.statMethod === 'standard'
+                    ? 'bg-primary border-primary'
+                    : 'border-primary bg-muted'
+                }`}
+              >
+                <Text className={`font-robotomono text-[8px] ${
+                  current.statMethod === 'standard' ? 'text-background font-bold' : 'text-primary'
+                }`}>
+                  {lang === 'es' ? 'ESTÁNDAR' : 'STANDARD'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={rerollStats}
+                className={`border rounded-sm px-2 py-1 ${
+                  current.statMethod === 'rolled'
+                    ? 'bg-primary border-primary'
+                    : 'border-primary bg-muted'
+                }`}
+              >
+                <Text className={`font-robotomono text-[8px] ${
+                  current.statMethod === 'rolled' ? 'text-background font-bold' : 'text-primary'
+                }`}>
+                  4d6
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <SectionHint text={t('party.abilityDesc')} />
+          <SectionHint
+            text={
+              current.statMethod === 'standard'
+                ? (lang === 'es'
+                  ? 'Array estándar [15,14,13,12,10,8] asignado por clase'
+                  : 'Standard array [15,14,13,12,10,8] assigned by class')
+                : (lang === 'es'
+                  ? '4d6 descarta menor — rango balanceado (total 70-80)'
+                  : '4d6 drop lowest — balanced range (total 70-80)')
+            }
+          />
           {STAT_KEYS.map((key, i) => (
-            <AnimatedStatBar key={key} statKey={key} value={current.stats[key]} index={i} t={t} />
+            <AnimatedStatBar
+              key={key}
+              statKey={key}
+              base={current.baseStats[key]}
+              bonus={racialBonuses[key] || 0}
+              index={i}
+              lang={lang}
+            />
           ))}
+          <View className="flex-row justify-between mt-2 border-t border-primary/20 pt-2">
+            <Text style={S.statTotal} className="font-robotomono text-[9px]">
+              BASE: {totalBase}
+            </Text>
+            <Text style={S.statTotalRacial} className="font-robotomono text-[9px]">
+              TOTAL + RACIAL: {totalFinal}
+            </Text>
+          </View>
         </SectionCard>
 
-        {/* ── 5. Alignment ── */}
+        {/* ── 6. Level 1 Summary ── */}
+        <SectionCard borderColor="border-accent/40">
+          <SectionHeader
+            icon="📊"
+            label={lang === 'es' ? 'RESUMEN NIVEL 1' : 'LEVEL 1 SUMMARY'}
+            color="text-accent"
+          />
+          <View className="flex-row flex-wrap mt-2 mb-3">
+            <View className="mr-4 mb-2 border border-accent/30 rounded px-3 py-2 bg-accent/5 items-center">
+              <Text style={S.summaryLabel} className="font-robotomono text-[7px] uppercase">
+                {lang === 'es' ? 'NIVEL' : 'LEVEL'}
+              </Text>
+              <Text className="text-accent font-robotomono text-lg font-bold">1</Text>
+            </View>
+            <View className="mr-4 mb-2 border border-accent/30 rounded px-3 py-2 bg-accent/5 items-center">
+              <Text style={S.summaryLabel} className="font-robotomono text-[7px] uppercase">HP</Text>
+              <Text className="text-accent font-robotomono text-lg font-bold">
+                {calcLvl1HP(current.charClass, finalStats.CON)}
+              </Text>
+            </View>
+            <View className="mr-4 mb-2 border border-accent/30 rounded px-3 py-2 bg-accent/5 items-center">
+              <Text style={S.summaryLabel} className="font-robotomono text-[7px] uppercase">
+                {lang === 'es' ? 'COMPETENCIA' : 'PROFICIENCY'}
+              </Text>
+              <Text className="text-accent font-robotomono text-lg font-bold">+{LVL1_RULES.PROFICIENCY_BONUS}</Text>
+            </View>
+            <View className="mb-2 border border-accent/30 rounded px-3 py-2 bg-accent/5 items-center">
+              <Text style={S.summaryLabel} className="font-robotomono text-[7px] uppercase">
+                {lang === 'es' ? 'DADO GOLPE' : 'HIT DIE'}
+              </Text>
+              <Text className="text-accent font-robotomono text-lg font-bold">
+                d{CLASS_HIT_DICE[current.charClass] || 8}
+              </Text>
+            </View>
+          </View>
+
+          {/* Class Features */}
+          {CLASS_LVL1_FEATURES[current.charClass] && (
+            <View className="mb-3">
+              <Text className="text-secondary font-robotomono text-[9px] font-bold mb-1">
+                ⚔ {lang === 'es' ? 'HABILIDADES DE CLASE (Nv.1):' : 'CLASS FEATURES (Lv.1):'}
+              </Text>
+              {CLASS_LVL1_FEATURES[current.charClass].map((f, i) => (
+                <View key={i} className="flex-row items-center mb-1 ml-2">
+                  <Text style={S.classFeatureBullet} className="font-robotomono text-[8px] mr-2">▸</Text>
+                  <Text style={S.featureName} className="font-robotomono text-[9px]">
+                    {lang === 'es' ? f.es : f.en}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Race Traits */}
+          {RACE_TRAITS[current.race] && (
+            <View className="mb-1">
+              <Text className="text-primary font-robotomono text-[9px] font-bold mb-1">
+                🧬 {lang === 'es' ? 'RASGOS RACIALES:' : 'RACE TRAITS:'}
+              </Text>
+              {RACE_TRAITS[current.race].map((t2, i) => (
+                <View key={i} className="flex-row items-center mb-1 ml-2">
+                  <Text style={S.raceTraitBullet} className="font-robotomono text-[8px] mr-2">▸</Text>
+                  <Text style={S.raceTraitText} className="font-robotomono text-[9px]">
+                    {lang === 'es' ? t2.es : t2.en}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </SectionCard>
+
+        {/* ── 7. Alignment ── */}
         <SectionCard borderColor="border-primary/40">
           <SectionHeader icon="⚖" label={t('party.alignment')} />
           <SectionHint text={t('party.alignmentDesc')} />
           <View className="flex-row flex-wrap justify-between">
-            {ALIGNMENTS.map((a, i) => {
-              const selected = current.alignment === i;
+            {sortedAlignments.map(a => {
+              const abbr = (a.raw as Record<string, unknown>).abbreviation as string || a.index;
+              const selected = current.alignment === a.index;
               return (
                 <TouchableOpacity
-                  key={a}
-                  onPress={() => updateCurrent({ alignment: i })}
+                  key={a.index}
+                  onPress={() => updateCurrent({ alignment: a.index })}
                   className={`w-[31%] mb-2 py-3 border rounded-sm items-center ${
-                    selected
-                      ? 'bg-primary border-primary'
-                      : 'border-primary bg-muted'
+                    selected ? 'bg-primary border-primary' : 'border-primary bg-muted'
                   }`}
                 >
-                  <Text
-                    className={`text-xs font-robotomono ${
-                      selected ? 'text-background font-bold' : 'text-primary'
-                    }`}
-                  >
-                    {t(`party.align_${a}`)}
+                  <Text className={`text-xs font-robotomono ${
+                    selected ? 'text-background font-bold' : 'text-primary'
+                  }`}>
+                    {abbr}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          <DescriptionBox
-            text={t(`glossary.alignments.${ALIGNMENTS[current.alignment]}.desc`)}
-            borderColor="border-primary"
-            textColor="text-primary"
-          />
+          {currentAlign && (
+            <DescriptionBox
+              text={
+                getTranslatedField('alignments', current.alignment, 'desc', lang) ||
+                getDescFromRaw(currentAlign.raw as Record<string, unknown>)
+              }
+              borderColor="border-primary"
+              textColor="text-primary"
+            />
+          )}
         </SectionCard>
 
-        {/* ── 6. Traits Preview ── */}
+        {/* ── 8. Traits Preview ── */}
         <SectionCard borderColor="border-primary">
           <SectionHeader icon="🏷" label={t('party.traitPreview')} />
           <View className="flex-row flex-wrap mt-2">
             <View className="flex-row items-center mr-6 mb-1">
               <Text className="text-secondary font-robotomono text-sm">
-                ⚖ {t('party.moral')}: {[t('party.chaotic'), t('party.neutral'), t('party.honorable')][Math.min(2, Math.floor(current.alignment / 3))]}
+                ⚖ {t('party.moral')}: {(() => {
+                  const idx = ALIGNMENT_ORDER.indexOf(current.alignment);
+                  const row = idx >= 0 ? Math.floor(idx / 3) : 1;
+                  return [t('party.honorable'), t('party.neutral'), t('party.chaotic')][row] || t('party.neutral');
+                })()}
               </Text>
             </View>
             <View className="flex-row items-center mb-1">

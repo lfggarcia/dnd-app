@@ -4,7 +4,8 @@ import type { Lang } from '../i18n';
 
 /**
  * Get a translated field for a D&D 5e resource.
- * Falls back to the English value from the API data if no translation exists.
+ * Checks the translations table first (any language), then falls back
+ * to the raw API resource data.
  */
 export function getTranslatedField(
   endpoint: ApiEndpoint,
@@ -12,19 +13,11 @@ export function getTranslatedField(
   fieldPath: string,
   lang: Lang,
 ): string | null {
-  // For English, just read from the raw resource data
-  if (lang === 'en') {
-    const resource = getResource(endpoint, indexKey);
-    if (!resource) return null;
-    const data = JSON.parse(resource.data);
-    return resolveFieldPath(data, fieldPath);
-  }
-
-  // For other languages, check translations table first
+  // Check translations table first (works for all languages including EN)
   const translated = getTranslation(endpoint, indexKey, fieldPath, lang);
   if (translated) return translated;
 
-  // Fallback to English from resource data
+  // Fallback to raw resource data
   const resource = getResource(endpoint, indexKey);
   if (!resource) return null;
   const data = JSON.parse(resource.data);

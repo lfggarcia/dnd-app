@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { runMigrations } from '../database';
 import { seedSpanishTranslations } from '../services/translationSeed';
 import { seedCustomSubclasses } from '../services/subclassSeed';
+import { seedCustomBackgrounds } from '../services/backgroundSeed';
 import { syncAll, getSyncStatus, type FullSyncProgress } from '../services/syncService';
 
 type DbStatus = 'initializing' | 'ready' | 'syncing' | 'error';
@@ -35,6 +36,7 @@ export function useDatabase(): UseDatabase {
       runMigrations();
       seedSpanishTranslations();
       seedCustomSubclasses();
+      seedCustomBackgrounds();
       setStatus('ready');
       setSyncStat(getSyncStatus());
     } catch (err) {

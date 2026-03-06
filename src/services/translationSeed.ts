@@ -449,6 +449,24 @@ function backgrounds(): Translation[] {
   return [
     t('backgrounds', 'acolyte', 'name', 'Acólito'),
     t('backgrounds', 'acolyte', 'desc', 'Has pasado tu vida al servicio de un templo de un dios específico o panteón de dioses.'),
+
+    t('backgrounds', 'soldier', 'name', 'Soldado'),
+    t('backgrounds', 'soldier', 'desc', 'Has combatido en guerras y conoces la disciplina militar. Los soldados aún reconocen tu rango y autoridad.'),
+
+    t('backgrounds', 'criminal', 'name', 'Criminal'),
+    t('backgrounds', 'criminal', 'desc', 'Tienes un historial de infringir la ley y un contacto confiable en una red de otros criminales.'),
+
+    t('backgrounds', 'sage', 'name', 'Sabio'),
+    t('backgrounds', 'sage', 'desc', 'Has dedicado años al estudio del conocimiento. Cuando no sabes algo, sabes dónde y de quién obtener la información.'),
+
+    t('backgrounds', 'outlander', 'name', 'Forastero'),
+    t('backgrounds', 'outlander', 'desc', 'Creciste en los páramos, lejos de la civilización. Tienes excelente memoria para mapas y geografía.'),
+
+    t('backgrounds', 'noble', 'name', 'Noble'),
+    t('backgrounds', 'noble', 'desc', 'Naciste en la nobleza. La gente se inclina a pensar lo mejor de ti y eres bienvenido en la alta sociedad.'),
+
+    t('backgrounds', 'hermit', 'name', 'Ermitaño'),
+    t('backgrounds', 'hermit', 'desc', 'Has vivido en reclusión por un período formativo de tu vida. En tu aislamiento, descubriste una verdad única y poderosa.'),
   ];
 }
 

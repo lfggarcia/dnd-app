@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { runMigrations } from '../database';
 import { seedSpanishTranslations } from '../services/translationSeed';
+import { seedCustomSubclasses } from '../services/subclassSeed';
 import { syncAll, getSyncStatus, type FullSyncProgress } from '../services/syncService';
 
 type DbStatus = 'initializing' | 'ready' | 'syncing' | 'error';
@@ -33,6 +34,7 @@ export function useDatabase(): UseDatabase {
     try {
       runMigrations();
       seedSpanishTranslations();
+      seedCustomSubclasses();
       setStatus('ready');
       setSyncStat(getSyncStatus());
     } catch (err) {

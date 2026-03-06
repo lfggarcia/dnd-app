@@ -4,8 +4,8 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { StatusBar, StyleSheet } from 'react-native';
 import { I18nProvider } from './src/i18n';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { DatabaseGate } from './src/components/DatabaseGate';
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
@@ -20,7 +20,9 @@ export default function App() {
           <NavigationContainer>
             <StatusBar barStyle="light-content" backgroundColor="#0A0E0A" />
             <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-              <AppNavigator />
+              <DatabaseGate>
+                <AppNavigator />
+              </DatabaseGate>
             </SafeAreaView>
           </NavigationContainer>
         </I18nProvider>

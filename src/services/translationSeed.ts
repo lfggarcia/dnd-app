@@ -233,18 +233,79 @@ function classes(): Translation[] {
 
 function subclasses(): Translation[] {
   return [
+    // ── SRD subclasses (from API) ──────────────────────────
     t('subclasses', 'berserker', 'name', 'Berserker'),
+    t('subclasses', 'berserker', 'desc', 'Para algunos bárbaros, la ira es un medio para un fin — un furor desatado que los convierte en máquinas de destrucción imparables.'),
+
     t('subclasses', 'lore', 'name', 'Colegio del Saber'),
+    t('subclasses', 'lore', 'desc', 'Bardos que recopilan conocimiento de todas las fuentes, tejiendo magia a través de sus palabras y música para manipular las mentes de otros.'),
+
     t('subclasses', 'life', 'name', 'Dominio de la Vida'),
+    t('subclasses', 'life', 'desc', 'Clérigos dedicados a la sanación y protección de la vida. Canalizan energía divina positiva para curar heridas y proteger a los vivos.'),
+
     t('subclasses', 'land', 'name', 'Círculo de la Tierra'),
+    t('subclasses', 'land', 'desc', 'Druidas guardianes de la sabiduría ancestral de la tierra. Obtienen hechizos adicionales según el terreno que protegen.'),
+
     t('subclasses', 'champion', 'name', 'Campeón'),
+    t('subclasses', 'champion', 'desc', 'Guerreros que perfeccionan sus habilidades físicas hasta el límite. Destacan por golpes críticos devastadores y resistencia atlética superior.'),
+
     t('subclasses', 'open-hand', 'name', 'Camino de la Mano Abierta'),
+    t('subclasses', 'open-hand', 'desc', 'Monjes maestros del combate marcial sin armas. Usan el ki para derribar, empujar y aturdir a sus enemigos con técnicas de mano abierta.'),
+
     t('subclasses', 'devotion', 'name', 'Juramento de Devoción'),
+    t('subclasses', 'devotion', 'desc', 'Paladines consagrados a los más altos ideales de justicia, virtud y orden. Canalizan poder divino para proteger a los inocentes y castigar a los malvados.'),
+
     t('subclasses', 'hunter', 'name', 'Cazador'),
+    t('subclasses', 'hunter', 'desc', 'Exploradores que aceptan el desafío de ser el depredador de los depredadores. Se especializan en técnicas para abatir todo tipo de presas.'),
+
     t('subclasses', 'thief', 'name', 'Ladrón'),
+    t('subclasses', 'thief', 'desc', 'Pícaros ágiles y versátiles que perfeccionan las artes del sigilo, el robo y la infiltración con habilidad sobrenatural.'),
+
     t('subclasses', 'draconic', 'name', 'Linaje Dracónico'),
+    t('subclasses', 'draconic', 'desc', 'Hechiceros cuya magia innata proviene de sangre de dragón en su linaje. Ganan resistencia elemental y escamas protectoras.'),
+
     t('subclasses', 'fiend', 'name', 'El Infernal'),
+    t('subclasses', 'fiend', 'desc', 'Brujos que han pactado con un señor infernal. Obtienen poder oscuro para destruir a sus enemigos y resistencia sobrenatural al daño.'),
+
     t('subclasses', 'evocation', 'name', 'Escuela de Evocación'),
+    t('subclasses', 'evocation', 'desc', 'Magos especializados en magia destructiva y elemental. Pueden moldear sus hechizos para proteger a los aliados del daño colateral.'),
+
+    // ── Custom subclasses (TORRE additions) ────────────────
+    t('subclasses', 'totem-warrior', 'name', 'Guerrero Totémico'),
+    t('subclasses', 'totem-warrior', 'desc', 'Un guerrero espiritual que obtiene poderes de espíritus animales guía. El tótem elegido — Oso, Águila o Lobo — potencia su ira y otorga percepción sobrenatural.'),
+
+    t('subclasses', 'valor', 'name', 'Colegio del Valor'),
+    t('subclasses', 'valor', 'desc', 'Bardos de batalla que entrelazan magia y proeza marcial. Inspiran a sus aliados con relatos heroicos y pueden combinar ataques con hechicería.'),
+
+    t('subclasses', 'war', 'name', 'Dominio de la Guerra'),
+    t('subclasses', 'war', 'desc', 'Clérigos de dioses de la guerra que sobresalen en combate marcial. Obtienen competencia con armadura pesada y armas marciales, y golpean guiados por favor divino.'),
+
+    t('subclasses', 'moon', 'name', 'Círculo de la Luna'),
+    t('subclasses', 'moon', 'desc', 'Druidas especializados en Forma Salvaje para combate. Pueden transformarse en bestias más poderosas y eventualmente adoptar formas elementales.'),
+
+    t('subclasses', 'battle-master', 'name', 'Maestro de Batalla'),
+    t('subclasses', 'battle-master', 'desc', 'Guerreros tácticos que emplean maniobras de combate alimentadas por dados de superioridad. Pueden desarmar, derribar y contraatacar con técnica refinada.'),
+
+    t('subclasses', 'shadow', 'name', 'Camino de la Sombra'),
+    t('subclasses', 'shadow', 'desc', 'Monjes que siguen la tradición de las artes de la sombra, usando ki para duplicar efectos de magia oscura. Pueden teletransportarse entre sombras y volverse invisibles.'),
+
+    t('subclasses', 'vengeance', 'name', 'Juramento de Venganza'),
+    t('subclasses', 'vengeance', 'desc', 'Paladines juramentados para castigar a quienes cometen pecados graves. Canalizan divinidad para obtener ventaja contra enemigos jurados y persiguen la justicia sin descanso.'),
+
+    t('subclasses', 'beast-master', 'name', 'Maestro de Bestias'),
+    t('subclasses', 'beast-master', 'desc', 'Exploradores que forjan un vínculo profundo con un compañero bestia. El compañero lucha a su lado y crece en poder junto al explorador.'),
+
+    t('subclasses', 'assassin', 'name', 'Asesino'),
+    t('subclasses', 'assassin', 'desc', 'Pícaros especializados en el arte de matar rápida y silenciosamente. Infligen daño devastador a objetivos sorprendidos y pueden asumir identidades falsas.'),
+
+    t('subclasses', 'wild-magic', 'name', 'Magia Salvaje'),
+    t('subclasses', 'wild-magic', 'desc', 'Hechiceros cuya magia innata proviene de fuerzas caóticas e impredecibles. Sus conjuros pueden desatar oleadas de magia salvaje con efectos inesperados.'),
+
+    t('subclasses', 'great-old-one', 'name', 'El Gran Antiguo'),
+    t('subclasses', 'great-old-one', 'desc', 'Brujos que sirven a una entidad ancestral de más allá de las estrellas. Obtienen habilidades telepáticas, pueden proyectar terror psíquico y crear esclavos mentales.'),
+
+    t('subclasses', 'abjuration', 'name', 'Escuela de Abjuración'),
+    t('subclasses', 'abjuration', 'desc', 'Magos especializados en magia protectora y de sala. Crean un escudo arcano que absorbe daño y pueden fortalecer hechizos de abjuración.'),
   ];
 }
 

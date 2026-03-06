@@ -8,8 +8,25 @@ export {
 } from './syncService';
 export type { SyncProgress, FullSyncProgress } from './syncService';
 export { seedSpanishTranslations } from './translationSeed';
+export { seedCustomSubclasses } from './subclassSeed';
 export {
   getTranslatedField,
   getTranslatedResource,
   getTranslatedName,
 } from './translationBridge';
+export {
+  CLASS_SUBCLASS_MAP,
+  ALL_CLASSES,
+  ALL_SUBCLASSES,
+  getSubclassesForClass,
+  getClassForSubclass,
+  isValidSubclass,
+  CLASS_HIT_DICE,
+  CLASS_PRIMARY_ABILITY,
+  CLASS_SAVING_THROWS,
+  SPELLCASTING_CLASSES,
+  XP_TABLE,
+  PROFICIENCY_BONUS,
+  getLevelForXP,
+  getXPToNextLevel,
+} from './rulesConfig';

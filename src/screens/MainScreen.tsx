@@ -52,16 +52,25 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
   const handleMenuPress = (key: string) => {
     if (key === 'new') navigation.navigate('Seed');
     if (key === 'continue' && hasActive) {
-      navigation.navigate('Village');
+      if (activeGame?.location === 'map') {
+        navigation.reset({ index: 0, routes: [{ name: 'Map' }] });
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
+      }
     }
     if (key === 'load') setLoadModalVisible(true);
   };
 
   const handleLoadGame = (id: string) => {
+    const game = savedGames.find(g => g.id === id);
     const ok = loadGame(id);
     if (ok) {
       setLoadModalVisible(false);
-      navigation.navigate('Village');
+      if (game?.location === 'map') {
+        navigation.reset({ index: 0, routes: [{ name: 'Map' }] });
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
+      }
     }
   };
 

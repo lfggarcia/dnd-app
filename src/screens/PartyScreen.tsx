@@ -1005,7 +1005,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
               };
             });
             startNewGame(seed, seedHash, party);
-            navigation.navigate('Village');
+            navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
           }}
           className="bg-primary p-3 items-center"
         >

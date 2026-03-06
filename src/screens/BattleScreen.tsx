@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
@@ -7,6 +7,11 @@ import type { ScreenProps } from '../navigation/types';
 
 export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
   const { t } = useI18n();
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
 
   const LOG_ENTRIES = [
     `INITIATIVE: PARTY (18) vs ENEMY (12)`,

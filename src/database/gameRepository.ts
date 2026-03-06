@@ -12,6 +12,8 @@ export type SavedGameRow = {
   phase: string;
   gold: number;
   status: string;
+  location: string;
+  map_state: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -26,6 +28,8 @@ export type SavedGame = {
   phase: 'DAY' | 'NIGHT';
   gold: number;
   status: 'active' | 'completed' | 'dead';
+  location: 'village' | 'map';
+  mapState: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -67,6 +71,8 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
     phase: row.phase as 'DAY' | 'NIGHT',
     gold: row.gold,
     status: row.status as 'active' | 'completed' | 'dead',
+    location: (row.location ?? 'village') as 'village' | 'map',
+    mapState: row.map_state ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -90,21 +96,22 @@ export function createSavedGame(
   const now = new Date().toISOString();
 
   db.executeSync(
-    `INSERT INTO saved_games (id, seed, seed_hash, party_data, floor, cycle, phase, gold, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 1, 1, 'DAY', 0, 'active', ?, ?)`,
+    `INSERT INTO saved_games (id, seed, seed_hash, party_data, floor, cycle, phase, gold, status, location, map_state, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 1, 1, 'DAY', 0, 'active', 'village', NULL, ?, ?)`,
     [id, seed, seedHash, JSON.stringify(partyData), now, now],
   );
 
   return {
     id, seed, seedHash, partyData,
     floor: 1, cycle: 1, phase: 'DAY', gold: 0, status: 'active',
+    location: 'village', mapState: null,
     createdAt: now, updatedAt: now,
   };
 }
 
 export function updateSavedGame(
   id: string,
-  updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status'>>,
+  updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState'>>,
 ): void {
   const db = getDB();
   const sets: string[] = [];
@@ -133,6 +140,14 @@ export function updateSavedGame(
   if (updates.status !== undefined) {
     sets.push('status = ?');
     values.push(updates.status);
+  }
+  if (updates.location !== undefined) {
+    sets.push('location = ?');
+    values.push(updates.location);
+  }
+  if (updates.mapState !== undefined) {
+    sets.push('map_state = ?');
+    values.push(updates.mapState ?? null as unknown as string);
   }
 
   if (sets.length === 0) return;

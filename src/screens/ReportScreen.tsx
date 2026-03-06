@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { TypewriterText } from '../components/TypewriterText';
 import { GlossaryButton } from '../components/GlossaryModal';
@@ -26,6 +26,11 @@ const REPORT_DATA = {
 
 export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
   const { t } = useI18n();
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
 
 
   const headerText = `─── ${t('report.title')} · ${t('common.floor')} 01 · ${t('common.cycle')} 01 ───`;

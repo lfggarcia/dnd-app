@@ -1,6 +1,6 @@
 import { getDB } from './connection';
 
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 const migrations: Record<number, string[]> = {
   1: [
@@ -57,6 +57,12 @@ const migrations: Record<number, string[]> = {
 
     `CREATE INDEX IF NOT EXISTS idx_saved_games_status ON saved_games(status)`,
     `CREATE INDEX IF NOT EXISTS idx_saved_games_updated ON saved_games(updated_at DESC)`,
+  ],
+
+  3: [
+    // Persist player location (village vs map) and map node states for resume
+    `ALTER TABLE saved_games ADD COLUMN location TEXT NOT NULL DEFAULT 'village'`,
+    `ALTER TABLE saved_games ADD COLUMN map_state TEXT`,
   ],
 };
 

@@ -3,7 +3,8 @@ import { en } from './translations/en';
 import { es } from './translations/es';
 
 export type Lang = 'en' | 'es';
-type TranslationMap = typeof en;
+type DeepString<T> = T extends string ? string : { [K in keyof T]: DeepString<T[K]> };
+type TranslationMap = DeepString<typeof en>;
 
 const translations: Record<Lang, TranslationMap> = { en, es };
 

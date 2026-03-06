@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
@@ -24,6 +24,11 @@ export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
 
   const [gold, setGold] = useState(0);
   const [phase, setPhase] = useState<'counting' | 'done'>('counting');
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
   const targetGold = 120;
 
   useEffect(() => {
@@ -108,31 +113,24 @@ export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
           </View>
         </View>
 
-        {/* Cycle Cost Notice */}
-        <View className="border border-secondary/30 p-3 bg-secondary/5 mb-4">
-          <Text className="text-secondary font-robotomono text-[9px]">
-            {t('extraction.cycleCostNotice')}
-          </Text>
-          <Text className="text-secondary/50 font-robotomono text-[8px] mt-1">
-            {t('extraction.restNotice')}
-          </Text>
-        </View>
       </ScrollView>
 
       {/* Action Buttons */}
       <View className="p-4 border-t border-primary/30 bg-background">
         <TouchableOpacity
-          onPress={() => navigation.navigate('Village')}
+          onPress={() => navigation.navigate('Map')}
           className="bg-primary p-3 items-center mb-2"
         >
-          <Text className="text-background font-bold font-robotomono text-base">{t('extraction.returnVillage')}</Text>
+          <Text className="text-background font-bold font-robotomono text-base">{t('extraction.continueExploring')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Map')}
-          className="border border-primary p-3 items-center"
-        >
-          <Text className="text-primary font-robotomono text-sm">{t('extraction.continueExploring')}</Text>
-        </TouchableOpacity>
+        <View className="border border-primary/20 p-3 items-center" style={{ opacity: 0.35 }}>
+          <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 12, color: '#00FF41' }}>
+            {t('extraction.returnVillage')}
+          </Text>
+          <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)', marginTop: 3 }}>
+            {t('extraction.lockedNotice')}
+          </Text>
+        </View>
       </View>
 
       <GlossaryButton />

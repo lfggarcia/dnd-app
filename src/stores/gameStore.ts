@@ -28,8 +28,8 @@ type GameActions = {
   startNewGame: (seed: string, seedHash: string, party: CharacterSave[]) => SavedGame;
   /** Resume a saved game by id */
   loadGame: (id: string) => boolean;
-  /** Update current game progress (floor, cycle, phase, gold, party) */
-  updateProgress: (updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status'>>) => void;
+  /** Update current game progress (floor, cycle, phase, gold, party, location, mapState) */
+  updateProgress: (updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState'>>) => void;
   /** Mark current game as dead/completed */
   endGame: (status: 'completed' | 'dead') => void;
   /** Delete a saved game */

@@ -178,6 +178,13 @@ export const es = {
     maxFloor: 'Piso máximo',
     floor: 'Piso',
     description: 'Tu base segura entre incursiones a la torre. Repara equipo, descansa y prepárate antes de la siguiente expedición.',
+    exitGame: 'Salir al menú',
+    exitConfirmTitle: 'Abandonar partida',
+    exitConfirmMsg: 'Tu progreso está guardado. ¿Volver al menú principal?',
+    rivalWaiting: 'EN ESPERA',
+    noRivals: 'Sin actividad rival registrada.\nCompleta tu primera incursión para activar el tablero.',
+    threats: 'Amenazas en la zona',
+    marketStock: 'En circulación',
   },
 
   map: {
@@ -197,6 +204,12 @@ export const es = {
     enemies: 'Enemigos',
     threat: 'Amenaza',
     moderate: 'Moderada',
+    exit: 'Salir',
+    saveExitTitle: 'Guardar y salir',
+    saveExitMsg: 'Tu posición actual en el mapa se guardará. Al seleccionar "Continuar" o cargar la partida, regresarás directamente a este punto.',
+    saveExit: 'Guardar y salir',
+    towerDisclaimerTitle: '⚠ Mecánica de la torre',
+    towerDisclaimerMsg: 'Una vez dentro, solo puedes regresar a la villa desde una Zona Segura o al completar el ciclo 60.\n\nSi necesitas cerrar la app antes de eso, usa el botón ✕ en el mapa — tu progreso se guardará y continuarás desde donde lo dejaste.',
   },
 
   battle: {
@@ -243,6 +256,7 @@ export const es = {
     continueExploring: 'Seguir explorando',
     cycleCostNotice: 'Volver a la villa no cuesta ciclos',
     restNotice: 'Descansar en la posada avanzará el ciclo (+1)',
+    lockedNotice: 'Disponible al completar ciclo 60 o desde zona segura',
   },
 
   worldLog: {

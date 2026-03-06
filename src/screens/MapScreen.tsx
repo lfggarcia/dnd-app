@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useCallback, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import type { ScreenProps } from '../navigation/types';
 import Animated, {
   useSharedValue,
@@ -10,7 +11,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { useI18n } from '../i18n';
+import { useGameStore } from '../stores/gameStore';
 
 type NodeType = 'COMBAT' | 'EVENT' | 'SAFE_ZONE' | 'BOSS' | 'UNKNOWN';
 
@@ -44,6 +47,36 @@ const FLOOR_NODES: MapNode[] = [
 
 export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const { t } = useI18n();
+  const activeGame = useGameStore(s => s.activeGame);
+  const updateProgress = useGameStore(s => s.updateProgress);
+
+  const [saveExitVisible, setSaveExitVisible] = useState(false);
+
+  // Initialize nodes from persisted map state if available
+  const [nodes, setNodes] = useState<MapNode[]>(() => {
+    try {
+      const raw = activeGame?.mapState;
+      if (raw) {
+        const saved = JSON.parse(raw) as Record<number, MapNode['status']>;
+        return FLOOR_NODES.map(n => ({ ...n, status: saved[n.id] ?? n.status }));
+      }
+    } catch {}
+    return [...FLOOR_NODES];
+  });
+
+  // Mark player as being in the map
+  useEffect(() => {
+    updateProgress({ location: 'map' });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Block hardware back button — once in the tower you cannot return to village
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+      return () => sub.remove();
+    }, [])
+  );
 
   const rotation = useSharedValue(0);
   const pulse = useSharedValue(0.3);
@@ -76,6 +109,13 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     }
   };
 
+  const handleSaveAndExit = () => {
+    const nodeSave: Record<number, string> = {};
+    for (const n of nodes) nodeSave[n.id] = n.status;
+    updateProgress({ location: 'map', mapState: JSON.stringify(nodeSave) });
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+  };
+
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
@@ -83,8 +123,8 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
 
       {/* Top Bar */}
       <View className="bg-primary/10 px-4 py-2 flex-row justify-between items-center border-b border-primary/30">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text className="text-primary font-robotomono text-xs">{'<'} {t('map.village')}</Text>
+        <TouchableOpacity onPress={() => setSaveExitVisible(true)} style={{ width: 60 }}>
+          <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)' }}>✕ {t('map.exit')}</Text>
         </TouchableOpacity>
         <Text className="text-primary font-bold font-robotomono text-xs">{t('common.floor')} 01 · {t('map.title')}</Text>
         <Text className="text-secondary font-robotomono text-[9px]">{t('common.cycle')}: 01/60</Text>
@@ -135,7 +175,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
           </View>
 
           {/* Nodes */}
-          {FLOOR_NODES.map(node => {
+          {nodes.map(node => {
             const style = NODE_STYLES[node.type];
             const isAccessible = node.status === 'AVAILABLE' || node.status === 'CURRENT';
 
@@ -186,7 +226,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
           <View>
             <Text className="text-primary font-robotomono text-[8px]">{t('map.scannerResults')}</Text>
             <Text className="text-primary/60 font-robotomono text-[8px]">
-              {t('map.nodes')}: {FLOOR_NODES.length} · {t('map.combats')}: {FLOOR_NODES.filter(n => n.type === 'COMBAT').length} · {t('map.boss')}: 1
+              {t('map.nodes')}: {nodes.length} · {t('map.combats')}: {nodes.filter(n => n.type === 'COMBAT').length} · {t('map.boss')}: 1
             </Text>
           </View>
           <View className="flex-row">
@@ -211,6 +251,16 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       </View>
 
       <GlossaryButton />
+
+      <ConfirmModal
+        visible={saveExitVisible}
+        title={t('map.saveExitTitle')}
+        message={t('map.saveExitMsg')}
+        confirmLabel={t('map.saveExit')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={handleSaveAndExit}
+        onCancel={() => setSaveExitVisible(false)}
+      />
     </View>
   );
 };

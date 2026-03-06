@@ -174,6 +174,13 @@ export const en = {
     maxFloor: 'Max floor',
     floor: 'Floor',
     description: 'Your safe base between tower raids. Repair gear, rest and prepare for the next expedition.',
+    exitGame: 'Exit to menu',
+    exitConfirmTitle: 'Leave game',
+    exitConfirmMsg: 'Your progress is saved. Return to main menu?',
+    rivalWaiting: 'STANDBY',
+    noRivals: 'No rival activity recorded.\nComplete your first run to activate the board.',
+    threats: 'Threats in the area',
+    marketStock: 'In circulation',
   },
 
   map: {
@@ -193,6 +200,12 @@ export const en = {
     enemies: 'Enemies',
     threat: 'Threat',
     moderate: 'Moderate',
+    exit: 'Exit',
+    saveExitTitle: 'Save & exit',
+    saveExitMsg: 'Your current position on the map will be saved. Selecting "Continue" or loading the game will bring you back to this exact point.',
+    saveExit: 'Save & exit',
+    towerDisclaimerTitle: '⚠ Tower mechanic',
+    towerDisclaimerMsg: 'Once inside, you can only return to the village from a Safe Zone or when cycle 60 is completed.\n\nIf you need to close the app before that, use the ✕ button on the map — your progress will be saved and you will resume from where you left off.',
   },
 
   battle: {
@@ -239,6 +252,7 @@ export const en = {
     continueExploring: 'Continue exploring',
     cycleCostNotice: 'Returning to village costs no cycles',
     restNotice: 'Resting at the inn will advance the cycle (+1)',
+    lockedNotice: 'Available upon completing cycle 60 or from a safe zone',
   },
 
   worldLog: {

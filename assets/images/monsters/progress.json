@@ -1,0 +1,138 @@
+{
+  "skeleton": {
+    "path": "assets/images/monsters/skeleton/illustration.png",
+    "seed": 3765674408
+  },
+  "skeleton_archer": {
+    "path": "assets/images/monsters/skeleton_archer/illustration.png",
+    "seed": 1183426787
+  },
+  "skeleton_knight": {
+    "path": "assets/images/monsters/skeleton_knight/illustration.png",
+    "seed": 2197378120
+  },
+  "skeleton_mage": {
+    "path": "assets/images/monsters/skeleton_mage/illustration.png",
+    "seed": 1654296909
+  },
+  "goblin": {
+    "path": "assets/images/monsters/goblin/illustration.png",
+    "seed": 1068772799
+  },
+  "goblin_veteran": {
+    "path": "assets/images/monsters/goblin_veteran/illustration.png",
+    "seed": 1593629191
+  },
+  "goblin_raider": {
+    "path": "assets/images/monsters/goblin_raider/illustration.png",
+    "seed": 1090915904
+  },
+  "goblin_champion": {
+    "path": "assets/images/monsters/goblin_champion/illustration.png",
+    "seed": 4283150785
+  },
+  "goblin_shaman": {
+    "path": "assets/images/monsters/goblin_shaman/illustration.png",
+    "seed": 1704416183
+  },
+  "zombie": {
+    "path": "assets/images/monsters/zombie/illustration.png",
+    "seed": 3219545162
+  },
+  "ghoul": {
+    "path": "assets/images/monsters/ghoul/illustration.png",
+    "seed": 149033893
+  },
+  "wight": {
+    "path": "assets/images/monsters/wight/illustration.png",
+    "seed": 1422856135
+  },
+  "rat": {
+    "path": "assets/images/monsters/rat/illustration.png",
+    "seed": 3224445240
+  },
+  "dire_rat": {
+    "path": "assets/images/monsters/dire_rat/illustration.png",
+    "seed": 3051299906
+  },
+  "giant_spider": {
+    "path": "assets/images/monsters/giant_spider/illustration.png",
+    "seed": 913105031
+  },
+  "dire_wolf": {
+    "path": "assets/images/monsters/dire_wolf/illustration.png",
+    "seed": 3397354131
+  },
+  "cultist": {
+    "path": "assets/images/monsters/cultist/illustration.png",
+    "seed": 1638711099
+  },
+  "orc": {
+    "path": "assets/images/monsters/orc/illustration.png",
+    "seed": 415960422
+  },
+  "hobgoblin": {
+    "path": "assets/images/monsters/hobgoblin/illustration.png",
+    "seed": 3655537473
+  },
+  "knight": {
+    "path": "assets/images/monsters/knight/illustration.png",
+    "seed": 1393870116
+  },
+  "demon": {
+    "path": "assets/images/monsters/demon/illustration.png",
+    "seed": 374042425
+  },
+  "troll": {
+    "path": "assets/images/monsters/troll/illustration.png",
+    "seed": 3466841879
+  },
+  "lich": {
+    "path": "assets/images/monsters/lich/illustration.png",
+    "seed": 4245902411
+  },
+  "banshee": {
+    "path": "assets/images/monsters/banshee/illustration.png",
+    "seed": 2328303986
+  },
+  "mummy": {
+    "path": "assets/images/monsters/mummy/illustration.png",
+    "seed": 1607084624
+  },
+  "vampire": {
+    "path": "assets/images/monsters/vampire/illustration.png",
+    "seed": 1817606002
+  },
+  "harpy": {
+    "path": "assets/images/monsters/harpy/illustration.png",
+    "seed": 4169336214
+  },
+  "gnoll": {
+    "path": "assets/images/monsters/gnoll/illustration.png",
+    "seed": 1131944879
+  },
+  "werewolf": {
+    "path": "assets/images/monsters/werewolf/illustration.png",
+    "seed": 1460705241
+  },
+  "dark_knight": {
+    "path": "assets/images/monsters/dark_knight/illustration.png",
+    "seed": 712898172
+  },
+  "ogre": {
+    "path": "assets/images/monsters/ogre/illustration.png",
+    "seed": 3163046787
+  },
+  "berserker": {
+    "path": "assets/images/monsters/berserker/illustration.png",
+    "seed": 3841454308
+  },
+  "imp": {
+    "path": "assets/images/monsters/imp/illustration.png",
+    "seed": 2872306662
+  },
+  "dragon_wyrmling": {
+    "path": "assets/images/monsters/dragon_wyrmling/illustration.png",
+    "seed": 3112782316
+  }
+}

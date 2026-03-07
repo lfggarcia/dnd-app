@@ -82,6 +82,22 @@ async function fetchOutputBlob(filename, subfolder) {
   return Buffer.from(await r.arrayBuffer());
 }
 
+// Upload a PNG buffer to ComfyUI's input folder so LoadImage can access it.
+// Returns the filename ComfyUI assigned (may differ if a name collision is resolved).
+async function uploadToComfyInput(buf, desiredFilename) {
+  const FormData = (await import('node:buffer')).Blob ? globalThis.FormData : undefined;
+  // Node 18+ has FormData globally
+  const form = new globalThis.FormData();
+  form.append('image', new Blob([buf], { type: 'image/png' }), desiredFilename);
+  form.append('overwrite', 'true');
+  const r = await fetch(`${COMFY_URL}/upload/image`, { method: 'POST', body: form });
+  const text = await r.text();
+  log('UPLOAD_RESPONSE', text);
+  if (!r.ok) throw new Error(`Upload failed ${r.status}: ${text}`);
+  const parsed = JSON.parse(text);
+  return parsed.name; // filename as stored in ComfyUI's input dir
+}
+
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
 function assertValidPng(buf, name) {
   if (buf.length < PNG_MAGIC.length || !PNG_MAGIC.every((b, i) => buf[i] === b))
@@ -186,6 +202,11 @@ async function main() {
   fs.writeFileSync(basePath, baseBuf);
   console.log(`OK  (${(baseBuf.length / 1024).toFixed(1)} KB) -> ${path.relative(process.cwd(), basePath)}`);
 
+  // Upload base sprite to ComfyUI input folder so LoadImage can access it
+  process.stdout.write('  Uploading to ComfyUI input ... ');
+  const inputFilename = await uploadToComfyInput(baseBuf, `sprite_input_${Date.now()}.png`);
+  console.log(`OK  (input/${inputFilename})`);
+
   // 3. PHASE 2 — img2img
   const seedAnim   = Math.floor(Math.random() * 2 ** 32);
   const idlePrompt =
@@ -195,10 +216,10 @@ async function main() {
     'dark moody background, dramatic lighting, highly detailed, no text, no watermark';
 
   console.log(`\n[PHASE 2] img2img — idle frame 0  (seed ${seedAnim})`);
-  console.log(`  Base file : ${baseFile}`);
-  console.log(`  Denoise   : 0.65`);
+  console.log(`  Input file : ${inputFilename}`);
+  console.log(`  Denoise    : 0.65`);
 
-  const pid2 = await queueWorkflow('IMG2IMG:skeleton_idle_f0', buildImg2Img(baseFile, idlePrompt, seedAnim));
+  const pid2 = await queueWorkflow('IMG2IMG:skeleton_idle_f0', buildImg2Img(inputFilename, idlePrompt, seedAnim));
   console.log(`  prompt_id: ${pid2}`);
 
   const { entry: e2, elapsed: t2 } = await pollUntilDone('img2img', pid2);

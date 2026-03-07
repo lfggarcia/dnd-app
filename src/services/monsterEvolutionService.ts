@@ -97,8 +97,45 @@ const MONSTER_STATS: Record<string, MonsterStats> = {
     hp: 27, ac: 16, attackBonus: 6, damage: '2d8+3', xpReward: 450, cr: 2, stealth: 12,
     type: 'goblin_champion',
   },
+  goblin_shaman: {
+    name: 'goblin_shaman', displayName: 'Goblin Shaman',
+    hp: 16, ac: 12, attackBonus: 4, damage: '2d6+2', xpReward: 150, cr: 1, stealth: 13,
+    type: 'goblin_shaman',
+  },
 
-  // Rats (tier 0–2)
+  // Undead (tier 0–2) + extended undead
+  zombie: {
+    name: 'zombie', displayName: 'Zombie',
+    hp: 22, ac: 8, attackBonus: 3, damage: '1d6+1', xpReward: 50, cr: 0.25, stealth: 8,
+    type: 'zombie',
+  },
+  ghoul: {
+    name: 'ghoul', displayName: 'Ghoul',
+    hp: 22, ac: 12, attackBonus: 4, damage: '2d6+2', xpReward: 200, cr: 1, stealth: 14,
+    type: 'ghoul',
+  },
+  wight: {
+    name: 'wight', displayName: 'Wight',
+    hp: 45, ac: 14, attackBonus: 5, damage: '2d6+3', xpReward: 700, cr: 3, stealth: 14,
+    type: 'wight',
+  },
+  banshee: {
+    name: 'banshee', displayName: 'Banshee',
+    hp: 58, ac: 12, attackBonus: 4, damage: '3d6', xpReward: 1100, cr: 4, stealth: 15,
+    type: 'banshee',
+  },
+  mummy: {
+    name: 'mummy', displayName: 'Mummy',
+    hp: 58, ac: 11, attackBonus: 5, damage: '2d6+3', xpReward: 700, cr: 3, stealth: 8,
+    type: 'mummy',
+  },
+  vampire: {
+    name: 'vampire', displayName: 'Vampire',
+    hp: 144, ac: 16, attackBonus: 9, damage: '2d8+6', xpReward: 11500, cr: 13, stealth: 15,
+    type: 'vampire',
+  },
+
+  // Rats (tier 0–2) + creature types
   rat: {
     name: 'rat', displayName: 'Giant Rat',
     hp: 7, ac: 12, attackBonus: 4, damage: '2d4', xpReward: 25, cr: 0.125, stealth: 12,
@@ -108,6 +145,53 @@ const MONSTER_STATS: Record<string, MonsterStats> = {
     name: 'dire_rat', displayName: 'Dire Rat',
     hp: 16, ac: 12, attackBonus: 6, damage: '2d6+3', xpReward: 100, cr: 0.5, stealth: 11,
     type: 'dire_rat',
+  },
+  giant_spider: {
+    name: 'giant_spider', displayName: 'Giant Spider',
+    hp: 26, ac: 14, attackBonus: 5, damage: '1d8+3', xpReward: 200, cr: 1, stealth: 16,
+    type: 'giant_spider',
+  },
+  dire_wolf: {
+    name: 'dire_wolf', displayName: 'Dire Wolf',
+    hp: 37, ac: 14, attackBonus: 5, damage: '2d6+3', xpReward: 200, cr: 1, stealth: 13,
+    type: 'dire_wolf',
+  },
+  harpy: {
+    name: 'harpy', displayName: 'Harpy',
+    hp: 38, ac: 11, attackBonus: 5, damage: '2d6+3', xpReward: 200, cr: 1, stealth: 10,
+    type: 'harpy',
+  },
+  gnoll: {
+    name: 'gnoll', displayName: 'Gnoll',
+    hp: 22, ac: 15, attackBonus: 4, damage: '2d6+2', xpReward: 100, cr: 0.5, stealth: 10,
+    type: 'gnoll',
+  },
+  werewolf: {
+    name: 'werewolf', displayName: 'Werewolf',
+    hp: 58, ac: 12, attackBonus: 4, damage: '2d8+2', xpReward: 700, cr: 3, stealth: 11,
+    type: 'werewolf',
+  },
+
+  // Humanoids (tier 0–3)
+  orc: {
+    name: 'orc', displayName: 'Orc',
+    hp: 15, ac: 13, attackBonus: 5, damage: '1d12+3', xpReward: 100, cr: 0.5, stealth: 9,
+    type: 'orc',
+  },
+  hobgoblin: {
+    name: 'hobgoblin', displayName: 'Hobgoblin',
+    hp: 11, ac: 18, attackBonus: 3, damage: '2d6+1', xpReward: 200, cr: 0.5, stealth: 10,
+    type: 'hobgoblin',
+  },
+  ogre: {
+    name: 'ogre', displayName: 'Ogre',
+    hp: 59, ac: 11, attackBonus: 6, damage: '2d8+4', xpReward: 450, cr: 2, stealth: 8,
+    type: 'ogre',
+  },
+  berserker: {
+    name: 'berserker', displayName: 'Berserker',
+    hp: 67, ac: 13, attackBonus: 5, damage: '2d12+3', xpReward: 450, cr: 2, stealth: 9,
+    type: 'berserker',
   },
 
   // Cultists / Knights
@@ -121,12 +205,34 @@ const MONSTER_STATS: Record<string, MonsterStats> = {
     hp: 52, ac: 18, attackBonus: 5, damage: '2d8+3', xpReward: 700, cr: 3, stealth: 10,
     type: 'knight',
   },
+  dark_knight: {
+    name: 'dark_knight', displayName: 'Dark Knight',
+    hp: 78, ac: 20, attackBonus: 7, damage: '2d10+4', xpReward: 1800, cr: 5, stealth: 10,
+    type: 'dark_knight',
+  },
 
   // Demons
+  imp: {
+    name: 'imp', displayName: 'Imp',
+    hp: 10, ac: 13, attackBonus: 5, damage: '1d4+3', xpReward: 100, cr: 1, stealth: 15,
+    type: 'imp',
+  },
   demon: {
     name: 'demon', displayName: 'Imp Demon',
     hp: 10, ac: 13, attackBonus: 5, damage: '2d4+3', xpReward: 200, cr: 1, stealth: 15,
     type: 'demon',
+  },
+  troll: {
+    name: 'troll', displayName: 'Troll',
+    hp: 84, ac: 15, attackBonus: 7, damage: '2d6+4', xpReward: 1800, cr: 5, stealth: 10,
+    type: 'troll',
+  },
+
+  // Bosses
+  dragon_wyrmling: {
+    name: 'dragon_wyrmling', displayName: 'Dragon Wyrmling',
+    hp: 75, ac: 17, attackBonus: 4, damage: '2d10+2', xpReward: 1800, cr: 2, stealth: 12,
+    type: 'dragon_wyrmling',
   },
 
   // Lich (boss)
@@ -140,11 +246,35 @@ const MONSTER_STATS: Record<string, MonsterStats> = {
 // ─── Evolution chains ─────────────────────────────────────────────────────────
 
 const EVOLUTION_CHAINS: Record<string, string[]> = {
-  skeleton:  ['skeleton', 'skeleton_archer', 'skeleton_knight', 'skeleton_mage'],
-  goblin:    ['goblin', 'goblin_veteran', 'goblin_raider', 'goblin_champion'],
-  rat:       ['rat', 'rat', 'dire_rat', 'dire_rat'],
-  cultist:   ['cultist', 'cultist', 'knight', 'knight'],
-  demon:     ['demon', 'demon', 'demon', 'demon'],
+  // Skeletons evolve from warrior → archer → knight → mage
+  skeleton:      ['skeleton', 'skeleton_archer', 'skeleton_knight', 'skeleton_mage'],
+  // Goblins evolve through ranks, shaman available at T2+
+  goblin:        ['goblin', 'goblin_veteran', 'goblin_raider', 'goblin_champion'],
+  goblin_shaman: ['goblin_shaman', 'goblin_shaman', 'goblin_shaman', 'goblin_shaman'],
+  // Undead chain: zombie → ghoul → wight → banshee
+  zombie:        ['zombie', 'zombie', 'ghoul', 'wight'],
+  // Legacy undead singletons
+  mummy:         ['mummy', 'mummy', 'mummy', 'mummy'],
+  banshee:       ['banshee', 'banshee', 'banshee', 'banshee'],
+  vampire:       ['vampire', 'vampire', 'vampire', 'vampire'],
+  // Rats scale to dire rat
+  rat:           ['rat', 'rat', 'dire_rat', 'dire_rat'],
+  // Creature singletons
+  giant_spider:  ['giant_spider', 'giant_spider', 'giant_spider', 'giant_spider'],
+  dire_wolf:     ['dire_wolf', 'dire_wolf', 'dire_wolf', 'dire_wolf'],
+  harpy:         ['harpy', 'harpy', 'harpy', 'harpy'],
+  gnoll:         ['gnoll', 'gnoll', 'gnoll', 'gnoll'],
+  werewolf:      ['werewolf', 'werewolf', 'werewolf', 'werewolf'],
+  // Humanoid chains: orc → hobgoblin → ogre; cultist → knight → dark_knight
+  orc:           ['orc', 'orc', 'hobgoblin', 'ogre'],
+  berserker:     ['berserker', 'berserker', 'berserker', 'berserker'],
+  cultist:       ['cultist', 'cultist', 'knight', 'dark_knight'],
+  // Demon chain: imp → demon
+  imp:           ['imp', 'imp', 'demon', 'demon'],
+  demon:         ['demon', 'demon', 'demon', 'demon'],
+  // Boss singletons
+  troll:         ['troll', 'troll', 'troll', 'troll'],
+  dragon_wyrmling: ['dragon_wyrmling', 'dragon_wyrmling', 'dragon_wyrmling', 'dragon_wyrmling'],
 };
 
 /**

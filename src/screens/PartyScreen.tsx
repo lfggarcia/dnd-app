@@ -382,6 +382,8 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   const { t, lang } = useI18n();
   const { seed, seedHash } = route.params;
   const startNewGame = useGameStore(s => s.startNewGame);
+  const updateProgress = useGameStore(s => s.updateProgress);
+  const saveCharacterPortraits = useGameStore(s => s.saveCharacterPortraits);
 
   // DB-driven data hooks
   const { data: races, loading: racesLoading } = useRaces();
@@ -544,6 +546,8 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
       const uri = await generateCharacterPortrait(char);
       setCharPortraits(prev => ({ ...prev, [activeSlot]: uri }));
       setCharPortraitRolls(prev => ({ ...prev, [activeSlot]: (prev[activeSlot] ?? 0) + 1 }));
+      // Persist portrait immediately to DB so it survives navigation
+      saveCharacterPortraits({ [String(activeSlot)]: uri });
     } catch (err) {
       console.error('[Portrait] generation error:', err);
       const msg = err instanceof Error ? err.message : String(err);
@@ -551,7 +555,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     } finally {
       setGeneratingPortraitFor(null);
     }
-  }, [generatingPortraitFor, activeSlot, buildPartySaves, charPortraitRolls]);
+  }, [generatingPortraitFor, activeSlot, buildPartySaves, charPortraitRolls, saveCharacterPortraits]);
 
   // ── Current selections ──
 
@@ -1190,26 +1194,24 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
               setStartingGame(true);
               try {
                 const party = buildPartySaves();
-                const game = startNewGame(seed, seedHash, party);
+                startNewGame(seed, seedHash, party);
 
                 // Auto-generate portraits for any character that doesn't have one yet
-                const partyCopy = [...party];
-                let needsPortraitSave = false;
-                for (let i = 0; i < partyCopy.length; i++) {
-                  if (!partyCopy[i].portrait) {
+                const newPortraits: Record<string, string> = {};
+                for (let i = 0; i < party.length; i++) {
+                  if (!party[i].portrait) {
                     try {
-                      const uri = await generateCharacterPortrait(partyCopy[i]);
-                      partyCopy[i] = { ...partyCopy[i], portrait: uri };
+                      const uri = await generateCharacterPortrait(party[i]);
                       setCharPortraits(prev => ({ ...prev, [i]: uri }));
-                      needsPortraitSave = true;
+                      newPortraits[String(i)] = uri;
                     } catch {
                       // Portrait generation failed — not blocking
                     }
                   }
                 }
-                if (needsPortraitSave) {
-                  const { updateSavedGame } = await import('../database/gameRepository');
-                  updateSavedGame(game.id, { partyData: partyCopy });
+                if (Object.keys(newPortraits).length > 0) {
+                  // Save portraits to dedicated portraits_json column, not inside party_data
+                  saveCharacterPortraits(newPortraits);
                 }
 
                 navigation.reset({ index: 0, routes: [{ name: 'Village' }] });

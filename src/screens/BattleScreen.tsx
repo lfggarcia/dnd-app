@@ -11,6 +11,13 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
   const activeGame = useGameStore(s => s.activeGame);
   const party = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
   const portrait = activeGame?.partyPortrait ?? null;
+  /** Portraits keyed by character index. portraitsJson takes priority over char.portrait */
+  const portraitsMap = useMemo(
+    () => activeGame?.portraitsJson ?? null,
+    [activeGame],
+  );
+  const getCharPortrait = (char: typeof party[0], index: number): string | null =>
+    portraitsMap?.[String(index)] ?? char.portrait ?? null;
   const aliveParty = useMemo(() => party.filter(c => c.alive), [party]);
 
   useEffect(() => {
@@ -81,6 +88,7 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
           {aliveParty.slice(0, 5).map((char, i) => {
             const hpPct = char.maxHp > 0 ? char.hp / char.maxHp : 0;
             const hpColor = hpPct > 0.5 ? '#00FF41' : hpPct > 0.25 ? '#FFB000' : '#FF3E3E';
+            const charPortrait = getCharPortrait(char, i);
             return (
               <View key={`${char.name}-${i}`} className="items-center" style={{ flex: 1 }}>
               <View
@@ -94,14 +102,14 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
                     justifyContent: 'center',
                   }}
                 >
-                  {char.portrait ? (
+                  {charPortrait ? (
                     <Image
-                      source={{ uri: char.portrait }}
+                      source={{ uri: charPortrait }}
                       style={{ position: 'absolute', width: 44, height: 56 }}
                       resizeMode="cover"
                     />
                   ) : null}
-                  <View style={{ alignItems: 'center', justifyContent: 'center', backgroundColor: char.portrait ? 'rgba(10,14,10,0.45)' : 'transparent', width: '100%', height: '100%' }}>
+                  <View style={{ alignItems: 'center', justifyContent: 'center', backgroundColor: charPortrait ? 'rgba(10,14,10,0.45)' : 'transparent', width: '100%', height: '100%' }}>
                     <Text className="font-robotomono text-center" style={{ fontSize: 7, color: hpColor }}>
                       {char.name.substring(0, 6).toUpperCase()}
                     </Text>

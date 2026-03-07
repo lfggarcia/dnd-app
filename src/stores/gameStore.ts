@@ -32,6 +32,8 @@ type GameActions = {
   updateProgress: (updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState'>>) => void;
   /** Save the AI-generated party portrait (base64 data URI) */
   savePortrait: (portrait: string) => void;
+  /** Save individual character portraits as a map of index → base64 data URI */
+  saveCharacterPortraits: (portraits: Record<string, string>) => void;
   /** Mark current game as dead/completed */
   endGame: (status: 'completed' | 'dead') => void;
   /** Delete a saved game */
@@ -87,6 +89,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     updateSavedGame(activeGame.id, { partyPortrait: portrait });
     set({
       activeGame: { ...activeGame, partyPortrait: portrait, updatedAt: new Date().toISOString() },
+    });
+  },
+
+  saveCharacterPortraits: (portraits) => {
+    const { activeGame } = get();
+    if (!activeGame) return;
+    const merged = { ...(activeGame.portraitsJson ?? {}), ...portraits };
+    updateSavedGame(activeGame.id, { portraitsJson: merged });
+    set({
+      activeGame: { ...activeGame, portraitsJson: merged, updatedAt: new Date().toISOString() },
     });
   },
 

@@ -1,20 +1,45 @@
 // ─── Types ─────────────────────────────────────────────────────────────────
 export type EnemyType =
+  // Skeletons
   | 'skeleton'
   | 'skeleton_archer'
   | 'skeleton_knight'
   | 'skeleton_mage'
+  // Goblins
   | 'goblin'
   | 'goblin_veteran'
   | 'goblin_raider'
   | 'goblin_champion'
   | 'goblin_shaman'
+  // Undead
+  | 'zombie'
+  | 'ghoul'
+  | 'wight'
+  | 'banshee'
+  | 'mummy'
+  | 'vampire'
+  // Creatures
   | 'rat'
   | 'dire_rat'
+  | 'giant_spider'
+  | 'dire_wolf'
+  | 'harpy'
+  | 'gnoll'
+  | 'werewolf'
+  // Humanoids
   | 'cultist'
+  | 'orc'
+  | 'hobgoblin'
   | 'knight'
+  | 'dark_knight'
+  | 'ogre'
+  | 'berserker'
+  // Demons & Bosses
   | 'demon'
-  | 'lich';
+  | 'imp'
+  | 'troll'
+  | 'lich'
+  | 'dragon_wyrmling';
 
 export type AnimationType = 'idle' | 'run' | 'attack' | 'damage' | 'death';
 
@@ -36,29 +61,63 @@ export interface EnemySprite {
 }
 
 // ─── ComfyUI config ─────────────────────────────────────────────────────────
-// Same host as character portraits (socat → 192.168.0.20:8089 on emulator)
-const COMFY_BASE_URL = 'http://10.0.2.2:8089';
+// Android emulator → 10.0.2.2 (NAT loopback to host Mac)
+// iOS Simulator    → localhost (direct loopback to host Mac)
+// Physical device (same WiFi) → 192.168.0.20
+import { Platform } from 'react-native';
+
+const COMFY_HOST = Platform.select({
+  android: '10.0.2.2',    // Android emulator NAT loopback → host Mac
+  ios: '192.168.0.20',    // iOS: direct LAN IP (simulator uses localhost but LAN IP also works)
+  default: '192.168.0.20',
+});
+const COMFY_BASE_URL = `http://${COMFY_HOST}:8089`;
 const COMFY_CLIENT_ID = 'dnd3-sprite-gen';
 const POLL_INTERVAL_MS = 1500;
 const POLL_MAX_ATTEMPTS = 80;
 
 // ─── Prompt builders ─────────────────────────────────────────────────────────
 const ENEMY_DESC: Record<EnemyType, string> = {
+  // Skeletons
   skeleton:          'undead skeleton warrior',
   skeleton_archer:   'undead skeleton archer with bow',
   skeleton_knight:   'armored undead skeleton knight with shield',
   skeleton_mage:     'undead skeleton mage holding a glowing staff',
+  // Goblins
   goblin:            'small green goblin warrior with a rusty sword',
   goblin_veteran:    'scarred veteran goblin fighter with leather armor',
   goblin_raider:     'goblin raider with twin curved blades',
   goblin_champion:   'large powerful goblin champion with war axe',
   goblin_shaman:     'goblin shaman with magical totems and bone staff',
+  // Undead
+  zombie:            'shambling undead zombie with outstretched grasping arms',
+  ghoul:             'feral undead ghoul with elongated claws and glowing eyes',
+  wight:             'ancient wight undead commander in corroded dark armor',
+  banshee:           'translucent wailing banshee spirit with ghostly flowing robes and hollow screaming face',
+  mummy:             'ancient mummy wrapped in rotting bandages with glowing curse runes and crumbling sarcophagus armor',
+  vampire:           'elegant vampire lord in dark noble coat with pale skin, crimson eyes and bared fangs',
+  // Creatures
   rat:               'giant dungeon rat with sharp claws',
   dire_rat:          'massive dire rat with glowing red eyes',
+  giant_spider:      'enormous dungeon giant spider with venom dripping fangs',
+  dire_wolf:         'massive dire wolf with bared snarling fangs',
+  harpy:             'harpy monster with large feathered wings, taloned claws, and wild matted hair',
+  gnoll:             'gnoll hyena-headed humanoid warrior with spotted fur, jagged spear and hyena skull trophy',
+  werewolf:          'werewolf half-transformed warrior, gray fur erupting through torn clothing, massive claws',
+  // Humanoids
   cultist:           'dark robed cultist with glowing sigils',
+  orc:               'large orc warrior with crude plate armor and battle axe',
+  hobgoblin:         'disciplined hobgoblin soldier with military-grade armor',
   knight:            'corrupted armored dark knight',
+  dark_knight:       'black-armored dark knight with a demonic visor, two-handed shadow blade trailing dark energy',
+  ogre:              'massive ogre with thick gray-green hide, crude wooden club and dirty hide loincloth',
+  berserker:         'armored human berserker warrior with wild eyes, battle rage, twin handaxes raised',
+  // Demons & Bosses
   demon:             'small dungeon imp demon with claws',
+  imp:               'tiny red winged imp demon with barbed tail, mischievous grin and small pitchfork',
+  troll:             'hulking troll with enormous claws and regenerating wounds',
   lich:              'ancient undead lich sorcerer with dark crown',
+  dragon_wyrmling:   'young black dragon wyrmling, small fierce serpentine dragon with acid-dripping jaws and dark scales',
 };
 
 const NEGATIVE_PROMPT =
@@ -343,8 +402,14 @@ export function getEvolvedEnemyType(base: EnemyType, cycle: number, floorNumber:
   const evolutionTable: Partial<Record<EnemyType, EnemyType[]>> = {
     skeleton:  ['skeleton', 'skeleton_archer', 'skeleton_knight', 'skeleton_mage'],
     goblin:    ['goblin', 'goblin_veteran', 'goblin_raider', 'goblin_champion'],
+    zombie:    ['zombie', 'zombie', 'ghoul', 'wight'],
     rat:       ['rat', 'rat', 'dire_rat', 'dire_rat'],
-    cultist:   ['cultist', 'cultist', 'knight', 'knight'],
+    cultist:   ['cultist', 'cultist', 'dark_knight', 'dark_knight'],
+    orc:       ['orc', 'orc', 'hobgoblin', 'ogre'],
+    demon:     ['imp', 'imp', 'demon', 'demon'],
+    harpy:     ['harpy', 'harpy', 'harpy', 'harpy'],
+    gnoll:     ['gnoll', 'gnoll', 'gnoll', 'gnoll'],
+    werewolf:  ['werewolf', 'werewolf', 'werewolf', 'werewolf'],
   };
   const chain = evolutionTable[base];
   if (!chain) return base;

@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { TypewriterText } from '../components/TypewriterText';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
-import { TorreLogo } from '../components/TorreLogo';
+import { LogoIA } from '../components/LogoIA';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { ScreenProps } from '../navigation/types';
@@ -114,8 +114,8 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
       </View>
 
       <View className="flex-1 items-center justify-center px-6">
-        {/* Tower Logo */}
-        <TorreLogo />
+        {/* IA Logo */}
+        <LogoIA />
 
         <Text className="text-secondary font-robotomono text-[9px] mt-2 mb-1">
           {t('main.subtitle')}
@@ -284,7 +284,7 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
         animationType="fade"
         onRequestClose={() => setDeleteTarget(null)}
       >
-        <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
+        <View className="flex-1 justify-center items-center" style={S.deleteOverlay}>
           <View className="mx-8 w-full max-w-xs border border-primary/40 bg-background p-6">
             <Text className="text-primary font-robotomono font-bold text-sm mb-3">
               {t('main.deleteSave')}
@@ -316,3 +316,7 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
     </View>
   );
 };
+
+const S = StyleSheet.create({
+  deleteOverlay: { backgroundColor: 'rgba(0,0,0,0.85)' },
+});

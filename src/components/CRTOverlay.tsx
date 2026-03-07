@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { memo, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { 
   useSharedValue, 
@@ -15,18 +15,19 @@ const styles = StyleSheet.create({
   }
 });
 
-// Helper component to render scanlines
-export const ScanlineOverlay = () => {
-  return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      {Array.from({ length: 100 }).map((_, i) => (
-        <View key={i} style={styles.scanline} />
-      ))}
-    </View>
-  );
-};
+// Hoisted so React can diff a stable reference — avoids re-creating 100 items
+const SCANLINE_INDICES = Array.from({ length: 100 }, (_, i) => i);
 
-export const CRTOverlay = () => {
+// Memoized: re-renders only if its own props change (it has none)
+export const ScanlineOverlay = memo(() => (
+  <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+    {SCANLINE_INDICES.map(i => (
+      <View key={i} style={styles.scanline} />
+    ))}
+  </View>
+));
+
+export const CRTOverlay = memo(() => {
   const flicker = useSharedValue(1);
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export const CRTOverlay = () => {
       -1,
       true
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -56,4 +58,4 @@ export const CRTOverlay = () => {
       />
     </View>
   );
-};
+});

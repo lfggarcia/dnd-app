@@ -398,6 +398,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   const [generatingPortraitFor, setGeneratingPortraitFor] = useState<number | null>(null);
   const [portraitError, setPortraitError] = useState<string | null>(null);
   const [portraitDetailUri, setPortraitDetailUri] = useState<string | null>(null);
+  const [portraitExpanded, setPortraitExpanded] = useState(true);
   const [startingGame, setStartingGame] = useState(false);
 
   const current = roster[activeSlot];
@@ -669,7 +670,22 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
             {currentSubData ? ` · ${currentSubData.name}` : ''}
           </Text>
 
+          {/* Portrait section — collapsible toggle */}
+          <TouchableOpacity
+            onPress={() => setPortraitExpanded(v => !v)}
+            activeOpacity={0.7}
+            className="flex-row items-center justify-between mb-2"
+          >
+            <Text style={{ color: 'rgba(0,255,65,0.45)', fontFamily: 'RobotoMono-Regular', fontSize: 9, letterSpacing: 1 }}>
+              {lang === 'es' ? '— RETRATO —' : '— PORTRAIT —'}
+            </Text>
+            <Text style={{ color: 'rgba(0,255,65,0.45)', fontFamily: 'RobotoMono-Regular', fontSize: 11 }}>
+              {portraitExpanded ? '▲' : '▼'}
+            </Text>
+          </TouchableOpacity>
+
           {/* Portrait row */}
+          {portraitExpanded && (
           <View className="flex-row items-center">
             {/* Portrait thumbnail — tap to zoom when portrait exists */}
             <TouchableOpacity
@@ -750,6 +766,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
               )}
             </View>
           </View>
+          )}
         </View>
 
         {/* ── 1. Race ── */}

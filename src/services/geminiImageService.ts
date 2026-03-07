@@ -50,7 +50,7 @@ const STAT_FLAVOR: Record<string, string> = {
   CHA: 'with a striking charismatic presence',
 };
 
-function buildCharacterPrompt(char: CharacterPortraitInput): string {
+function buildCharacterPrompt(char: CharacterPortraitInput): { positive: string; negative: string } {
   const race = RACE_HINTS[char.race] ?? char.race.replace(/-/g, ' ');
   const cls = CLASS_HINTS[char.charClass] ?? char.charClass;
   const sub = char.subclass ? ` ${char.subclass}` : '';
@@ -59,21 +59,25 @@ function buildCharacterPrompt(char: CharacterPortraitInput): string {
     .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'STR';
   const statFlavor = STAT_FLAVOR[topStat] ?? '';
 
-  return [
-    `(masterpiece, best quality), dark fantasy RPG character portrait of a ${race} ${cls}${sub}, ${char.name}.`,
-    statFlavor ? `${statFlavor}.` : '',
-    'Digital painting, stylized oil painting, detailed brushwork, concept art.',
-    'Diablo IV art style, Baldur\'s Gate 3 character portrait aesthetic.',
-    'Dramatic chiaroscuro lighting, deep shadows, battle-worn equipment.',
-    'Dark dungeon atmosphere, moody color grading, highly detailed fantasy illustration.',
-    'Bust portrait, dark background, no text, no watermark, no UI elements.',
-  ].filter(Boolean).join(' ');
-}
+  const positive = [
+    'score_9, score_8_up, score_8, masterpiece, best quality, newest, absurdres',
+    'BREAK',
+    `1person, solo, ${race} ${cls}${sub}`,
+    statFlavor,
+    'dynamic portrait, detailed face, expressive eyes, dramatic lighting',
+    'dark fantasy RPG, concept art, highly detailed fantasy illustration',
+    'dark dungeon atmosphere, bust portrait, dark background',
+    'usnr, 748cmstyle',
+  ].filter(Boolean).join(', ');
 
-const NEGATIVE_PROMPT =
-  '(worst quality, low quality:1.4), photorealistic, photograph, 3d render, blurry, ' +
-  'deformed, bad anatomy, extra limbs, missing limbs, mutated hands, watermark, ' +
-  'text, logo, signature, username, nsfw, nudity, ugly, duplicate, morbid, disfigured';
+  const negative = [
+    'score_6, score_5, score_4, low quality, worst quality',
+    'blurry, deformed, bad anatomy, extra limbs, watermark, text, logo, signature',
+    'photorealistic, photograph, 3d render, nsfw, multiple people, crowd',
+  ].join(', ');
+
+  return { positive, negative };
+}
 
 // ─── ComfyUI config ───────────────────────────────────────
 
@@ -90,53 +94,46 @@ const POLL_MAX_ATTEMPTS = 80;
 
 // ─── Workflow builder ─────────────────────────────────────
 
-// Workflow: Perfect World v6 (SD 1.5 checkpoint)
-// Nodes: 1=Checkpoint, 2=Positive, 3=Negative, 4=Latent, 5=KSampler, 6=VAEDecode, 7=Upscale, 8=SaveImage
-function buildWorkflow(prompt: string, seed: number): Record<string, unknown> {
+// ─── Workflow builder — Illustrious / PerfectDeliberate v8 ───────────────────
+//
+// Node graph (API format):
+//   [1] CheckpointLoaderSimple (perfectDeliberate_v8)
+//   [2] LoraLoader 748cm (0.5)
+//   [3] LoraLoader thiccwithaq (0.7)
+//   [4] LoraLoader USNR (0.6)
+//   [5] CLIPSetLastLayer (clip_skip -2)
+//   [6] CLIPTextEncode (positive)
+//   [7] CLIPTextEncode (negative)
+//   [8] EmptyLatentImage 832x1216
+//   [9] KSampler base (steps 38, cfg 4, dpmpp_2m karras, denoise 1.0)
+//  [10] VAEDecode
+//  [11] UpscaleModelLoader (4x_remacri)
+//  [12] ImageUpscaleWithModel
+//  [13] ImageScale -> 1248x1824 (lanczos)
+//  [14] VAEEncode
+//  [15] KSampler hires (steps 20, cfg 4, denoise 0.55)
+//  [16] VAEDecode
+//  [17] SaveImage -> dnd3-portrait
+//
+function buildWorkflow(positiveText: string, negativeText: string, seed: number): Record<string, unknown> {
   return {
-    '1': {
-      inputs: { ckpt_name: 'perfectWorld_v6Baked.safetensors' },
-      class_type: 'CheckpointLoaderSimple',
-    },
-    '2': {
-      inputs: { text: prompt, clip: ['1', 1] },
-      class_type: 'CLIPTextEncode',
-    },
-    '3': {
-      inputs: { text: NEGATIVE_PROMPT, clip: ['1', 1] },
-      class_type: 'CLIPTextEncode',
-    },
-    '4': {
-      inputs: { width: 512, height: 768, batch_size: 1 },
-      class_type: 'EmptyLatentImage',
-    },
-    '5': {
-      inputs: {
-        seed,
-        steps: 25,
-        cfg: 7,
-        sampler_name: 'dpm_2_ancestral',
-        scheduler: 'karras',
-        denoise: 1,
-        model: ['1', 0],
-        positive: ['2', 0],
-        negative: ['3', 0],
-        latent_image: ['4', 0],
-      },
-      class_type: 'KSampler',
-    },
-    '6': {
-      inputs: { samples: ['5', 0], vae: ['1', 2] },
-      class_type: 'VAEDecode',
-    },
-    '7': {
-      inputs: { upscale_method: 'nearest-exact', megapixels: 3, resolution_steps: 1, image: ['6', 0] },
-      class_type: 'ImageScaleToTotalPixels',
-    },
-    '8': {
-      inputs: { filename_prefix: 'dnd3-portrait', images: ['7', 0] },
-      class_type: 'SaveImage',
-    },
+    '1':  { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'perfectDeliberate_v8.safetensors' } },
+    '2':  { class_type: 'LoraLoader',             inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cm_ILL_v1.0.safetensors',            strength_model: 0.5, strength_clip: 0.5 } },
+    '3':  { class_type: 'LoraLoader',             inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-v1_ixl.safetensors', strength_model: 0.7, strength_clip: 0.7 } },
+    '4':  { class_type: 'LoraLoader',             inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1.0.safetensors',       strength_model: 0.6, strength_clip: 0.6 } },
+    '5':  { class_type: 'CLIPSetLastLayer',       inputs: { clip: ['4', 1], stop_at_clip_layer: -2 } },
+    '6':  { class_type: 'CLIPTextEncode',         inputs: { text: positiveText,  clip: ['5', 0] } },
+    '7':  { class_type: 'CLIPTextEncode',         inputs: { text: negativeText,  clip: ['5', 0] } },
+    '8':  { class_type: 'EmptyLatentImage',       inputs: { width: 832, height: 1216, batch_size: 1 } },
+    '9':  { class_type: 'KSampler',               inputs: { seed, steps: 38, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 1.0,  model: ['4', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['8', 0] } },
+    '10': { class_type: 'VAEDecode',              inputs: { samples: ['9', 0],  vae: ['1', 2] } },
+    '11': { class_type: 'UpscaleModelLoader',     inputs: { model_name: '4x_remacri.pth' } },
+    '12': { class_type: 'ImageUpscaleWithModel',  inputs: { upscale_model: ['11', 0], image: ['10', 0] } },
+    '13': { class_type: 'ImageScale',             inputs: { upscale_method: 'lanczos', width: 1248, height: 1824, crop: 'disabled', image: ['12', 0] } },
+    '14': { class_type: 'VAEEncode',              inputs: { pixels: ['13', 0], vae: ['1', 2] } },
+    '15': { class_type: 'KSampler',               inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.55, model: ['4', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['14', 0] } },
+    '16': { class_type: 'VAEDecode',              inputs: { samples: ['15', 0], vae: ['1', 2] } },
+    '17': { class_type: 'SaveImage',              inputs: { filename_prefix: 'dnd3-portrait', images: ['16', 0] } },
   };
 }
 
@@ -213,9 +210,9 @@ async function fetchImageAsBase64(filename: string, subfolder: string): Promise<
 // ─── Public API ───────────────────────────────────────────
 
 export async function generateCharacterPortrait(char: CharacterPortraitInput): Promise<string> {
-  const prompt = buildCharacterPrompt(char);
+  const { positive, negative } = buildCharacterPrompt(char);
   const seed = Math.floor(Math.random() * 2 ** 32);
-  const workflow = buildWorkflow(prompt, seed);
+  const workflow = buildWorkflow(positive, negative, seed);
 
   console.log('[ComfyUI] Queuing portrait for:', char.name, '| seed:', seed);
 
@@ -224,8 +221,8 @@ export async function generateCharacterPortrait(char: CharacterPortraitInput): P
 
   const entry = await pollHistory(promptId);
 
-  // Node "8" is the SaveImage node (Perfect World workflow)
-  const images = entry.outputs?.['8']?.images;
+  // Node "17" is the SaveImage node (PerfectDeliberate v8 / Illustrious workflow)
+  const images = entry.outputs?.['17']?.images;
   if (!images || images.length === 0) {
     throw new Error('[ComfyUI] No output images found in history');
   }

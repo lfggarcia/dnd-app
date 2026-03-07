@@ -2,8 +2,9 @@
 /**
  * scripts/test-sprite-gen.js
  *
- * Integrity test: ONE base sprite (txt2img) + ONE idle frame (img2img).
- * Saves both PNGs + a full request/response log.
+ * Integrity test: ONE base sprite (txt2img) + 4 idle frames (img2img).
+ * Tests full animation-cycle consistency: f0→f1→f2→f3 all share the same base.
+ * Saves all PNGs + a full request/response log.
  *
  * Run: node scripts/test-sprite-gen.js
  */
@@ -16,6 +17,14 @@ const COMFY_URL     = 'http://192.168.0.20:8089';
 const POLL_INTERVAL = 2_000;
 const POLL_MAX      = 150;
 const OUT_DIR       = path.join(__dirname, '..', 'assets', 'sprites', '_test');
+
+// Animation frames: base prompt suffix + unique pose cue per frame
+const IDLE_FRAMES = [
+  { id: 'f0', pose: 'neutral standing pose, relaxed, weight evenly distributed, hands at sides, still' },
+  { id: 'f1', pose: 'slight weight shift to left foot, subtle upward motion, breathing in, minor sway beginning' },
+  { id: 'f2', pose: 'peak of idle sway, chest slightly elevated, maximum breath in, subtle lean right' },
+  { id: 'f3', pose: 'returning to neutral, gentle downward settle, exhaling, weight redistributing' },
+];
 
 const NEGATIVE =
   '(worst quality, low quality:1.4), photorealistic, photograph, 3d render, ' +
@@ -160,12 +169,12 @@ function buildImg2Img(baseFilename, prompt, seed) {
 
 // ── Main ───────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('\n=== Sprite Pipeline Integrity Test ===');
+  console.log('\n=== Sprite Animation Integrity Test ===');
   console.log('  Enemy  : skeleton');
-  console.log('  Action : idle (frame 0 only)');
+  console.log('  Action : idle  (4 frames — full animation cycle)');
   console.log(`  Log    : ${path.relative(process.cwd(), logFile)}\n`);
 
-  log('TEST_START', { enemy: 'skeleton', action: 'idle', frame: 0, comfyUrl: COMFY_URL });
+  log('TEST_START', { enemy: 'skeleton', action: 'idle', frames: IDLE_FRAMES.map(f => f.id), comfyUrl: COMFY_URL });
 
   // 1. Connectivity
   process.stdout.write('1. Connecting to ComfyUI ... ');
@@ -207,57 +216,69 @@ async function main() {
   const inputFilename = await uploadToComfyInput(baseBuf, `sprite_input_${Date.now()}.png`);
   console.log(`OK  (input/${inputFilename})`);
 
-  // 3. PHASE 2 — img2img
-  const seedAnim   = Math.floor(Math.random() * 2 ** 32);
-  const idlePrompt =
+  // 3. PHASE 2 — img2img (all 4 idle frames, same base sprite)
+  const BASE_PROMPT =
     '(masterpiece, best quality), dark fantasy RPG sprite of an undead skeleton warrior, ' +
-    'idle neutral standing pose, relaxed stance, hands at sides, weight evenly distributed, ' +
     'same character as reference, consistent art style, digital painting, dungeon crawler game art, ' +
     'dark moody background, dramatic lighting, highly detailed, no text, no watermark';
 
-  console.log(`\n[PHASE 2] img2img — idle frame 0  (seed ${seedAnim})`);
-  console.log(`  Input file : ${inputFilename}`);
-  console.log(`  Denoise    : 0.65`);
+  const frameResults = [];
 
-  const pid2 = await queueWorkflow('IMG2IMG:skeleton_idle_f0', buildImg2Img(inputFilename, idlePrompt, seedAnim));
-  console.log(`  prompt_id: ${pid2}`);
+  for (const frame of IDLE_FRAMES) {
+    const seedFrame  = Math.floor(Math.random() * 2 ** 32);
+    const framePrompt = `${BASE_PROMPT}, ${frame.pose}`;
+    const label       = `IMG2IMG:skeleton_idle_${frame.id}`;
 
-  const { entry: e2, elapsed: t2 } = await pollUntilDone('img2img', pid2);
-  console.log(`\n  Done in ${(t2 / 1000).toFixed(1)}s`);
+    console.log(`\n[PHASE 2 — ${frame.id}] img2img  (seed ${seedFrame})`);
+    console.log(`  Pose       : ${frame.pose.slice(0, 64)}…`);
+    console.log(`  Input file : ${inputFilename}`);
+    console.log(`  Denoise    : 0.65`);
 
-  const animImgs = e2.outputs?.['8']?.images;
-  if (!animImgs?.length) throw new Error('No images in img2img history');
-  const { filename: animFile, subfolder: animSub } = animImgs[0];
-  log('IMG2IMG_OUTPUT', { filename: animFile, subfolder: animSub });
-  console.log(`  ComfyUI file : ${animFile}`);
+    const pid = await queueWorkflow(label, buildImg2Img(inputFilename, framePrompt, seedFrame));
+    console.log(`  prompt_id  : ${pid}`);
 
-  process.stdout.write('  Downloading idle frame ... ');
-  const animBuf = await fetchOutputBlob(animFile, animSub);
-  assertValidPng(animBuf, 'skeleton_idle_f0');
-  const animPath = path.join(OUT_DIR, 'skeleton_idle_f0.png');
-  fs.writeFileSync(animPath, animBuf);
-  console.log(`OK  (${(animBuf.length / 1024).toFixed(1)} KB) -> ${path.relative(process.cwd(), animPath)}`);
+    const { entry, elapsed } = await pollUntilDone(`img2img-${frame.id}`, pid);
+    console.log(`\n  Done in ${(elapsed / 1000).toFixed(1)}s`);
+
+    const imgs = entry.outputs?.['8']?.images;
+    if (!imgs?.length) throw new Error(`No images in img2img history for ${frame.id}`);
+    const { filename: animFile, subfolder: animSub } = imgs[0];
+    log(`IMG2IMG_OUTPUT :: ${frame.id}`, { filename: animFile, subfolder: animSub, seed: seedFrame, elapsed_s: (elapsed / 1000).toFixed(1) });
+    console.log(`  ComfyUI file : ${animFile}`);
+
+    process.stdout.write(`  Downloading ${frame.id} ... `);
+    const frameBuf  = await fetchOutputBlob(animFile, animSub);
+    const frameName = `skeleton_idle_${frame.id}.png`;
+    assertValidPng(frameBuf, frameName);
+    const framePath = path.join(OUT_DIR, frameName);
+    fs.writeFileSync(framePath, frameBuf);
+    console.log(`OK  (${(frameBuf.length / 1024).toFixed(1)} KB) -> ${path.relative(process.cwd(), framePath)}`);
+
+    frameResults.push({ id: frame.id, elapsed, kb: frameBuf.length / 1024, path: framePath });
+  }
 
   // 4. Summary
+  const totalAnimMs = frameResults.reduce((s, f) => s + f.elapsed, 0);
   log('TEST_SUCCESS', {
-    txt2img_s: (t1 / 1000).toFixed(1),
-    img2img_s: (t2 / 1000).toFixed(1),
-    base_kb:   (baseBuf.length / 1024).toFixed(1),
-    anim_kb:   (animBuf.length / 1024).toFixed(1),
+    txt2img_s:    (t1 / 1000).toFixed(1),
+    img2img_total_s: (totalAnimMs / 1000).toFixed(1),
+    base_kb:      (baseBuf.length / 1024).toFixed(1),
+    frames:       frameResults.map(f => ({ id: f.id, elapsed_s: (f.elapsed / 1000).toFixed(1), kb: f.kb.toFixed(1) })),
   });
 
-  const sep = '─'.repeat(52);
+  const sep = '─'.repeat(56);
   console.log(`\n${sep}`);
-  console.log('TEST PASSED');
+  console.log('TEST PASSED  —  full idle animation cycle');
   console.log(sep);
-  console.log(`  txt2img  : ${(t1 / 1000).toFixed(1)}s`);
-  console.log(`  img2img  : ${(t2 / 1000).toFixed(1)}s`);
-  console.log(`  Base PNG : ${path.relative(process.cwd(), basePath)}`);
-  console.log(`  Anim PNG : ${path.relative(process.cwd(), animPath)}`);
-  console.log(`  Full log : ${path.relative(process.cwd(), logFile)}`);
+  console.log(`  Base sprite (txt2img) : ${(t1 / 1000).toFixed(1)}s  →  ${path.relative(process.cwd(), basePath)}`);
+  for (const f of frameResults) {
+    console.log(`  idle ${f.id} (img2img)  : ${(f.elapsed / 1000).toFixed(1)}s  →  ${path.relative(process.cwd(), f.path)}`);
+  }
+  console.log(`  Total                : ${((t1 + totalAnimMs) / 1000).toFixed(1)}s`);
+  console.log(`  Full log             : ${path.relative(process.cwd(), logFile)}`);
   console.log('');
-  console.log('  Share both images for quality review.');
-  console.log('  We will tune params before the full overnight run.\n');
+  console.log('  Review all 5 images (base + f0–f3) for visual consistency.');
+  console.log('  Check: same character, same lighting, coherent motion, no drift.\n');
   logStream.end();
 }
 

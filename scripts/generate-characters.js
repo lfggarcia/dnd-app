@@ -50,8 +50,8 @@ const QUALITY_NEG    = 'score_6, score_5, score_4, low quality, worst quality, b
 const CHARACTERS = {
   // Warriors
   human_fighter: {
-    gender: 'male',
-    desc:   'human male fighter, chain mail armor, longsword and kite shield, short brown hair, strong jaw',
+    gender: 'female',
+    desc:   'human female fighter, chain mail armor, longsword and kite shield, short brown hair, strong determined jaw, athletic build',
     pose:   'cowboy shot, confident battle stance, arms at ready',
     bg:     'stone dungeon corridor, dramatic torchlight',
   },
@@ -63,13 +63,13 @@ const CHARACTERS = {
   },
   dwarf_paladin: {
     gender: 'female',
-    desc:   'female dwarf paladin, gleaming full plate armor, warhammer, braided red hair, holy symbol on breastplate',
+    desc:   'female dwarf paladin, gleaming full plate armor, warhammer, braided red hair, holy symbol on breastplate, stocky powerful build',
     pose:   'cowboy shot, resolute protective stance, weapon raised',
     bg:     'golden divine light, temple sanctuary',
   },
   half_orc_barbarian: {
-    gender: 'male',
-    desc:   'half-orc male barbarian, shirtless, fur-trimmed war kilt, greatsword, green-grey skin, tribal war paint, small tusks',
+    gender: 'female',
+    desc:   'half-orc female barbarian, midriff-baring fur-trimmed war outfit, greatsword, green-grey skin, tribal war paint, small tusks, muscular',
     pose:   'cowboy shot, battle-rage stance, intense predatory eyes',
     bg:     'stormy ruins battlefield',
   },
@@ -81,8 +81,8 @@ const CHARACTERS = {
     bg:     'arcane tower study, floating books and scrolls',
   },
   elf_sorcerer: {
-    gender: 'male',
-    desc:   'high elf male sorcerer, elegant silver robes with arcane embroidery, sorcerous tattoos, long white hair',
+    gender: 'female',
+    desc:   'high elf female sorcerer, elegant silver robes with arcane embroidery, sorcerous tattoos, long white hair, ethereal beauty',
     pose:   'cowboy shot, dramatic spell-casting pose, magical particles swirling',
     bg:     'mystical ley line nexus, aurora light',
   },
@@ -93,9 +93,9 @@ const CHARACTERS = {
     bg:     'shadowy void realm, eldritch summoning circle',
   },
   gnome_artificer: {
-    gender: 'male',
-    desc:   'gnome male artificer, brass goggles pushed up on forehead, mechanical clockwork arm prosthetic, leather tool vest covered in gadgets',
-    pose:   'cowboy shot, aiming wrist-mounted gadget forward, grinning',
+    gender: 'female',
+    desc:   'gnome female artificer, brass goggles pushed up on forehead, mechanical clockwork arm prosthetic, leather tool vest covered in gadgets, short stature',
+    pose:   'cowboy shot, aiming wrist-mounted gadget forward, mischievous grin',
     bg:     'steampunk workshop, gears cogs and steam',
   },
   // Specialists
@@ -106,8 +106,8 @@ const CHARACTERS = {
     bg:     'shadowy city alleyway, moonlit cobblestones',
   },
   human_cleric: {
-    gender: 'male',
-    desc:   'human male cleric, white and gold ceremonial robes, ornate holy symbol staff, kind determined face, short blond hair',
+    gender: 'female',
+    desc:   'human female cleric, white and gold ceremonial robes, ornate holy symbol staff, kind determined face, long blond hair',
     pose:   'cowboy shot, healing prayer gesture, soft divine light emanating from hands',
     bg:     'cathedral interior, stained glass window light',
   },
@@ -193,17 +193,17 @@ function isValidPng(buf) {
 //
 function buildCharacterWorkflow(positiveText, negativeText, seed) {
   return {
-    '1':  { class_type: 'CheckpointLoaderSimple',  inputs: { ckpt_name: 'perfectDeliberate_v8.safetensors' } },
-    '2':  { class_type: 'LoraLoader',              inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cm_ILL_v1.0.safetensors',              strength_model: 0.5, strength_clip: 0.5 } },
-    '3':  { class_type: 'LoraLoader',              inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-v1_ixl.safetensors',   strength_model: 0.7, strength_clip: 0.7 } },
-    '4':  { class_type: 'LoraLoader',              inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1.0.safetensors',         strength_model: 0.6, strength_clip: 0.6 } },
+    '1':  { class_type: 'CheckpointLoaderSimple',  inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' } },
+    '2':  { class_type: 'LoraLoader',              inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5, strength_clip: 0.5 } },
+    '3':  { class_type: 'LoraLoader',              inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.7, strength_clip: 0.7 } },
+    '4':  { class_type: 'LoraLoader',              inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6, strength_clip: 0.6 } },
     '5':  { class_type: 'CLIPSetLastLayer',        inputs: { clip: ['4', 1], stop_at_clip_layer: -2 } },
     '6':  { class_type: 'CLIPTextEncode',          inputs: { text: positiveText, clip: ['5', 0] } },
     '7':  { class_type: 'CLIPTextEncode',          inputs: { text: negativeText, clip: ['5', 0] } },
     '8':  { class_type: 'EmptyLatentImage',        inputs: { width: 832, height: 1216, batch_size: 1 } },
     '9':  { class_type: 'KSampler',                inputs: { seed, steps: 38, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 1.0,  model: ['4', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['8', 0] } },
     '10': { class_type: 'VAEDecode',               inputs: { samples: ['9', 0],  vae: ['1', 2] } },
-    '11': { class_type: 'UpscaleModelLoader',      inputs: { model_name: '4x_remacri.pth' } },
+    '11': { class_type: 'UpscaleModelLoader',      inputs: { model_name: 'remacri_original.safetensors' } },
     '12': { class_type: 'ImageUpscaleWithModel',   inputs: { upscale_model: ['11', 0], image: ['10', 0] } },
     '13': { class_type: 'ImageScale',              inputs: { upscale_method: 'lanczos', width: 1248, height: 1824, crop: 'disabled', image: ['12', 0] } },
     '14': { class_type: 'VAEEncode',               inputs: { pixels: ['13', 0], vae: ['1', 2] } },
@@ -214,12 +214,11 @@ function buildCharacterWorkflow(positiveText, negativeText, seed) {
 }
 
 // --- Prompt builder ----------------------------------------------------------
-function buildCharacterPrompt({ gender, desc, pose, bg }) {
-  const genderTag = gender === 'female' ? '1girl, solo' : '1boy, solo';
-  const positive  = [
+function buildCharacterPrompt({ desc, pose, bg }) {
+  const positive = [
     QUALITY_PREFIX,
     'BREAK',
-    `${genderTag}, ${desc}, ${pose}`,
+    `1girl, solo, ${desc}, ${pose}`,
     `${bg}, dramatic lighting, highly detailed, expressive eyes, perfect face`,
     'usnr, 748cmstyle',
   ].join(', ');

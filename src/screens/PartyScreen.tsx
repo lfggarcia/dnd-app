@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  Alert,
   StatusBar,
   StyleSheet,
 } from 'react-native';
@@ -1180,36 +1181,56 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
           </TouchableOpacity>
         </View>
         <TouchableOpacity
-          onPress={async () => {
+          onPress={() => {
             if (startingGame) return;
-            setStartingGame(true);
-            try {
-              const party = buildPartySaves();
-              const game = startNewGame(seed, seedHash, party);
 
-              // Auto-generate portraits for any character that doesn't have one yet
-              const partyCopy = [...party];
-              let needsPortraitSave = false;
-              for (let i = 0; i < partyCopy.length; i++) {
-                if (!partyCopy[i].portrait) {
-                  try {
-                    const uri = await generateCharacterPortrait(partyCopy[i]);
-                    partyCopy[i] = { ...partyCopy[i], portrait: uri };
-                    setCharPortraits(prev => ({ ...prev, [i]: uri }));
-                    needsPortraitSave = true;
-                  } catch {
-                    // Portrait generation failed — not blocking
+            const missingCount = roster.filter((_, i) => !charPortraits[i]).length;
+
+            const doLaunch = async () => {
+              setStartingGame(true);
+              try {
+                const party = buildPartySaves();
+                const game = startNewGame(seed, seedHash, party);
+
+                // Auto-generate portraits for any character that doesn't have one yet
+                const partyCopy = [...party];
+                let needsPortraitSave = false;
+                for (let i = 0; i < partyCopy.length; i++) {
+                  if (!partyCopy[i].portrait) {
+                    try {
+                      const uri = await generateCharacterPortrait(partyCopy[i]);
+                      partyCopy[i] = { ...partyCopy[i], portrait: uri };
+                      setCharPortraits(prev => ({ ...prev, [i]: uri }));
+                      needsPortraitSave = true;
+                    } catch {
+                      // Portrait generation failed — not blocking
+                    }
                   }
                 }
-              }
-              if (needsPortraitSave) {
-                const { updateSavedGame } = await import('../database/gameRepository');
-                updateSavedGame(game.id, { partyData: partyCopy });
-              }
+                if (needsPortraitSave) {
+                  const { updateSavedGame } = await import('../database/gameRepository');
+                  updateSavedGame(game.id, { partyData: partyCopy });
+                }
 
-              navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
-            } finally {
-              setStartingGame(false);
+                navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
+              } finally {
+                setStartingGame(false);
+              }
+            };
+
+            if (missingCount > 0) {
+              Alert.alert(
+                lang === 'es' ? 'Retratos pendientes' : 'Pending Portraits',
+                lang === 'es'
+                  ? `${missingCount} personaje${missingCount !== 1 ? 's' : ''} no tiene${missingCount !== 1 ? 'n' : ''} retrato generado. Al iniciar la expedición se generarán automáticamente — se usará el primer resultado obtenido. ¿Deseas continuar?`
+                  : `${missingCount} character${missingCount !== 1 ? 's' : ''} ${missingCount !== 1 ? "don't" : "doesn't"} have a portrait yet. They will be auto-generated when the expedition starts — the first result will be used automatically. Continue?`,
+                [
+                  { text: lang === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
+                  { text: lang === 'es' ? 'Continuar' : 'Continue', onPress: doLaunch },
+                ],
+              );
+            } else {
+              doLaunch();
             }
           }}
           disabled={startingGame}
@@ -1252,12 +1273,12 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
                 source={{ uri: portraitDetailUri }}
                 style={{
                   width: 300,
-                  height: 300,
+                  height: 440,
                   borderWidth: 1,
                   borderColor: 'rgba(0,255,65,0.5)',
                   borderRadius: 4,
                 }}
-                resizeMode="cover"
+                resizeMode="contain"
               />
               <Text
                 style={{ color: 'rgba(0,255,65,0.4)', marginTop: 12, fontSize: 10 }}

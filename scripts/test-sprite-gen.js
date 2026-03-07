@@ -18,12 +18,15 @@ const POLL_INTERVAL = 2_000;
 const POLL_MAX      = 150;
 const OUT_DIR       = path.join(__dirname, '..', 'assets', 'sprites', '_test');
 
-// Animation frames: base prompt suffix + unique pose cue per frame
+// Animation frames: attack action — dramatic anatomical poses for maximum pose variation.
+// Idle is the worst test case (micro-movements invisible at this scale).
+// Attack gives the model unambiguous geometric instructions (arm angles, weapon angle)
+// which is what img2img needs to produce perceptibly different frames.
 const IDLE_FRAMES = [
-  { id: 'f0', pose: 'neutral standing pose, relaxed, weight evenly distributed, hands at sides, still' },
-  { id: 'f1', pose: 'slight weight shift to left foot, subtle upward motion, breathing in, minor sway beginning' },
-  { id: 'f2', pose: 'peak of idle sway, chest slightly elevated, maximum breath in, subtle lean right' },
-  { id: 'f3', pose: 'returning to neutral, gentle downward settle, exhaling, weight redistributing' },
+  { id: 'f0', pose: 'attack windup, both feet planted wide, knees bent, right arm pulled back behind torso, weapon held horizontal at hip level, left arm raised for balance, body coiled ready to strike' },
+  { id: 'f1', pose: 'attack release, right arm swinging forward at chest height, weapon angled 45 degrees downward, body rotating at waist, left foot stepping forward, torso twisted' },
+  { id: 'f2', pose: 'attack impact, right arm fully extended forward, weapon pointing toward viewer, body lunging forward, left arm swung back as counterbalance, weight on front foot' },
+  { id: 'f3', pose: 'attack followthrough, right arm swinging downward past hip, weapon tip pointing at ground, body upright recovering balance, weight shifting back to center' },
 ];
 
 const NEGATIVE =
@@ -156,7 +159,7 @@ function buildImg2Img(baseFilename, prompt, seed) {
     '5': {
       inputs: {
         seed, steps: 25, cfg: 7,
-        sampler_name: 'euler', scheduler: 'karras', denoise: 0.40,
+        sampler_name: 'euler', scheduler: 'karras', denoise: 0.55,
         model: ['1', 0], positive: ['2', 0], negative: ['3', 0], latent_image: ['11', 0],
       },
       class_type: 'KSampler',
@@ -171,7 +174,7 @@ function buildImg2Img(baseFilename, prompt, seed) {
 async function main() {
   console.log('\n=== Sprite Animation Integrity Test ===');
   console.log('  Enemy  : skeleton');
-  console.log('  Action : idle  (4 frames — full animation cycle)');
+  console.log('  Action : attack  (4 frames — windup → release → impact → followthrough)');
   console.log(`  Log    : ${path.relative(process.cwd(), logFile)}\n`);
 
   log('TEST_START', { enemy: 'skeleton', action: 'idle', frames: IDLE_FRAMES.map(f => f.id), comfyUrl: COMFY_URL });

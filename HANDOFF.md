@@ -9,9 +9,9 @@
 
 TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React Native. Una torre de 100 pisos, 60 ciclos por temporada, ~10 parties simultáneas (1-2 jugador + resto IA), combate táctico DnD 5e, sistema de política y alianzas, motor de simulación determinístico por seed.
 
-**Estado hoy:** 10 pantallas navegables, base de datos SQLite con sincronización de la API DnD 5e, sistema i18n bilingüe (ES/EN), creación de personaje funcional con datos reales (razas, clases, subclases, trasfondos, alineamientos), glosario interactivo, tutorial integrado en PartyScreen. El resto de pantallas de gameplay (combate, mapa, village) siguen con datos mock.
+**Estado hoy:** 11 pantallas navegables, base de datos SQLite schema v6, portraits de personaje generados por Google Gemini, variantes de expresión via ComfyUI, dungeon graph service con 12–20 habitaciones por piso, catálogo de 35+ enemigos con stats completos y sistema de evolución, sprites pre-generados bundleados. La lógica de combate (BattleScreen, ReportScreen) sigue siendo mock.
 
-**Lo más urgente:** estado global (nada persiste entre pantallas), motor de simulación (corazón del juego), combate DnD 5e real.
+**Lo más urgente:** motor de combate DnD 5e real (BattleScreen), conectar `dungeonGraphService` al MapScreen, `simulateWorld(cycle)` para que las parties IA existan como actores.
 
 ---
 
@@ -30,76 +30,83 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
 ```
 /src
   components/
-    CRTOverlay.tsx       → overlay visual CRT (scanlines + flicker Reanimated). ✅ Funcional
-    TypewriterText.tsx   → texto carácter por carácter. ✅ Funcional
-    SliderButton.tsx     → botón deslizable (Gesture Handler). ✅ Funcional
-    DatabaseGate.tsx     → wrapper que bloquea UI hasta que la DB esté lista + sync API. ✅ Funcional
-    GlossaryModal.tsx    → modal de glosario DnD 5e con búsqueda, categorías, datos de DB. ✅ Funcional
-    TorreLogo.tsx        → logo SVG "TORRE" con efecto neón roto + flicker. ✅ Funcional
-    TutorialOverlay.tsx  → overlay paso a paso con navegación (next/prev/skip). ✅ Funcional
+    CharacterActionsPanel.tsx → panel de acciones DnD 5e (combat/class/race/subclass), choices, badges por tipo. ✅ Funcional
+    ConfirmModal.tsx          → diálogo de confirmación reutilizable con tema CRT. ✅ Funcional
+    CRTOverlay.tsx            → overlay visual CRT (scanlines + flicker Reanimated). ✅ Funcional
+    DatabaseGate.tsx          → wrapper que bloquea UI hasta que la DB esté lista + sync API. ✅ Funcional
+    GlossaryModal.tsx         → modal de glosario DnD 5e con búsqueda, categorías. ✅ Funcional
+    Icons.tsx                 → librería SVG: 20+ iconos (SwordIcon, GuildIcon, etc.). ✅ Funcional
+    SliderButton.tsx          → botón deslizable (Gesture Handler). ✅ Funcional
+    TorreLogo.tsx             → logo SVG "TORRE" con neón roto + flicker. ✅ Funcional
+    TutorialOverlay.tsx       → overlay paso a paso con navegación (next/prev/skip). ✅ Funcional
+    TypewriterText.tsx        → texto carácter por carácter. ✅ Funcional
   constants/
-    dnd5eLevel1.ts       → reglas DnD 5e nivel 1: subclases, features, razas, stats. ✅ Completo
+    dnd5eLevel1.ts            → reglas DnD5e nivel 1: subclases, features, razas, acciones, COMBAT_ACTIONS. ✅ Completo
   database/
-    connection.ts        → conexión SQLite (op-sqlite). ✅ Funcional
-    migrations.ts        → schema v1: resources, translations, sync_meta. ✅ Funcional
-    repository.ts        → CRUD: upsert/get/search resources + translations + sync_meta. ✅ Funcional
-    index.ts             → barrel exports. ✅
+    connection.ts             → conexión SQLite (op-sqlite). ✅ Funcional
+    migrations.ts             → schema v6: resources/translations/sync_meta/saved_games/portraits/expressions. ✅ Funcional
+    gameRepository.ts         → SavedGame CRUD: seed, party, floor, cycle, mapState, portraits, expressions. ✅ Funcional
+    repository.ts             → CRUD: resources, translations, sync_meta. ✅ Funcional
+    index.ts                  → barrel exports. ✅
   hooks/
-    useDatabase.ts       → init DB + seed traducciones + subclases en mount. ✅ Funcional
-    useGlossary.ts       → estado de visibilidad del modal de glosario. ✅ Funcional
-    useResources.ts      → fetch DnD 5e con traducción automática (useRaces, useClasses, etc.). ✅ Funcional
-    useTutorial.ts       → navegación de pasos del tutorial de PartyScreen. ✅ Funcional
+    useDatabase.ts            → init DB + seed traducciones + subclases en mount. ✅ Funcional
+    useGlossary.ts            → estado de visibilidad del modal de glosario. ✅ Funcional
+    useResources.ts           → fetch DnD 5e con traducción automática. ✅ Funcional
+    useTutorial.ts            → navegación de pasos del tutorial. ✅ Funcional
   i18n/
-    context.tsx          → I18nProvider + useI18n() hook. ✅ Funcional
-    translations/en.ts   → traducciones inglés (~100+ keys). ✅ Completo
-    translations/es.ts   → traducciones español (~100+ keys). ✅ Completo
+    context.tsx               → I18nProvider + useI18n() hook. ✅ Funcional
+    translations/en.ts        → inglés (~120+ keys). ✅ Completo
+    translations/es.ts        → español (default). ✅ Completo
   services/
-    api5e.ts             → fetch DnD 5e API (24 endpoints). ✅ Funcional
-    syncService.ts       → orquestación de sync DB ↔ API con progreso. ✅ Funcional
-    translationBridge.ts → lookup traducción con fallback chain. ✅ Funcional
-    rulesConfig.ts       → reglas DnD 5e hardcoded (subclases, XP, proficiency). ✅ Completo
-    subclassSeed.ts      → seed de subclases custom en init. ✅ Funcional
-    backgroundSeed.ts    → seed de backgrounds custom en init. ✅ Funcional
-    translationSeed.ts   → seed de traducciones ES en init. ✅ Funcional
-    rivalGenerator.ts    → PRNG/LCG determinístico; genera hasta 10 grupos rivales por seed. ✅ Funcional
-    mapGenerator.ts      → PRNG/LCG determinístico; genera 8 nodos de piso (DAG) por seed+floor. ✅ Funcional
+    api5e.ts                  → fetch DnD 5e API (24 endpoints). ✅ Funcional
+    backgroundSeed.ts         → seed de backgrounds custom en init. ✅ Funcional
+    dungeonGraphService.ts    → grafos dungeon 12–20 rooms, fog-of-war, salas secretas, mutaciones. ✅ Implementado (pendiente conectar a MapScreen)
+    enemySpriteService.ts     → catálogo 35+ enemigos, 5 animaciones, SpriteSet types. ✅ Funcional
+    geminiImageService.ts     → generateCharacterPortrait() vía Gemini; prompts por raza/clase/trasfondo/alineamiento. ✅ Funcional
+    mapGenerator.ts           → 8 nodos DAG por seed+floor (usado en MapScreen). ✅ Funcional
+    monsterEvolutionService.ts→ tiers de evolución, stats 35+ monstruos, XP decay, jefes secretos. ✅ Implementado
+    rivalGenerator.ts         → PRNG/LCG determinístico; 10 grupos rivales por seed. ✅ Funcional
+    rulesConfig.ts            → reglas DnD 5e (subclases, XP, proficiency, hit dice). ✅ Completo
+    spriteDbService.ts        → lector del índice de sprites bundleados (Metro asset). ✅ Funcional
+    subclassSeed.ts           → seed de subclases custom en init. ✅ Funcional
+    syncService.ts            → orquestación de sync DB ↔ API con progreso. ✅ Funcional
+    translationBridge.ts      → lookup traducción con fallback chain. ✅ Funcional
+    translationSeed.ts        → seed de traducciones ES en init. ✅ Funcional
+    index.ts                  → barrel exports. ✅
   navigation/
-    AppNavigator.tsx     → stack de 11 pantallas (incl. GuildScreen), transición fade. ✅ Funcional
-    types.ts             → RootStackParamList tipado (11 rutas). ✅ Funcional
+    AppNavigator.tsx          → stack de 11 pantallas, transición fade. ✅ Funcional
+    types.ts                  → RootStackParamList tipado (11 rutas). ✅ Funcional
   stores/
-    gameStore.ts         → Zustand store con persistencia SQLite; acciones: startNewGame, loadGame, updateProgress, endGame, hydrate, clearActive. ✅ Funcional
+    gameStore.ts              → Zustand + SQLite; startNewGame, loadGame, updateProgress, endGame, hydrate, clearActive. ✅ Funcional
   screens/
-    MainScreen.tsx       → menú con TorreLogo, boot sequence, toggle idioma; enruta a Map o Village según location guardada. ✅
-    SeedScreen.tsx       → input seed + efecto Matrix. ⚠️ Seed se ingresa pero se DESCARTA
-    PartyScreen.tsx      → creación de personaje con datos reales DnD 5e + tutorial + glosario. ✅ FUNCIONAL
-    VillageScreen.tsx    → conectada a useGameStore real (gold, cycle, phase, maxFloor); rivals, market y amenazas determinísticos por seed; disclaimer Torre; BackHandler con confirmación. ✅ FUNCIONAL
-    GuildScreen.tsx      → roster con CharacterCard (HP bar, stats, badges ACTIVO/HERIDO/MUERTO), navegación a WorldLog. ✅ FUNCIONAL
-    MapScreen.tsx        → 8 nodos generados por seed+floor (mapGenerator), radar Reanimated, header con piso/ciclo reales, estado persistido en SQLite; SAFE_ZONE interactiva (panel "Volver a la villa"). ✅ FUNCIONAL
-    BattleScreen.tsx     → log de combate estático. ⚠️ MOCK
-    ReportScreen.tsx     → TypewriterText con valores hardcodeados. ⚠️ MOCK
-    ExtractionScreen.tsx → contador animado + botón "Volver a la villa" habilitado en ciclo 60. ✅ CONECTADO
-    WorldLogScreen.tsx   → feed de eventos con filtros (ALL/COMBAT/LORE/SYSTEM). ⚠️ MOCK DATA
-    CycleTransitionScreen.tsx → transición de ciclo animada (Floor N → N+1). ⚠️ MOCK
+    MainScreen.tsx            → menú TorreLogo, boot sequence, toggle idioma; enruta Map/Village según location. ✅
+    SeedScreen.tsx            → input seed + efecto Matrix. ⚠️ Sin validación avanzada de seed
+    PartyScreen.tsx           → creación personaje real; portrait Gemini; CharacterActionsPanel; ConfirmModal "Retratos pendientes". ✅ FUNCIONAL
+    VillageScreen.tsx         → useGameStore (gold/cycle/phase/floor); rivals/market/amenazas por seed; BackHandler; iconos SVG. ✅ FUNCIONAL
+    GuildScreen.tsx           → roster con portraits, HP bar, stats, badges ACTIVO/HERIDO/MUERTO. ✅ FUNCIONAL
+    MapScreen.tsx             → 8 nodos seed+floor; radar Reanimated; SAFE_ZONE interactiva; estado persistido SQLite. ✅ FUNCIONAL
+    BattleScreen.tsx          → banner portrait grupo + portraits individuales; log de combate estático. ⚠️ MOCK
+    ReportScreen.tsx          → TypewriterText con valores hardcodeados. ⚠️ MOCK
+    ExtractionScreen.tsx      → contador animado + "Volver a la villa" en ciclo 60. ✅ CONECTADO
+    WorldLogScreen.tsx        → feed de eventos con filtros ALL/COMBAT/LORE/SYSTEM. ⚠️ MOCK DATA
+    CycleTransitionScreen.tsx → transición animada Day/Night. ⚠️ MOCK
 ```
 
 ### Sistemas implementados
-- **Base de datos SQLite** (op-sqlite) — schema con 5 tablas: resources, translations, sync_meta, saved_games + indexes
-- **Persistencia de partida** — `useGameStore` (Zustand) persiste `activeGame` + `savedGames` en SQLite; `gameRepository.ts` con CRUD completo; campos: seed, party, floor, cycle, phase, gold, status, location, mapState
+- **Base de datos SQLite** (op-sqlite v15) — schema v6: resources, translations, sync_meta, saved_games, party_portrait (v4), portraits_json (v5), expressions_json (v6)
+- **Persistencia de partida** — `useGameStore` (Zustand) persiste `activeGame` + `savedGames`; campos: seed, party, floor, cycle, phase, gold, status, location, mapState, partyPortrait, portraitsJson, expressionsJson
+- **Sistema de retratos IA** — `geminiImageService.ts` genera portraits por personaje vía Gemini API; expresiones faciales (6 variantes) via ComfyUI img2img
+- **Catálogo de enemigos** — `enemySpriteService.ts`: 35+ tipos, 5 animaciones; `monsterEvolutionService.ts`: tiers, XP decay, secret bosses; sprites bundleados con Metro
+- **Dungeon graphs** — `dungeonGraphService.ts`: DAG 12–20 rooms, fog-of-war, mutaciones por ciclo; **pendiente conectar a MapScreen**
 - **Routing por estado** — MainScreen enruta a MapScreen o VillageScreen según `location` guardado
-- **Sincronización con DnD 5e API** — 24 endpoints, sync on demand, tracking de progreso
-- **i18n bilingüe** — ES (default) / EN, Context + hook, dot-notation keys
-- **Sistema de traducciones puente** — fallback chain: translations DB → raw API data
-- **Glosario interactivo** — búsqueda por categoría (stats, razas, clases, monstruos, mecánicas)
-- **Tutorial step-by-step** — integrado en PartyScreen para guiar creación de personaje
-- **Seed de datos en init** — traducciones ES, subclases custom, backgrounds custom
-- **Generador determinístico por seed** — PRNG djb2+LCG para rivals, market items, amenazas y layout de nodos del mapa
+- **Generador determinístico** — PRNG djb2+LCG: rivals, market, amenazas, nodos de mapa
+- **i18n bilingüe** — ES/EN, fallback chain: translations DB → raw API data
 
-### Sin implementar aún
-- **Motor de simulación** — toda la lógica de gameplay es mock (BattleScreen, ReportScreen, ExtractionScreen).
-- **Motor de combate DnD 5e** — sin tiradas reales, sin HP dinámico, sin turnos por iniciativa.
-
-### Bug conocido activo
-- La mayoría de nodos del mapa navegan a `BattleScreen` (COMBAT/BOSS) pero BattleScreen es estática; EVENT/SAFE_ZONE/UNKNOWN no tienen acción al tocar.
+### Pendiente crítico (próximo sprint)
+1. **Motor de combate DnD 5e** — BattleScreen sin tiradas, sin HP dinámico, sin turnos reales
+2. **Conectar `dungeonGraphService` → MapScreen** — reemplaza el simple `mapGenerator.ts`
+3. **`simulateWorld(cycle)`** — parties IA no simulan progreso real aún
+4. **Modal de progreso de expedición** — flujo de inicio muestra texto estático; pendiente modal paso a paso
 
 ---
 

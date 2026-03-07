@@ -5,6 +5,59 @@ Versiones siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased] — 2026-03-07
+
+### Added (Sistema de Retratos y Expresiones — Gemini + ComfyUI)
+
+- **`geminiImageService.ts`** — servicio de generación de retratos de personaje vía Google Gemini API; tablas de descriptores visuales por raza (`RACE_VISUAL`), clase (`CLASS_VISUAL`), trasfondo (`BACKGROUND_VISUAL`) y alineamiento (`ALIGNMENT_EXPRESSION`); función `generateCharacterPortrait()` que compone el prompt y llama a la API; presets de expresión para variantes img2img
+- **DB migración v4** — `party_portrait TEXT`: portrait de grupo generado por Gemini (base64 data URI)
+- **DB migración v5** — `portraits_json TEXT`: mapa de índice de personaje → base64 portrait individual
+- **DB migración v6** — `expressions_json TEXT`: variantes de expresión por personaje (`neutral / happy / angry / sad / surprised / wounded`) generadas por ComfyUI img2img
+- **ComfyUI workflow `01-base-sprite.json`** — workflow base para generación de sprites de monstruos via ComfyUI
+- **ComfyUI workflow `02-expression-inpaint.json`** — inpainting de expresiones faciales con FaceDetailer; `widgets_values` corregidos (script `fix_facedeatiler.py`)
+- **`scripts/generate-sprites.js`** — generación batch de sprites de monstruos via ComfyUI; sube PNGs al input folder con API HTTP
+- **`scripts/generate-characters.js`** — generación batch de retratos de personajes via Gemini API
+- **`scripts/test-sprite-gen.js`** — test de integridad del ciclo completo de generación de sprites (base → expresiones)
+- **Sección de retratos en `PartyScreen`** — panel colapsable con miniatura del portrait generado; botón para regenerar; zoom al tocar; errores inline si falla la API
+- **Generador de nombres de raza** — función determinística en `PartyScreen` para nombres por raza al azar
+- **"Retratos pendientes" `ConfirmModal`** — al iniciar expedición, si hay personajes sin portrait muestra modal temático (dark/green) con recuento y opciones Cancelar/Continuar; reemplazó el `Alert.alert()` nativo que no respetaba la UI
+- **Auto-generación de portraits en expedición** — si hay personajes sin portrait al confirmar inicio, el flujo los genera en serie antes de navegar al mapa; texto de estado por personaje durante el proceso
+- **`assets/sprites/enemies/`** — sprites pre-generados de enemigos bundleados con Metro
+- **`assets/images/monsters/`** — ilustraciones de monstruos generadas
+
+### Added (Motor de Dungeon — DungeonGraphService)
+
+- **`dungeonGraphService.ts`** — generador determinístico de grafos de piso con 12–20 habitaciones; tipos de sala: `START / NORMAL / ELITE / EVENT / TREASURE / BOSS / SECRET`; layout DAG ramificado estable (mismo seed+floor → mismo mapa); fog-of-war con campos `visited` y `revealed`; salas secretas con 15% de probabilidad; habitación mutada por ciclo; exporta `DungeonFloor`, `DungeonRoom`, `FloorExplorationState`
+- **`new mecanics/Dungeon Exploration System.md`** — documento de diseño del sistema de exploración con persistencia parcial y mutaciones por ciclo
+- **`new mecanics/Dungeon Graph Generator.MD`** — spec detallada del algoritmo de generación de grafos
+- **`new mecanics/illustration.md`** — guía de integraciones visuales del sistema
+
+### Added (Sistema de Evolución de Monstruos)
+
+- **`monsterEvolutionService.ts`** — evolución sustitutiva de monstruos por tier de ciclo (`Tier = ⌊ciclo/5⌋`, cap por `⌊piso/10⌋`); tabla completa de stats para 35+ tipos de enemigo; decay de XP por kills repetidos (100% → 30% → 10% → 0%); sistema de jefes secretos con condiciones de trigger; exporta `getEvolutionTier()`, `getMonsterStats()`, `getXPReward()`, `checkSecretBossConditions()`
+- **`new mecanics/Sistema de Evolución de Monstruos + XP + Bosses Secretos.md`** — documento de diseño
+
+### Added (Sistema de Sprites de Enemigos)
+
+- **`enemySpriteService.ts`** — catálogo de tipos de enemigo (`EnemyType`): 35+ tipos en 5 categorías (Skeletons, Goblins, Undead, Creatures, Humanoids, Demons/Bosses); tipos de animación (`AnimationType`: idle/run/attack/damage/death); interfaces `SpriteSet`, `EnemySprite` con `animations` opcionales
+- **`spriteDbService.ts`** — lector del índice de sprites bundleados (`assets/sprites/enemies/index.json`); funciones: `hasPrebuiltSprites()`, `getBaseSpritePath()`, `getAnimationFramePaths()`, `getSpriteSet()`; sin SQLite ni network — requiere el JSON como asset Metro
+
+### Added (Componentes UI)
+
+- **`CharacterActionsPanel.tsx`** — panel de acciones DnD 5e para cada personaje; muestra `COMBAT_ACTIONS`, `CLASS_ACTIONS`, `RACE_ACTIONS` y `SUBCLASS_ACTIONS` desde `dnd5eLevel1.ts`; soporte de choices (radio/multi-select); badges por tipo de acción (`ACTION / BONUS / REACTION / PASSIVE / SPECIAL`) con colores semánticos; props: `race`, `charClass`, `subclass`, `lang`, `featureChoices`, `onChoiceSelect`
+- **`Icons.tsx`** — librería de iconos SVG: `SwordIcon`, `TargetIcon`, `DnaIcon`, `TridentIcon`, `ClipboardIcon`, `WarningIcon`, `ChevronDownIcon`, `ChevronRightIcon`, `CheckIcon`, `RadioDotIcon`, `GuildIcon`, `DiamondIcon`, `HammerIcon`, `ShieldIcon`, `MoonIcon`, `CrossIcon`, `CameraIcon`; todos memorizados, `size` y `color` configurables
+
+### Changed
+
+- **`PartyScreen`** — integración de `CharacterActionsPanel` para selección de features de subclase; sección de portrait colapsable con `portraitExpanded` state; persiste portrait individual en DB al generarlo; `portraitConfirmVisible` state para modal "Retratos pendientes"; `ConfirmModal` reemplaza `Alert.alert()` nativo
+- **`GuildScreen`** — muestra portrait del personaje en `CharacterCard` si está disponible (fallback a placeholder de iniciales)
+- **`BattleScreen`** — banner de portrait de grupo si `partyPortrait` existe; portraits individuales por personaje (`portraitsMap[String(index)]`); HUD de piso/ciclo superpuesto sobre el banner
+- **`gameRepository.ts`** — campos nuevos `partyPortrait`, `portraitsJson`, `expressionsJson` en `SavedGame`; `updateSavedGame` acepta estos campos en `Partial<Pick<...>>`
+- **`VillageScreen`** — iconos SVG de edificios vía `Icons.tsx` (`GuildIcon`, `DiamondIcon`, `HammerIcon`, etc.)
+- **`services/index.ts`** — barrel exports añadidos para `dungeonGraphService`, `enemySpriteService`, `monsterEvolutionService`, `spriteDbService`
+
+---
+
 ## [Unreleased] — 2026-03-06
 
 ### Added (Fase 1 — navegación de regreso al menú)

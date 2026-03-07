@@ -18,6 +18,30 @@ const POLL_INTERVAL = 2_000;
 const POLL_MAX      = 150;
 const OUT_DIR       = path.join(__dirname, '..', 'assets', 'sprites', '_test');
 
+// ── Model / LoRA config ────────────────────────────────────────────────────
+// ⚠️  IMPORTANT: This LoRA is trained on Illustrious. Change CHECKPOINT_NAME
+//    to an Illustrious-based model (e.g. 'illustriousXL_v01.safetensors').
+//    Using a realistic checkpoint (perfectWorld) with this LoRA will give bad results.
+const CHECKPOINT_NAME = 'perfectWorld_v6Baked.safetensors'; // ← swap to Illustrious checkpoint
+const LORA_NAME       = 'epicSevenSprites_v1.safetensors';  // ← exact filename in ComfyUI/models/loras/
+const LORA_STRENGTH   = 0.85;  // 0.0–1.0  (lower = less style influence, try 0.7–0.9)
+
+// ── Visual appeal level ────────────────────────────────────────────────────
+// Controls how revealing/visually attractive the character design is.
+// 0.0 = fully clothed, SFW game art
+// 0.25 = light fantasy appeal: stylized figure, elegant revealing armor (current)
+// 0.5  = noticeably revealing, midriff/legs, bold design
+// 1.0  = maximum — not recommended publicly
+const VISUAL_APPEAL_LEVEL = 0.100;
+
+// Prompt suffixes injected based on VISUAL_APPEAL_LEVEL
+function appealPrompt() {
+  if (VISUAL_APPEAL_LEVEL <= 0)   return '';
+  if (VISUAL_APPEAL_LEVEL < 0.35) return ', elegant revealing dark fantasy armor, stylized attractive figure, tasteful exposed skin, alluring character design';
+  if (VISUAL_APPEAL_LEVEL < 0.65) return ', revealing dark fantasy armor, bare midriff, exposed legs, bold seductive character design, suggestive pose';
+  return ', skimpy fantasy armor, very revealing outfit, highly seductive pose, explicit character design';
+}
+
 // Animation frames: attack action — dramatic anatomical poses for maximum pose variation.
 // Idle is the worst test case (micro-movements invisible at this scale).
 // Attack gives the model unambiguous geometric instructions (arm angles, weapon angle)
@@ -30,8 +54,8 @@ const IDLE_FRAMES = [
 ];
 
 const NEGATIVE =
-  '(worst quality, low quality:1.4), photorealistic, photograph, 3d render, ' +
-  'blurry, deformed, bad anatomy, extra limbs, watermark, text, logo, signature, nsfw';
+  '(worst quality, low quality:1.4), blurry, deformed, bad anatomy, extra limbs, ' +
+  'watermark, text, logo, signature, multiple characters, duplicate, clone';
 
 const [major] = process.versions.node.split('.').map(Number);
 if (major < 18) { console.error('Node 18+ required'); process.exit(1); }
@@ -119,65 +143,74 @@ function assertValidPng(buf, name) {
 }
 
 // ── Workflow builders ──────────────────────────────────────────────────────
+// Node layout:
+//   "1"  CheckpointLoaderSimple
+//   "L"  LoraLoader          — injects LoRA into model + clip
+//   "CS" CLIPSetLastLayer    — CLIP skip 2 (required by E7Sprites LoRA)
+//   "2"  CLIPTextEncode positive
+//   "3"  CLIPTextEncode negative
+//   "4"  EmptyLatentImage    (txt2img) / "10"+"11" LoadImage+VAEEncode (img2img)
+//   "5"  KSampler
+//   "6"  VAEDecode  "7" ImageScaleToTotalPixels  "8" SaveImage
+
 function buildTxt2Img(seed) {
+  const positiveText =
+    `E7SPRITES, (masterpiece, best quality), dark fantasy RPG sprite of an undead skeleton warrior, ` +
+    `full body view, front-facing neutral idle stance, 2D game sprite art, epic seven art style, ` +
+    `dark moody background, dramatic lighting, highly detailed, no text, no watermark` +
+    appealPrompt();
   return {
-    '1': { inputs: { ckpt_name: 'perfectWorld_v6Baked.safetensors' }, class_type: 'CheckpointLoaderSimple' },
-    '2': {
+    '1':  { inputs: { ckpt_name: CHECKPOINT_NAME }, class_type: 'CheckpointLoaderSimple' },
+    'L':  { inputs: { lora_name: LORA_NAME, strength_model: LORA_STRENGTH, strength_clip: LORA_STRENGTH, model: ['1', 0], clip: ['1', 1] }, class_type: 'LoraLoader' },
+    'CS': { inputs: { stop_at_clip_layer: -2, clip: ['L', 1] }, class_type: 'CLIPSetLastLayer' },
+    '2':  { inputs: { text: positiveText, clip: ['CS', 0] }, class_type: 'CLIPTextEncode' },
+    '3':  { inputs: { text: NEGATIVE, clip: ['CS', 0] }, class_type: 'CLIPTextEncode' },
+    '4':  { inputs: { width: 512, height: 768, batch_size: 1 }, class_type: 'EmptyLatentImage' },
+    '5':  {
       inputs: {
-        text:
-          '(masterpiece, best quality), dark fantasy RPG sprite of an undead skeleton warrior, ' +
-          'full body view, front-facing neutral idle stance, digital painting, ' +
-          'dungeon crawler game art style, dark moody background, dramatic lighting, ' +
-          'highly detailed, no text, no watermark, no border',
-        clip: ['1', 1],
-      },
-      class_type: 'CLIPTextEncode',
-    },
-    '3': { inputs: { text: NEGATIVE, clip: ['1', 1] }, class_type: 'CLIPTextEncode' },
-    '4': { inputs: { width: 512, height: 768, batch_size: 1 }, class_type: 'EmptyLatentImage' },
-    '5': {
-      inputs: {
-        seed, steps: 25, cfg: 7,
-        sampler_name: 'dpm_2_ancestral', scheduler: 'karras', denoise: 1,
-        model: ['1', 0], positive: ['2', 0], negative: ['3', 0], latent_image: ['4', 0],
+        seed, steps: 30, cfg: 7,
+        sampler_name: 'euler_ancestral', scheduler: 'karras', denoise: 1,
+        model: ['L', 0], positive: ['2', 0], negative: ['3', 0], latent_image: ['4', 0],
       },
       class_type: 'KSampler',
     },
-    '6': { inputs: { samples: ['5', 0], vae: ['1', 2] }, class_type: 'VAEDecode' },
-    '7': { inputs: { upscale_method: 'nearest-exact', megapixels: 1, resolution_steps: 1, image: ['6', 0] }, class_type: 'ImageScaleToTotalPixels' },
-    '8': { inputs: { filename_prefix: 'test-base', images: ['7', 0] }, class_type: 'SaveImage' },
+    '6':  { inputs: { samples: ['5', 0], vae: ['1', 2] }, class_type: 'VAEDecode' },
+    '7':  { inputs: { upscale_method: 'nearest-exact', megapixels: 1, resolution_steps: 1, image: ['6', 0] }, class_type: 'ImageScaleToTotalPixels' },
+    '8':  { inputs: { filename_prefix: 'test-base', images: ['7', 0] }, class_type: 'SaveImage' },
   };
 }
 
 function buildImg2Img(baseFilename, prompt, seed) {
   return {
-    '1': { inputs: { ckpt_name: 'perfectWorld_v6Baked.safetensors' }, class_type: 'CheckpointLoaderSimple' },
-    '2': { inputs: { text: prompt, clip: ['1', 1] }, class_type: 'CLIPTextEncode' },
-    '3': { inputs: { text: NEGATIVE, clip: ['1', 1] }, class_type: 'CLIPTextEncode' },
+    '1':  { inputs: { ckpt_name: CHECKPOINT_NAME }, class_type: 'CheckpointLoaderSimple' },
+    'L':  { inputs: { lora_name: LORA_NAME, strength_model: LORA_STRENGTH, strength_clip: LORA_STRENGTH, model: ['1', 0], clip: ['1', 1] }, class_type: 'LoraLoader' },
+    'CS': { inputs: { stop_at_clip_layer: -2, clip: ['L', 1] }, class_type: 'CLIPSetLastLayer' },
+    '2':  { inputs: { text: prompt, clip: ['CS', 0] }, class_type: 'CLIPTextEncode' },
+    '3':  { inputs: { text: NEGATIVE, clip: ['CS', 0] }, class_type: 'CLIPTextEncode' },
     '10': { inputs: { image: baseFilename, upload: 'image' }, class_type: 'LoadImage' },
     '11': { inputs: { pixels: ['10', 0], vae: ['1', 2] }, class_type: 'VAEEncode' },
-    '5': {
+    '5':  {
       inputs: {
-        seed, steps: 25, cfg: 7,
-        sampler_name: 'euler', scheduler: 'karras', denoise: 0.55,
-        model: ['1', 0], positive: ['2', 0], negative: ['3', 0], latent_image: ['11', 0],
+        seed, steps: 30, cfg: 7,
+        sampler_name: 'euler_ancestral', scheduler: 'karras', denoise: 0.55,
+        model: ['L', 0], positive: ['2', 0], negative: ['3', 0], latent_image: ['11', 0],
       },
       class_type: 'KSampler',
     },
-    '6': { inputs: { samples: ['5', 0], vae: ['1', 2] }, class_type: 'VAEDecode' },
-    '7': { inputs: { upscale_method: 'nearest-exact', megapixels: 1, resolution_steps: 1, image: ['6', 0] }, class_type: 'ImageScaleToTotalPixels' },
-    '8': { inputs: { filename_prefix: 'test-anim', images: ['7', 0] }, class_type: 'SaveImage' },
+    '6':  { inputs: { samples: ['5', 0], vae: ['1', 2] }, class_type: 'VAEDecode' },
+    '7':  { inputs: { upscale_method: 'nearest-exact', megapixels: 1, resolution_steps: 1, image: ['6', 0] }, class_type: 'ImageScaleToTotalPixels' },
+    '8':  { inputs: { filename_prefix: 'test-anim', images: ['7', 0] }, class_type: 'SaveImage' },
   };
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────
 async function main() {
   console.log('\n=== Sprite Animation Integrity Test ===');
-  console.log('  Enemy  : skeleton');
+  console.log('  Enemy  : witcher woman');
   console.log('  Action : attack  (4 frames — windup → release → impact → followthrough)');
   console.log(`  Log    : ${path.relative(process.cwd(), logFile)}\n`);
 
-  log('TEST_START', { enemy: 'skeleton', action: 'idle', frames: IDLE_FRAMES.map(f => f.id), comfyUrl: COMFY_URL });
+  log('TEST_START', { enemy: 'witcher woman', action: 'attack', frames: IDLE_FRAMES.map(f => f.id), comfyUrl: COMFY_URL });
 
   // 1. Connectivity
   process.stdout.write('1. Connecting to ComfyUI ... ');
@@ -221,10 +254,11 @@ async function main() {
 
   // 3. PHASE 2 — img2img (all 4 idle frames, same base sprite)
   const BASE_PROMPT =
-    '(masterpiece, best quality), dark fantasy RPG sprite of an undead skeleton warrior, ' +
+    'E7SPRITES, (masterpiece, best quality), dark fantasy RPG sprite of an witcher woman, ' +
     'exact same character as reference image, identical color palette, same eye color, same weapon design, ' +
-    'same outfit and armor, consistent art style, digital painting, dungeon crawler game art, ' +
-    'dark moody background, dramatic lighting, highly detailed, no text, no watermark';
+    'same outfit and armor, consistent art style, 2D game sprite art, epic seven art style, ' +
+    'dark moody background, dramatic lighting, highly detailed, no text, no watermark' +
+    appealPrompt();
 
   const frameResults = [];
 

@@ -19,9 +19,9 @@
  * Requirements: Node 18+ (native fetch)
  * ComfyUI must be reachable at COMFY_URL with the following models installed:
  *   checkpoints/    perfectDeliberate_v8.safetensors
- *   loras/          748cm_ILL_v1.0.safetensors
- *                   thiccwithaq-artist-v1_ixl.safetensors
- *                   USNR_STYLE_ILL_V1.0.safetensors
+ *   loras/          748cmSDXL.safetensors
+ *                   thiccwithaq-artist-richy-v1_ixl.safetensors
+ *                   USNR_STYLE_ILL_V1_lokr3-000024.safetensors
  *   upscale_models/ 4x_remacri.pth
  */
 'use strict';

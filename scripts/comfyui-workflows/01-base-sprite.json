@@ -36,7 +36,7 @@
         {"name": "CLIP",  "type": "CLIP",  "links": [4], "slot_index": 1}
       ],
       "properties": {"Node name for S&R": "LoraLoader"},
-      "widgets_values": ["748cm_ILL_v1.0.safetensors", 0.5, 0.5]
+      "widgets_values": ["748cmSDXL.safetensors", 0.5, 0.5]
     },
     {
       "id": 3,
@@ -55,7 +55,7 @@
         {"name": "CLIP",  "type": "CLIP",  "links": [6], "slot_index": 1}
       ],
       "properties": {"Node name for S&R": "LoraLoader"},
-      "widgets_values": ["thiccwithaq-artist-v1_ixl.safetensors", 0.7, 0.7]
+      "widgets_values": ["thiccwithaq-artist-richy-v1_ixl.safetensors", 0.7, 0.7]
     },
     {
       "id": 4,
@@ -74,7 +74,7 @@
         {"name": "CLIP",  "type": "CLIP",  "links": [7],     "slot_index": 1}
       ],
       "properties": {"Node name for S&R": "LoraLoader"},
-      "widgets_values": ["USNR_STYLE_ILL_V1.0.safetensors", 0.6, 0.6]
+      "widgets_values": ["USNR_STYLE_ILL_V1_lokr3-000024.safetensors", 0.6, 0.6]
     },
     {
       "id": 5,

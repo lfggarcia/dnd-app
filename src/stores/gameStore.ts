@@ -34,6 +34,8 @@ type GameActions = {
   savePortrait: (portrait: string) => void;
   /** Save individual character portraits as a map of index → base64 data URI */
   saveCharacterPortraits: (portraits: Record<string, string>) => void;
+  /** Save expression variants for characters: map of index → { expressionKey → base64 data URI } */
+  saveCharacterExpressions: (expressions: Record<string, Record<string, string>>) => void;
   /** Mark current game as dead/completed */
   endGame: (status: 'completed' | 'dead') => void;
   /** Delete a saved game */
@@ -99,6 +101,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     updateSavedGame(activeGame.id, { portraitsJson: merged });
     set({
       activeGame: { ...activeGame, portraitsJson: merged, updatedAt: new Date().toISOString() },
+    });
+  },
+
+  saveCharacterExpressions: (expressions) => {
+    const { activeGame } = get();
+    if (!activeGame) return;
+    // Deep merge: preserve existing expressions for characters not in this batch
+    const existing = activeGame.expressionsJson ?? {};
+    const merged: Record<string, Record<string, string>> = { ...existing };
+    for (const [idx, variants] of Object.entries(expressions)) {
+      merged[idx] = { ...(existing[idx] ?? {}), ...variants };
+    }
+    updateSavedGame(activeGame.id, { expressionsJson: merged });
+    set({
+      activeGame: { ...activeGame, expressionsJson: merged, updatedAt: new Date().toISOString() },
     });
   },
 

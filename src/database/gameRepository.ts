@@ -16,6 +16,7 @@ export type SavedGameRow = {
   map_state: string | null;
   party_portrait: string | null;
   portraits_json: string | null;
+  expressions_json: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -35,6 +36,8 @@ export type SavedGame = {
   partyPortrait: string | null;
   /** Map of character index → base64 portrait data URI, separate from party_data to keep it lean */
   portraitsJson: Record<string, string> | null;
+  /** Map of character index → { expression key → base64 data URI } generated via img2img */
+  expressionsJson: Record<string, Record<string, string>> | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -71,6 +74,10 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
   if (row.portraits_json) {
     try { portraitsJson = JSON.parse(row.portraits_json) as Record<string, string>; } catch { /* ignore */ }
   }
+  let expressionsJson: Record<string, Record<string, string>> | null = null;
+  if (row.expressions_json) {
+    try { expressionsJson = JSON.parse(row.expressions_json) as Record<string, Record<string, string>>; } catch { /* ignore */ }
+  }
   return {
     id: row.id,
     seed: row.seed,
@@ -85,6 +92,7 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
     mapState: row.map_state ?? null,
     partyPortrait: row.party_portrait ?? null,
     portraitsJson,
+    expressionsJson,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -116,14 +124,14 @@ export function createSavedGame(
   return {
     id, seed, seedHash, partyData,
     floor: 1, cycle: 1, phase: 'DAY', gold: 0, status: 'active',
-    location: 'village', mapState: null, partyPortrait: null, portraitsJson: null,
+    location: 'village', mapState: null, partyPortrait: null, portraitsJson: null, expressionsJson: null,
     createdAt: now, updatedAt: now,
   };
 }
 
 export function updateSavedGame(
   id: string,
-  updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState' | 'partyPortrait' | 'portraitsJson'>>,
+  updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState' | 'partyPortrait' | 'portraitsJson' | 'expressionsJson'>>,
 ): void {
   const db = getDB();
   const sets: string[] = [];
@@ -168,6 +176,10 @@ export function updateSavedGame(
   if (updates.portraitsJson !== undefined) {
     sets.push('portraits_json = ?');
     values.push(updates.portraitsJson ? JSON.stringify(updates.portraitsJson) : null as unknown as string);
+  }
+  if (updates.expressionsJson !== undefined) {
+    sets.push('expressions_json = ?');
+    values.push(updates.expressionsJson ? JSON.stringify(updates.expressionsJson) : null as unknown as string);
   }
 
   if (sets.length === 0) return;

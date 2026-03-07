@@ -77,6 +77,16 @@ const ALIGNMENT_EXPRESSION: Record<string, string> = {
   'chaotic-evil':   'wild unhinged menacing snarl, frenzied eyes',
 };
 
+// Expression presets — used for img2img batch expression generation
+export const EXPRESSION_PRESETS: Record<string, string> = {
+  neutral:   'calm composed neutral expression, relaxed face, steady gaze',
+  happy:     'bright warm cheerful smile, happy sparkling joyful eyes',
+  angry:     'fierce battle rage, furrowed brows, intense wrathful snarl',
+  sad:       'melancholy sorrowful heavy heart, downcast glistening eyes',
+  surprised: 'wide shocked eyes, open mouth, startled expression',
+  wounded:   'pained grimace, weary exhausted, bloodied disheveled beaten',
+};
+
 const STAT_FLAVOR: Record<string, string> = {
   STR: 'powerfully muscular built',
   DEX: 'lithe agile graceful',
@@ -318,4 +328,153 @@ export async function generateCharacterPortrait(char: CharacterPortraitInput): P
   console.log('[ComfyUI] Image ready:', filename);
 
   return fetchImageAsBase64(filename, subfolder);
+}
+
+// ─── Expression batch generation ──────────────────────────────────────
+
+type ComfyUploadResponse = { name: string; subfolder: string; type: string };
+
+/**
+ * Uploads a base64 data URI as an image to ComfyUI's /upload/image endpoint.
+ * Returns the filename as stored in ComfyUI's input folder.
+ */
+async function uploadImageToComfy(base64DataUri: string): Promise<string> {
+  const formData = new FormData();
+  // React Native FormData pseudo-file pattern: pass the data URI as the image source
+  (formData as any).append('image', {
+    uri: base64DataUri,
+    name: 'portrait_upload.png',
+    type: 'image/png',
+  });
+
+  const response = await fetch(`${COMFY_BASE_URL}/upload/image`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`[ComfyUI] Upload error ${response.status}: ${text}`);
+  }
+
+  const json = (await response.json()) as ComfyUploadResponse;
+  console.log('[ComfyUI] Uploaded portrait as:', json.name);
+  return json.name;
+}
+
+// ─── img2img expression workflow ───────────────────────────────────────
+//
+// Same checkpoint + LoRAs as the portrait workflow, but uses LoadImage → VAEEncode
+// instead of EmptyLatentImage, keeping the face consistent (denoise 0.35).
+//
+// Node graph:
+//   [1-4]  Checkpoint + 3x LoRA (identical weights to portrait workflow)
+//   [5]    CLIPSetLastLayer -2
+//   [6]    CLIPTextEncode positive  ← prompt with expression tokens
+//   [7]    CLIPTextEncode negative
+//   [8]    LoadImage            ← uploaded portrait filename
+//   [9]    VAEEncode            ← encodes portrait into latent space
+//   [10]   KSampler img2img     ← denoise 0.35 = preserves face, shifts expression
+//   [11]   VAEDecode
+//   [12]   SaveImage            ← prefix: dnd3-expression
+//
+function buildExpressionWorkflow(
+  positiveText: string,
+  negativeText: string,
+  seed: number,
+  uploadedFilename: string,
+): Record<string, unknown> {
+  return {
+    '1':  { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' } },
+    '2':  { class_type: 'LoraLoader',             inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5, strength_clip: 0.5 } },
+    '3':  { class_type: 'LoraLoader',             inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.7, strength_clip: 0.7 } },
+    '4':  { class_type: 'LoraLoader',             inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6, strength_clip: 0.6 } },
+    '5':  { class_type: 'CLIPSetLastLayer',       inputs: { clip: ['4', 1], stop_at_clip_layer: -2 } },
+    '6':  { class_type: 'CLIPTextEncode',         inputs: { text: positiveText, clip: ['5', 0] } },
+    '7':  { class_type: 'CLIPTextEncode',         inputs: { text: negativeText, clip: ['5', 0] } },
+    '8':  { class_type: 'LoadImage',              inputs: { image: uploadedFilename, upload: 'image' } },
+    '9':  { class_type: 'VAEEncode',              inputs: { pixels: ['8', 0], vae: ['1', 2] } },
+    '10': { class_type: 'KSampler',               inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.35, model: ['4', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['9', 0] } },
+    '11': { class_type: 'VAEDecode',              inputs: { samples: ['10', 0], vae: ['1', 2] } },
+    '12': { class_type: 'SaveImage',              inputs: { filename_prefix: 'dnd3-expression', images: ['11', 0] } },
+  };
+}
+
+function buildExpressionPrompt(char: CharacterPortraitInput, expressionTokens: string): { positive: string; negative: string } {
+  const race = RACE_VISUAL[char.race] ?? `${char.race.replace(/-/g, ' ')} woman`;
+  const cls  = CLASS_VISUAL[char.charClass] ?? char.charClass;
+
+  const positive = [
+    'score_9, score_8_up, score_8, masterpiece, best quality',
+    'BREAK',
+    `1girl, sole_girl, ${race}`,
+    cls,
+    expressionTokens,
+    'same character, same face, same outfit, expression change only',
+    'cowboy shot, from head to knees, 3/4 body visible',
+    'perfect face, detailed face, expressive eyes, dramatic cinematic lighting',
+    'dark fantasy RPG, concept art, highly detailed fantasy illustration',
+    'dark atmosphere, gothic background',
+    'usnr, 748cmstyle',
+  ].filter(Boolean).join(', ');
+
+  const isNonHumanoid = ['dragonborn', 'draconido'].includes(char.race);
+  const raceNegative = isNonHumanoid
+    ? 'dragon head, monster face, fully reptilian face, animal face,'
+    : '';
+
+  const negative = [
+    'score_6, score_5, score_4, low quality, worst quality',
+    raceNegative,
+    'blurry, deformed, bad anatomy, extra limbs, watermark, text',
+    'photorealistic, 3d render, nsfw, multiple people',
+    'full body shot, full length, head to toe',
+    'cut off head, cropped face, bust only',
+  ].filter(Boolean).join(', ');
+
+  return { positive, negative };
+}
+
+/**
+ * Generates all expression variants (neutral, happy, angry, sad, surprised, wounded)
+ * for a single character using img2img from their base portrait.
+ *
+ * @param char         Character data (race, class, etc.) for prompt building
+ * @param portraitBase64  The character's existing portrait as a base64 data URI
+ * @returns  Map of expressionKey → base64 data URI
+ */
+export async function generateCharacterExpressions(
+  char: CharacterPortraitInput,
+  portraitBase64: string,
+): Promise<Record<string, string>> {
+  console.log('[ComfyUI] Starting expression batch for:', char.name);
+
+  // Upload the base portrait once; all expression passes reference the same file
+  const uploadedFilename = await uploadImageToComfy(portraitBase64);
+
+  const results: Record<string, string> = {};
+
+  for (const [expressionKey, expressionTokens] of Object.entries(EXPRESSION_PRESETS)) {
+    console.log(`[ComfyUI] Generating expression: ${expressionKey}`);
+
+    const seed = Math.floor(Math.random() * 2 ** 32);
+    const { positive, negative } = buildExpressionPrompt(char, expressionTokens);
+    const workflow = buildExpressionWorkflow(positive, negative, seed, uploadedFilename);
+
+    const promptId = await queuePrompt(workflow);
+    const entry = await pollHistory(promptId);
+
+    const images = entry.outputs?.['12']?.images;
+    if (!images || images.length === 0) {
+      console.warn(`[ComfyUI] No output for expression: ${expressionKey}, skipping`);
+      continue;
+    }
+
+    const { filename, subfolder } = images[0];
+    results[expressionKey] = await fetchImageAsBase64(filename, subfolder);
+    console.log(`[ComfyUI] Expression ready: ${expressionKey} → ${filename}`);
+  }
+
+  console.log('[ComfyUI] Expression batch complete for:', char.name, '| variants:', Object.keys(results).join(', '));
+  return results;
 }

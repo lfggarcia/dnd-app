@@ -1,6 +1,6 @@
 import { getDB } from './connection';
 
-const CURRENT_VERSION = 5;
+const CURRENT_VERSION = 6;
 
 const migrations: Record<number, string[]> = {
   1: [
@@ -74,6 +74,12 @@ const migrations: Record<number, string[]> = {
     // Character portraits — stored separately to keep party_data JSON lean
     // Format: JSON object mapping character index (string) to base64 data URI
     `ALTER TABLE saved_games ADD COLUMN portraits_json TEXT`,
+  ],
+
+  6: [
+    // Character expression variants — map of index → { neutral, happy, angry, sad, surprised, wounded }
+    // Generated via img2img from the base portrait; stored as base64 data URIs
+    `ALTER TABLE saved_games ADD COLUMN expressions_json TEXT`,
   ],
 };
 

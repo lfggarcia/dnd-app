@@ -60,15 +60,20 @@ function buildCharacterPrompt(char: CharacterPortraitInput): string {
   const statFlavor = STAT_FLAVOR[topStat] ?? '';
 
   return [
-    `Dark fantasy RPG character portrait of a ${race} ${cls}${sub}, ${char.name}.`,
+    `(masterpiece, best quality), dark fantasy RPG character portrait of a ${race} ${cls}${sub}, ${char.name}.`,
     statFlavor ? `${statFlavor}.` : '',
-    'Painted concept art style, stylized oil painting, detailed brushwork.',
+    'Digital painting, stylized oil painting, detailed brushwork, concept art.',
     'Diablo IV art style, Baldur\'s Gate 3 character portrait aesthetic.',
-    'Dramatic chiaroscuro lighting, deep shadows, glowing eyes, battle-worn armor.',
+    'Dramatic chiaroscuro lighting, deep shadows, battle-worn equipment.',
     'Dark dungeon atmosphere, moody color grading, highly detailed fantasy illustration.',
-    'Bust portrait, black background, no text, no watermark, no UI elements.',
+    'Bust portrait, dark background, no text, no watermark, no UI elements.',
   ].filter(Boolean).join(' ');
 }
+
+const NEGATIVE_PROMPT =
+  '(worst quality, low quality:1.4), photorealistic, photograph, 3d render, blurry, ' +
+  'deformed, bad anatomy, extra limbs, missing limbs, mutated hands, watermark, ' +
+  'text, logo, signature, username, nsfw, nudity, ugly, duplicate, morbid, disfigured';
 
 // ─── ComfyUI config ───────────────────────────────────────
 
@@ -85,62 +90,52 @@ const POLL_MAX_ATTEMPTS = 80;
 
 // ─── Workflow builder ─────────────────────────────────────
 
+// Workflow: Perfect World v6 (SD 1.5 checkpoint)
+// Nodes: 1=Checkpoint, 2=Positive, 3=Negative, 4=Latent, 5=KSampler, 6=VAEDecode, 7=Upscale, 8=SaveImage
 function buildWorkflow(prompt: string, seed: number): Record<string, unknown> {
   return {
-    '9': {
-      inputs: { filename_prefix: 'dnd3-portrait', images: ['62', 0] },
-      class_type: 'SaveImage',
+    '1': {
+      inputs: { ckpt_name: 'perfectWorld_v6Baked.safetensors' },
+      class_type: 'CheckpointLoaderSimple',
     },
-    '62': {
-      inputs: { upscale_method: 'nearest-exact', megapixels: 1, resolution_steps: 1, image: ['57:8', 0] },
-      class_type: 'ImageScaleToTotalPixels',
-    },
-    '57:30': {
-      inputs: { clip_name: 'qwen_3_4b.safetensors', type: 'lumina2', device: 'default' },
-      class_type: 'CLIPLoader',
-    },
-    '57:29': {
-      inputs: { vae_name: 'ae.safetensors' },
-      class_type: 'VAELoader',
-    },
-    '57:33': {
-      inputs: { conditioning: ['57:27', 0] },
-      class_type: 'ConditioningZeroOut',
-    },
-    '57:8': {
-      inputs: { samples: ['57:3', 0], vae: ['57:29', 0] },
-      class_type: 'VAEDecode',
-    },
-    '57:28': {
-      inputs: { unet_name: 'z_image_turbo_bf16.safetensors', weight_dtype: 'default' },
-      class_type: 'UNETLoader',
-    },
-    '57:27': {
-      inputs: { text: prompt, clip: ['57:30', 0] },
+    '2': {
+      inputs: { text: prompt, clip: ['1', 1] },
       class_type: 'CLIPTextEncode',
     },
-    '57:13': {
-      inputs: { width: 512, height: 512, batch_size: 1 },
-      class_type: 'EmptySD3LatentImage',
+    '3': {
+      inputs: { text: NEGATIVE_PROMPT, clip: ['1', 1] },
+      class_type: 'CLIPTextEncode',
     },
-    '57:11': {
-      inputs: { shift: 3, model: ['57:28', 0] },
-      class_type: 'ModelSamplingAuraFlow',
+    '4': {
+      inputs: { width: 512, height: 768, batch_size: 1 },
+      class_type: 'EmptyLatentImage',
     },
-    '57:3': {
+    '5': {
       inputs: {
         seed,
-        steps: 8,
-        cfg: 1,
-        sampler_name: 'res_multistep',
-        scheduler: 'simple',
+        steps: 25,
+        cfg: 7,
+        sampler_name: 'dpm_2_ancestral',
+        scheduler: 'karras',
         denoise: 1,
-        model: ['57:11', 0],
-        positive: ['57:27', 0],
-        negative: ['57:33', 0],
-        latent_image: ['57:13', 0],
+        model: ['1', 0],
+        positive: ['2', 0],
+        negative: ['3', 0],
+        latent_image: ['4', 0],
       },
       class_type: 'KSampler',
+    },
+    '6': {
+      inputs: { samples: ['5', 0], vae: ['1', 2] },
+      class_type: 'VAEDecode',
+    },
+    '7': {
+      inputs: { upscale_method: 'nearest-exact', megapixels: 3, resolution_steps: 1, image: ['6', 0] },
+      class_type: 'ImageScaleToTotalPixels',
+    },
+    '8': {
+      inputs: { filename_prefix: 'dnd3-portrait', images: ['7', 0] },
+      class_type: 'SaveImage',
     },
   };
 }
@@ -229,8 +224,8 @@ export async function generateCharacterPortrait(char: CharacterPortraitInput): P
 
   const entry = await pollHistory(promptId);
 
-  // Node "9" is the SaveImage node
-  const images = entry.outputs?.['9']?.images;
+  // Node "8" is the SaveImage node (Perfect World workflow)
+  const images = entry.outputs?.['8']?.images;
   if (!images || images.length === 0) {
     throw new Error('[ComfyUI] No output images found in history');
   }

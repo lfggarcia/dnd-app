@@ -1,0 +1,83 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "perfectWorld_v6Baked.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": { "title": "Load Checkpoint — Perfect World" }
+  },
+  "2": {
+    "inputs": {
+      "text": "dungeon rpg sprite, idle neutral pose, same character as reference",
+      "clip": ["1", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": { "title": "Positive Prompt (editable)" }
+  },
+  "3": {
+    "inputs": {
+      "text": "(worst quality, low quality:1.4), photorealistic, photograph, 3d render, blurry, deformed, bad anatomy, extra limbs, watermark, text, logo, signature, nsfw, nudity",
+      "clip": ["1", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": { "title": "Negative Prompt" }
+  },
+  "10": {
+    "inputs": {
+      "image": "BASE_SPRITE_FILENAME_HERE",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": { "title": "Load Base Sprite (reference)" }
+  },
+  "11": {
+    "inputs": {
+      "pixels": ["10", 0],
+      "vae": ["1", 2]
+    },
+    "class_type": "VAEEncode",
+    "_meta": { "title": "VAE Encode (img2img)" }
+  },
+  "5": {
+    "inputs": {
+      "seed": 12345,
+      "steps": 25,
+      "cfg": 7,
+      "sampler_name": "dpm_2_ancestral",
+      "scheduler": "karras",
+      "denoise": 0.65,
+      "model": ["1", 0],
+      "positive": ["2", 0],
+      "negative": ["3", 0],
+      "latent_image": ["11", 0]
+    },
+    "class_type": "KSampler",
+    "_meta": { "title": "KSampler (denoise 0.65 = img2img strength)" }
+  },
+  "6": {
+    "inputs": {
+      "samples": ["5", 0],
+      "vae": ["1", 2]
+    },
+    "class_type": "VAEDecode",
+    "_meta": { "title": "VAE Decode" }
+  },
+  "7": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": ["6", 0]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": { "title": "Upscale 1MP" }
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "dnd3-sprite-anim",
+      "images": ["7", 0]
+    },
+    "class_type": "SaveImage",
+    "_meta": { "title": "Save Animation Frame" }
+  }
+}

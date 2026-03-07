@@ -174,6 +174,25 @@ const ALIGNMENT_ORDER = [
 
 const INIT_CLASSES = ['fighter', 'rogue', 'wizard', 'cleric'];
 
+// ─── Name Generator ──────────────────────────────────────
+
+const RACE_NAMES: Record<string, string[]> = {
+  human:       ['Aldric', 'Beric', 'Caden', 'Dorian', 'Edric', 'Freya', 'Gareth', 'Hilda', 'Iria', 'Jorah', 'Kira', 'Lorn'],
+  elf:         ['Aelindra', 'Caladrel', 'Elendir', 'Faendal', 'Ilyana', 'Liriel', 'Naeris', 'Quellin', 'Sylara', 'Taeral'],
+  dwarf:       ['Bofri', 'Durgin', 'Fargrim', 'Gimral', 'Harnoth', 'Ildrak', 'Korrak', 'Marduk', 'Norgrim', 'Tordak'],
+  halfling:    ['Cade', 'Cordo', 'Eldon', 'Garret', 'Lindin', 'Merric', 'Osborn', 'Perrin', 'Rosie', 'Tobias'],
+  'half-orc':  ['Dench', 'Feng', 'Gell', 'Henk', 'Imsh', 'Keth', 'Krusk', 'Mhurren', 'Ront', 'Thokk'],
+  tiefling:    ['Akmenos', 'Amnon', 'Barakas', 'Damakos', 'Ekemon', 'Iados', 'Kairon', 'Leucis', 'Mordai', 'Skamos'],
+  dragonborn:  ['Arjhan', 'Balasar', 'Bharash', 'Donaar', 'Ghesh', 'Heskan', 'Kriv', 'Medrash', 'Rhogar', 'Torinn'],
+  gnome:       ['Alston', 'Alvyn', 'Boddynock', 'Brocc', 'Dimble', 'Eldon', 'Erky', 'Fonkin', 'Gerbo', 'Gimble'],
+  'half-elf':  ['Aelith', 'Briana', 'Corvan', 'Dara', 'Elysia', 'Faramir', 'Gaerlan', 'Haelra', 'Ilris', 'Jaeron'],
+};
+
+function pickRaceName(raceIndex: string): string {
+  const pool = RACE_NAMES[raceIndex] ?? RACE_NAMES.human;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 function mkDefault(i: number): CharacterDraft {
   const cls = INIT_CLASSES[i % INIT_CLASSES.length];
   return {
@@ -206,8 +225,8 @@ const S = StyleSheet.create({
   portraitLabel: { color: 'rgba(0,255,65,0.3)' },
   portraitGenBtn: { color: 'rgba(0,255,65,0.6)' },
   portraitBox: {
-    width: 56,
-    height: 56,
+    width: 72,
+    height: 72,
     borderWidth: 1,
     borderColor: 'rgba(0,255,65,0.3)',
     borderRadius: 4,
@@ -217,8 +236,8 @@ const S = StyleSheet.create({
     overflow: 'hidden',
   },
   portraitImage: {
-    width: 56,
-    height: 56,
+    width: 72,
+    height: 72,
   },
   statTotal: { color: 'rgba(0,255,65,0.5)' },
   statTotalRacial: { color: 'rgba(0,229,255,0.7)' },
@@ -435,6 +454,10 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     }));
   }, [activeSlot, subsByClass]);
 
+  const generateRandomName = useCallback(() => {
+    updateCurrent({ name: pickRaceName(current.race) });
+  }, [current.race, updateCurrent]);
+
   // ── Computed values ──
 
   const racialBonuses = useMemo(() => {
@@ -620,33 +643,38 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
       <ScrollView className="flex-1 px-3 pt-4" showsVerticalScrollIndicator={false}>
 
         {/* ── Character Summary Banner ── */}
-        <View className="mb-5 border border-primary/30 rounded-md bg-primary/5 px-4 py-3 flex-row items-center justify-between">
-          <View className="flex-1 mr-3">
+        <View className="mb-5 border border-primary/30 rounded-md bg-primary/5 px-4 py-3">
+          {/* Name row with random name button */}
+          <View className="flex-row items-center mb-1">
             <TextInput
               value={current.name}
               onChangeText={text => updateCurrent({ name: text })}
               maxLength={16}
-              style={S.bannerInput}
+              style={[S.bannerInput, { flex: 1 }]}
               placeholderTextColor="rgba(0,255,65,0.3)"
               placeholder={t('party.namePlaceholder')}
               selectionColor="#00FF41"
             />
-            <Text style={S.bannerSub} className="font-robotomono text-xs mt-1">
-              {currentRace?.name || current.race} · {currentClass?.name || current.charClass}
-              {currentSubData ? ` · ${currentSubData.name}` : ''}
-            </Text>
-          </View>
-          {/* Character Portrait (per active slot) */}
-          <View style={{ alignItems: 'center' }}>
             <TouchableOpacity
-              onPress={() => {
-                if (charPortraits[activeSlot]) {
-                  setPortraitDetailUri(charPortraits[activeSlot]);
-                } else {
-                  handleGeneratePortrait();
-                }
-              }}
-              disabled={generatingPortraitFor !== null && !charPortraits[activeSlot]}
+              onPress={generateRandomName}
+              style={{ marginLeft: 8, borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}
+            >
+              <Text style={{ color: 'rgba(0,255,65,0.7)', fontFamily: 'RobotoMono-Regular', fontSize: 11 }}>
+                {lang === 'es' ? '🎲 NOMBRE' : '🎲 NAME'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={S.bannerSub} className="font-robotomono text-xs mb-3">
+            {currentRace?.name || current.race} · {currentClass?.name || current.charClass}
+            {currentSubData ? ` · ${currentSubData.name}` : ''}
+          </Text>
+
+          {/* Portrait row */}
+          <View className="flex-row items-center">
+            {/* Portrait thumbnail — tap to zoom when portrait exists */}
+            <TouchableOpacity
+              onPress={() => charPortraits[activeSlot] && setPortraitDetailUri(charPortraits[activeSlot])}
+              disabled={!charPortraits[activeSlot]}
               style={S.portraitBox}
             >
               {charPortraits[activeSlot] ? (
@@ -658,35 +686,69 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
               ) : generatingPortraitFor === activeSlot ? (
                 <ActivityIndicator size="small" color="#00FF41" />
               ) : (
-                <>
-                  <Text style={S.portraitLabel} className="font-robotomono text-[7px]">
-                    {t('party.portrait')}
-                  </Text>
-                  <Text style={S.portraitGenBtn} className="font-robotomono text-[7px] mt-1">
-                    {portraitError ?? t('party.generatePortrait')}
-                  </Text>
-                </>
+                <Text style={S.portraitLabel} className="font-robotomono text-[7px] text-center">
+                  {t('party.portrait')}
+                </Text>
               )}
             </TouchableOpacity>
-            {/* Reroll button — only shown when portrait exists and rolls remain */}
-            {charPortraits[activeSlot] && (charPortraitRolls[activeSlot] ?? 0) < MAX_PORTRAIT_ROLLS && (
-              <TouchableOpacity
-                onPress={handleGeneratePortrait}
-                disabled={generatingPortraitFor !== null}
-                style={{ marginTop: 3 }}
-              >
-                {generatingPortraitFor === activeSlot ? (
-                  <ActivityIndicator size="small" color="rgba(255,176,0,0.7)" />
-                ) : (
-                  <Text
-                    style={{ color: 'rgba(255,176,0,0.7)', fontSize: 7 }}
-                    className="font-robotomono"
-                  >
-                    ↻ {MAX_PORTRAIT_ROLLS - (charPortraitRolls[activeSlot] ?? 0)}
+
+            {/* Portrait action buttons */}
+            <View className="flex-1 ml-3">
+              {!charPortraits[activeSlot] ? (
+                <TouchableOpacity
+                  onPress={handleGeneratePortrait}
+                  disabled={generatingPortraitFor !== null}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: 'rgba(0,255,65,0.4)',
+                    borderRadius: 4,
+                    paddingVertical: 10,
+                    paddingHorizontal: 10,
+                    backgroundColor: 'rgba(0,255,65,0.06)',
+                    opacity: generatingPortraitFor !== null ? 0.5 : 1,
+                  }}
+                >
+                  <Text style={{ color: 'rgba(0,255,65,0.9)', fontFamily: 'RobotoMono-Bold', fontSize: 11, textAlign: 'center' }}>
+                    {generatingPortraitFor === activeSlot
+                      ? (lang === 'es' ? '⏳ GENERANDO...' : '⏳ GENERATING...')
+                      : (lang === 'es' ? '⚡ GENERAR RETRATO' : '⚡ GENERATE PORTRAIT')}
                   </Text>
-                )}
-              </TouchableOpacity>
-            )}
+                </TouchableOpacity>
+              ) : (
+                <View>
+                  <TouchableOpacity
+                    onPress={() => setPortraitDetailUri(charPortraits[activeSlot])}
+                    style={{ borderWidth: 1, borderColor: 'rgba(0,229,255,0.4)', borderRadius: 4, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: 'rgba(0,229,255,0.06)', marginBottom: 6 }}
+                  >
+                    <Text style={{ color: 'rgba(0,229,255,0.9)', fontFamily: 'RobotoMono-Bold', fontSize: 11, textAlign: 'center' }}>
+                      {lang === 'es' ? '🔍 VER RETRATO' : '🔍 VIEW PORTRAIT'}
+                    </Text>
+                  </TouchableOpacity>
+                  {(charPortraitRolls[activeSlot] ?? 0) < MAX_PORTRAIT_ROLLS ? (
+                    <TouchableOpacity
+                      onPress={handleGeneratePortrait}
+                      disabled={generatingPortraitFor !== null}
+                      style={{ borderWidth: 1, borderColor: 'rgba(255,176,0,0.4)', borderRadius: 4, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: 'rgba(255,176,0,0.06)', opacity: generatingPortraitFor !== null ? 0.5 : 1 }}
+                    >
+                      <Text style={{ color: 'rgba(255,176,0,0.9)', fontFamily: 'RobotoMono-Bold', fontSize: 11, textAlign: 'center' }}>
+                        {generatingPortraitFor === activeSlot
+                          ? (lang === 'es' ? '⏳ GENERANDO...' : '⏳ GENERATING...')
+                          : `↻ ${lang === 'es' ? 'REGENERAR' : 'REGENERATE'} (${MAX_PORTRAIT_ROLLS - (charPortraitRolls[activeSlot] ?? 0)}/${MAX_PORTRAIT_ROLLS})`}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={{ color: 'rgba(0,255,65,0.35)', fontFamily: 'RobotoMono-Regular', fontSize: 9, textAlign: 'center', marginTop: 2 }}>
+                      {lang === 'es' ? `MÁXIMO ALCANZADO (${MAX_PORTRAIT_ROLLS}/${MAX_PORTRAIT_ROLLS})` : `MAX ROLLS (${MAX_PORTRAIT_ROLLS}/${MAX_PORTRAIT_ROLLS})`}
+                    </Text>
+                  )}
+                </View>
+              )}
+              {portraitError && (
+                <Text style={{ color: 'rgba(255,62,62,0.75)', fontFamily: 'RobotoMono-Regular', fontSize: 8, marginTop: 4 }}>
+                  ⚠ {portraitError}
+                </Text>
+              )}
+            </View>
           </View>
         </View>
 
@@ -1148,6 +1210,48 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* ── Portrait Detail Modal ── */}
+      <Modal
+        visible={portraitDetailUri !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPortraitDetailUri(null)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.92)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setPortraitDetailUri(null)}
+        >
+          {portraitDetailUri && (
+            <>
+              <Image
+                source={{ uri: portraitDetailUri }}
+                style={{
+                  width: 300,
+                  height: 300,
+                  borderWidth: 1,
+                  borderColor: 'rgba(0,255,65,0.5)',
+                  borderRadius: 4,
+                }}
+                resizeMode="cover"
+              />
+              <Text
+                style={{ color: 'rgba(0,255,65,0.4)', marginTop: 12, fontSize: 10 }}
+                className="font-robotomono"
+              >
+                TAP TO CLOSE
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };

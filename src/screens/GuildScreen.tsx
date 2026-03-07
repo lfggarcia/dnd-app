@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
@@ -22,7 +22,7 @@ const STAT_LABELS_ES: Record<keyof Stats, string> = {
 
 // ─── Character Card ───────────────────────────────────────
 
-const CharacterCard = ({ char, lang }: { char: CharacterSave; lang: string }) => {
+const CharacterCard = memo(({ char, lang }: { char: CharacterSave; lang: string }) => {
   const hpPct = char.maxHp > 0 ? char.hp / char.maxHp : 0;
   const hpColor = !char.alive
     ? 'rgba(255,62,62,0.8)'
@@ -90,7 +90,7 @@ const CharacterCard = ({ char, lang }: { char: CharacterSave; lang: string }) =>
       </View>
     </View>
   );
-};
+});
 
 // ─── Main Screen ──────────────────────────────────────────
 

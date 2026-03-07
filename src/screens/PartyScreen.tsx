@@ -1,215 +1,41 @@
-import React, { useEffect, useState, useMemo, useCallback, memo, useRef, type ReactNode } from 'react';
+import React, { useEffect, useMemo, memo, useCallback, type ReactNode } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  Image,
-  Modal,
-  StatusBar,
-  StyleSheet,
+  View, Text, TouchableOpacity, ScrollView, TextInput,
+  ActivityIndicator, StyleSheet,
 } from 'react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  Easing,
-  withSequence,
+  useSharedValue, useAnimatedStyle, withTiming, withDelay,
+  Easing, withSequence,
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { TutorialOverlay } from '../components/TutorialOverlay';
+import { RosterTabs } from '../components/party/RosterTabs';
+import { PortraitSection } from '../components/party/PortraitSection';
+import { LaunchProgressModal } from '../components/party/LaunchProgressModal';
+import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
 import { useI18n, type Lang } from '../i18n';
 import { useTutorial, PARTY_TUTORIAL_STEPS } from '../hooks/useTutorial';
-import {
-  useRaces,
-  useClasses,
-  useBackgrounds,
-  useAlignments,
-  useSubclasses,
-} from '../hooks/useResources';
+import { usePartyRoster, MAX_PORTRAIT_ROLLS } from '../hooks/usePartyRoster';
 import { getTranslatedField } from '../services/translationBridge';
+import { STAT_KEYS, ALIGNMENT_ORDER, getDescFromRaw, getSubclassFeatures } from '../services/characterStats';
 import { CharacterActionsPanel } from '../components/CharacterActionsPanel';
 import {
-  DnaIcon,
-  SwordIcon,
-  TridentIcon,
-  ScrollIcon,
-  DiceIcon,
-  StatsIcon,
-  ScaleIcon,
-  TagIcon,
-  BrainIcon,
-  LightningIcon,
-  ChevronRightIcon,
+  DnaIcon, SwordIcon, TridentIcon, ScrollIcon, DiceIcon, StatsIcon,
+  ScaleIcon, TagIcon, BrainIcon, LightningIcon, ChevronRightIcon,
 } from '../components/Icons';
 import type { ScreenProps } from '../navigation/types';
 import {
-  SUBCLASS_FEATURES,
-  CLASS_LVL1_FEATURES,
-  RACE_TRAITS,
-  CLASS_HIT_DICE,
-  calcLvl1HP,
-  LVL1_RULES,
-  type FeatureEntry,
+  CLASS_LVL1_FEATURES, RACE_TRAITS, CLASS_HIT_DICE,
+  calcLvl1HP, LVL1_RULES, type FeatureEntry,
 } from '../constants/dnd5eLevel1';
 import { useGameStore } from '../stores/gameStore';
 import { generateCharacterPortrait } from '../services/geminiImageService';
-import type { CharacterSave } from '../database/gameRepository';
+import type { Stats } from '../database/gameRepository';
 
-// ─── Types ────────────────────────────────────────────────
 
-type Stats = { STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number };
-
-type CharacterDraft = {
-  name: string;
-  race: string;
-  charClass: string;
-  subclass: string;
-  background: string;
-  alignment: string;
-  baseStats: Stats;
-  statMethod: 'standard' | 'rolled';
-  featureChoices: Record<string, string | string[]>;
-};
-
-const STAT_KEYS: (keyof Stats)[] = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
-
-// ─── D&D 5e Stat Generation ──────────────────────────────
-
-const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
-
-const CLASS_STAT_PRIORITY: Record<string, (keyof Stats)[]> = {
-  barbarian: ['STR', 'CON', 'DEX', 'WIS', 'CHA', 'INT'],
-  bard:      ['CHA', 'DEX', 'CON', 'WIS', 'INT', 'STR'],
-  cleric:    ['WIS', 'CON', 'STR', 'DEX', 'CHA', 'INT'],
-  druid:     ['WIS', 'CON', 'DEX', 'INT', 'CHA', 'STR'],
-  fighter:   ['STR', 'CON', 'DEX', 'WIS', 'CHA', 'INT'],
-  monk:      ['DEX', 'WIS', 'CON', 'STR', 'CHA', 'INT'],
-  paladin:   ['STR', 'CHA', 'CON', 'WIS', 'DEX', 'INT'],
-  ranger:    ['DEX', 'WIS', 'CON', 'STR', 'INT', 'CHA'],
-  rogue:     ['DEX', 'CON', 'WIS', 'CHA', 'INT', 'STR'],
-  sorcerer:  ['CHA', 'CON', 'DEX', 'WIS', 'INT', 'STR'],
-  warlock:   ['CHA', 'CON', 'DEX', 'WIS', 'INT', 'STR'],
-  wizard:    ['INT', 'CON', 'DEX', 'WIS', 'CHA', 'STR'],
-};
-
-function assignStandardArray(classIndex: string): Stats {
-  const priority = CLASS_STAT_PRIORITY[classIndex] || STAT_KEYS;
-  const stats: Stats = { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
-  priority.forEach((key, i) => { stats[key] = STANDARD_ARRAY[i]; });
-  return stats;
-}
-
-/** Roll 4d6, drop lowest — standard D&D 5e method */
-function roll4d6DropLowest(): number {
-  const dice = Array.from({ length: 4 }, () => Math.floor(Math.random() * 6) + 1);
-  dice.sort((a, b) => a - b);
-  return dice[1] + dice[2] + dice[3];
-}
-
-function generateRolledStats(): Stats {
-  return {
-    STR: roll4d6DropLowest(), DEX: roll4d6DropLowest(), CON: roll4d6DropLowest(),
-    INT: roll4d6DropLowest(), WIS: roll4d6DropLowest(), CHA: roll4d6DropLowest(),
-  };
-}
-
-/** Generate rolled stats within D&D 5e lvl1 balanced range (total 70-80) */
-function generateValidRolledStats(): Stats {
-  for (let i = 0; i < 100; i++) {
-    const stats = generateRolledStats();
-    const total = STAT_KEYS.reduce((sum, k) => sum + stats[k], 0);
-    if (total >= LVL1_RULES.MIN_ROLL_TOTAL && total <= LVL1_RULES.MAX_ROLL_TOTAL) {
-      return stats;
-    }
-  }
-  return assignStandardArray('fighter');
-}
-
-function getRacialBonuses(raceRaw: Record<string, unknown>): Partial<Stats> {
-  const bonuses: Partial<Stats> = {};
-  const ab = raceRaw.ability_bonuses as
-    | Array<{ ability_score: { index: string }; bonus: number }>
-    | undefined;
-  if (ab) {
-    for (const b of ab) {
-      const key = b.ability_score.index.toUpperCase() as keyof Stats;
-      if (STAT_KEYS.includes(key)) bonuses[key] = b.bonus;
-    }
-  }
-  return bonuses;
-}
-
-function computeFinalStats(base: Stats, racial: Partial<Stats>): Stats {
-  const s = { ...base };
-  for (const k of STAT_KEYS) s[k] = Math.min(20, s[k] + (racial[k] || 0));
-  return s;
-}
-
-function getDescFromRaw(raw: Record<string, unknown>): string {
-  const d = raw.desc;
-  if (typeof d === 'string') return d;
-  if (Array.isArray(d)) return d.join(' ');
-  return '';
-}
-
-/** Look up subclass features from local PHB data (instant, no network) */
-function getSubclassFeatures(idx: string): FeatureEntry[] {
-  return SUBCLASS_FEATURES[idx] || [];
-}
-
-// ─── Alignment Sort Order ─────────────────────────────────
-
-const ALIGNMENT_ORDER = [
-  'lawful-good', 'neutral-good', 'chaotic-good',
-  'lawful-neutral', 'neutral', 'chaotic-neutral',
-  'lawful-evil', 'neutral-evil', 'chaotic-evil',
-];
-
-// ─── Default Character ────────────────────────────────────
-
-const INIT_CLASSES = ['fighter', 'rogue', 'wizard', 'cleric'];
-
-// ─── Name Generator ──────────────────────────────────────
-
-const RACE_NAMES: Record<string, string[]> = {
-  human:       ['Aldric', 'Beric', 'Caden', 'Dorian', 'Edric', 'Freya', 'Gareth', 'Hilda', 'Iria', 'Jorah', 'Kira', 'Lorn'],
-  elf:         ['Aelindra', 'Caladrel', 'Elendir', 'Faendal', 'Ilyana', 'Liriel', 'Naeris', 'Quellin', 'Sylara', 'Taeral'],
-  dwarf:       ['Bofri', 'Durgin', 'Fargrim', 'Gimral', 'Harnoth', 'Ildrak', 'Korrak', 'Marduk', 'Norgrim', 'Tordak'],
-  halfling:    ['Cade', 'Cordo', 'Eldon', 'Garret', 'Lindin', 'Merric', 'Osborn', 'Perrin', 'Rosie', 'Tobias'],
-  'half-orc':  ['Dench', 'Feng', 'Gell', 'Henk', 'Imsh', 'Keth', 'Krusk', 'Mhurren', 'Ront', 'Thokk'],
-  tiefling:    ['Akmenos', 'Amnon', 'Barakas', 'Damakos', 'Ekemon', 'Iados', 'Kairon', 'Leucis', 'Mordai', 'Skamos'],
-  dragonborn:  ['Arjhan', 'Balasar', 'Bharash', 'Donaar', 'Ghesh', 'Heskan', 'Kriv', 'Medrash', 'Rhogar', 'Torinn'],
-  gnome:       ['Alston', 'Alvyn', 'Boddynock', 'Brocc', 'Dimble', 'Eldon', 'Erky', 'Fonkin', 'Gerbo', 'Gimble'],
-  'half-elf':  ['Aelith', 'Briana', 'Corvan', 'Dara', 'Elysia', 'Faramir', 'Gaerlan', 'Haelra', 'Ilris', 'Jaeron'],
-};
-
-function pickRaceName(raceIndex: string): string {
-  const pool = RACE_NAMES[raceIndex] ?? RACE_NAMES.human;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function mkDefault(i: number): CharacterDraft {
-  const cls = INIT_CLASSES[i % INIT_CLASSES.length];
-  return {
-    name: `UNIT_${String(i + 1).padStart(2, '0')}`,
-    race: 'human',
-    charClass: cls,
-    subclass: '',
-    background: 'acolyte',
-    alignment: 'neutral',
-    baseStats: assignStandardArray(cls),
-    statMethod: 'standard',
-    featureChoices: {},
-  };
-}
-
-// ─── Stable Styles (avoid inline object re-creation) ─────
+// ─── Stable Styles ────────────────────────────────────────
 
 const S = StyleSheet.create({
   bonusText: { color: 'rgba(0,229,255,0.9)' },
@@ -223,28 +49,9 @@ const S = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.3)', paddingBottom: 2,
   },
   bannerSub: { color: 'rgba(0,255,65,0.5)' },
-  portraitLabel: { color: 'rgba(0,255,65,0.3)' },
-  portraitGenBtn: { color: 'rgba(0,255,65,0.6)' },
-  portraitBox: {
-    width: 72,
-    height: 72,
-    borderWidth: 1,
-    borderColor: 'rgba(0,255,65,0.3)',
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,255,65,0.04)',
-    overflow: 'hidden',
-  },
-  portraitImage: {
-    width: 72,
-    height: 72,
-  },
   statTotal: { color: 'rgba(0,255,65,0.5)' },
   statTotalRacial: { color: 'rgba(0,229,255,0.7)' },
   summaryLabel: { color: 'rgba(0,229,255,0.5)' },
-  classFeatureBullet: { color: 'rgba(255,176,0,0.6)' },
-  raceTraitBullet: { color: 'rgba(0,255,65,0.5)' },
   raceTraitText: { color: 'rgba(0,255,65,0.7)' },
 });
 
@@ -276,6 +83,7 @@ const AnimatedStatBar = memo(({
         withTiming(0, { duration: 400, easing: Easing.in(Easing.quad) }),
       ),
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [final]);
 
   const barStyle = useAnimatedStyle(() => ({ width: `${barWidth.value}%` }));
@@ -382,201 +190,101 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   const { t, lang } = useI18n();
   const { seed, seedHash } = route.params;
   const startNewGame = useGameStore(s => s.startNewGame);
-  const updateProgress = useGameStore(s => s.updateProgress);
-  const saveCharacterPortraits = useGameStore(s => s.saveCharacterPortraits);
-
-  // DB-driven data hooks
-  const { data: races, loading: racesLoading } = useRaces();
-  const { data: classes, loading: classesLoading } = useClasses();
-  const { data: backgrounds, loading: bgLoading } = useBackgrounds();
-  const { data: alignments, loading: alignLoading } = useAlignments();
-  const { data: allSubclasses, loading: subLoading } = useSubclasses();
-
   const tutorial = useTutorial(PARTY_TUTORIAL_STEPS);
 
-  const [roster, setRoster] = useState<CharacterDraft[]>([mkDefault(0)]);
-  const [activeSlot, setActiveSlot] = useState(0);
-  const [charPortraits, setCharPortraits] = useState<Record<number, string>>({});
-  const [charPortraitRolls, setCharPortraitRolls] = useState<Record<number, number>>({});
-  const [generatingPortraitFor, setGeneratingPortraitFor] = useState<number | null>(null);
-  const [portraitError, setPortraitError] = useState<string | null>(null);
-  const [portraitDetailUri, setPortraitDetailUri] = useState<string | null>(null);
-  const [portraitExpanded, setPortraitExpanded] = useState(true);
-  const [startingGame, setStartingGame] = useState(false);
-  const [portraitConfirmVisible, setPortraitConfirmVisible] = useState(false);
-  const [portraitMissingCount, setPortraitMissingCount] = useState(0);
-  const pendingLaunch = useRef<(() => void) | null>(null);
+  const {
+    races, classes, backgrounds, loading,
+    roster, activeSlot, setActiveSlot, current,
+    charPortraits, setCharPortraits,
+    charPortraitRolls, generatingPortraitFor,
+    portraitError, portraitDetailUri, setPortraitDetailUri,
+    portraitExpanded, setPortraitExpanded,
+    launchStep, setLaunchStep, launchSubStep, setLaunchSubStep,
+    portraitConfirmVisible, setPortraitConfirmVisible,
+    portraitMissingCount, setPortraitMissingCount,
+    pendingLaunch,
+    racialBonuses, finalStats, totalBase, totalFinal,
+    sortedAlignments,
+    currentRace, currentClass, currentBg, currentAlign,
+    currentSubs, currentSubData, bgDescription,
+    updateCurrent, onClassChange, generateRandomName,
+    addCharacter, removeCharacter, buildPartySaves,
+    rerollStats, useStdArray, handleGeneratePortrait,
+  } = usePartyRoster(lang);
 
-  const current = roster[activeSlot];
-  const loading = racesLoading || classesLoading || bgLoading || alignLoading || subLoading;
+  const handlePortraitView = useCallback(() => {
+    const uri = charPortraits[activeSlot];
+    if (uri) setPortraitDetailUri(uri);
+  }, [charPortraits, activeSlot, setPortraitDetailUri]);
 
-  // ── Helpers ──
+  const handlePortraitDetailClose = useCallback(() => setPortraitDetailUri(null), [setPortraitDetailUri]);
 
-  const updateCurrent = useCallback((updates: Partial<CharacterDraft>) => {
-    setRoster(prev => prev.map((c, i) => (i === activeSlot ? { ...c, ...updates } : c)));
-  }, [activeSlot]);
+  const handleLaunch = useCallback(() => {
+    if (launchStep !== null) return;
+    const missingCount = roster.filter((_, i) => !charPortraits[i]).length;
 
-  const subsByClass = useMemo(() => {
-    const map = new Map<string, typeof allSubclasses>();
-    for (const s of allSubclasses) {
-      const cls = (s.raw as { class?: { index?: string } }).class?.index;
-      if (cls) {
-        const arr = map.get(cls) || [];
-        if (arr.length < 2) arr.push(s);
-        map.set(cls, arr);
+    const doLaunch = async () => {
+      setLaunchStep(lang === 'es' ? 'Iniciando partida...' : 'Initializing game...');
+      setLaunchSubStep(null);
+      try {
+        const party = buildPartySaves();
+        startNewGame(seed, seedHash, party);
+
+        const newPortraits: Record<string, string> = {};
+        const totalMissing = party.filter(c => !c.portrait).length;
+        let doneCount = 0;
+
+        for (let i = 0; i < party.length; i++) {
+          if (!party[i].portrait) {
+            const remaining = totalMissing - doneCount;
+            setLaunchStep(
+              lang === 'es'
+                ? `Creando ilustración para ${party[i].name}`
+                : `Creating portrait for ${party[i].name}`,
+            );
+            setLaunchSubStep(
+              lang === 'es'
+                ? `${remaining} de ${totalMissing} ilustraciones pendientes`
+                : `${remaining} of ${totalMissing} portraits remaining`,
+            );
+            try {
+              const uri = await generateCharacterPortrait(party[i]);
+              setCharPortraits(prev => ({ ...prev, [i]: uri }));
+              newPortraits[String(i)] = uri;
+            } catch {
+              // Portrait failure is non-blocking
+            }
+            doneCount++;
+          }
+        }
+
+        if (Object.keys(newPortraits).length > 0) {
+          setLaunchStep(lang === 'es' ? 'Guardando ilustraciones...' : 'Saving portraits...');
+          setLaunchSubStep(null);
+          useGameStore.getState().saveCharacterPortraits(newPortraits);
+        }
+
+        setLaunchStep(lang === 'es' ? 'Entrando a la aldea...' : 'Entering the village...');
+        setLaunchSubStep(null);
+        navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
+      } finally {
+        setLaunchStep(null);
+        setLaunchSubStep(null);
       }
+    };
+
+    if (missingCount > 0) {
+      pendingLaunch.current = doLaunch;
+      setPortraitMissingCount(missingCount);
+      setPortraitConfirmVisible(true);
+    } else {
+      doLaunch();
     }
-    return map;
-  }, [allSubclasses]);
-
-  const subsForClass = useCallback(
-    (classIndex: string) => subsByClass.get(classIndex) || [],
-    [subsByClass],
-  );
-
-  // Auto-select first subclass when data loads
-  useEffect(() => {
-    if (!current.subclass && allSubclasses.length > 0) {
-      const subs = subsForClass(current.charClass);
-      if (subs.length > 0) updateCurrent({ subclass: subs[0].index });
-    }
-  }, [allSubclasses, current.charClass, current.subclass, subsForClass, updateCurrent]);
-
-  const onClassChange = useCallback((classIndex: string) => {
-    const subs = subsByClass.get(classIndex) || [];
-    setRoster(prev => prev.map((c, i) => {
-      if (i !== activeSlot) return c;
-      // Clear class/subclass-related choices, keep race choices
-      const kept: Record<string, string | string[]> = {};
-      for (const [k, v] of Object.entries(c.featureChoices)) {
-        if (k.startsWith('dragonborn-') || k.startsWith('half-elf-')) kept[k] = v;
-      }
-      return {
-        ...c,
-        charClass: classIndex,
-        subclass: subs[0]?.index || '',
-        baseStats: c.statMethod === 'standard' ? assignStandardArray(classIndex) : c.baseStats,
-        featureChoices: kept,
-      };
-    }));
-  }, [activeSlot, subsByClass]);
-
-  const generateRandomName = useCallback(() => {
-    updateCurrent({ name: pickRaceName(current.race) });
-  }, [current.race, updateCurrent]);
-
-  // ── Computed values ──
-
-  const racialBonuses = useMemo(() => {
-    const race = races.find(r => r.index === current.race);
-    return race ? getRacialBonuses(race.raw as Record<string, unknown>) : {};
-  }, [current.race, races]);
-
-  const finalStats = useMemo(
-    () => computeFinalStats(current.baseStats, racialBonuses),
-    [current.baseStats, racialBonuses],
-  );
-
-  const totalBase = useMemo(
-    () => STAT_KEYS.reduce((sum, k) => sum + current.baseStats[k], 0),
-    [current.baseStats],
-  );
-
-  const totalFinal = useMemo(
-    () => STAT_KEYS.reduce((sum, k) => sum + finalStats[k], 0),
-    [finalStats],
-  );
-
-  const sortedAlignments = useMemo(() => {
-    return [...alignments].sort((a, b) => {
-      const ai = ALIGNMENT_ORDER.indexOf(a.index);
-      const bi = ALIGNMENT_ORDER.indexOf(b.index);
-      return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
-    });
-  }, [alignments]);
-
-  // ── Actions ──
-
-  const addCharacter = () => {
-    if (roster.length >= 4) return;
-    setRoster(prev => [...prev, mkDefault(prev.length)]);
-    setActiveSlot(roster.length);
-  };
-
-  const removeCharacter = () => {
-    if (roster.length <= 1) return;
-    setRoster(prev => prev.filter((_, i) => i !== activeSlot));
-    setActiveSlot(a => Math.max(0, a - 1));
-  };
-
-  const buildPartySaves = useCallback((): CharacterSave[] => {
-    return roster.map((c, i) => {
-      const race = races.find(r => r.index === c.race);
-      const rb = race ? getRacialBonuses(race.raw as Record<string, unknown>) : {};
-      const fs = computeFinalStats(c.baseStats, rb);
-      const hp = calcLvl1HP(c.charClass, fs.CON);
-      return {
-        name: c.name,
-        race: c.race,
-        charClass: c.charClass,
-        subclass: c.subclass,
-        background: c.background,
-        alignment: c.alignment,
-        baseStats: c.baseStats,
-        statMethod: c.statMethod,
-        featureChoices: c.featureChoices,
-        hp,
-        maxHp: hp,
-        alive: true,
-        portrait: charPortraits[i],
-      };
-    });
-  }, [roster, races, charPortraits]);
-
-  const rerollStats = () => updateCurrent({ baseStats: generateValidRolledStats(), statMethod: 'rolled' });
-  const useStdArray = () => updateCurrent({ baseStats: assignStandardArray(current.charClass), statMethod: 'standard' });
-
-  const MAX_PORTRAIT_ROLLS = 2;
-
-  const handleGeneratePortrait = useCallback(async () => {
-    if (generatingPortraitFor !== null) return;
-    const rolls = charPortraitRolls[activeSlot] ?? 0;
-    if (rolls >= MAX_PORTRAIT_ROLLS) return;
-    setGeneratingPortraitFor(activeSlot);
-    setPortraitError(null);
-    try {
-      const char = buildPartySaves()[activeSlot];
-      const uri = await generateCharacterPortrait(char);
-      setCharPortraits(prev => ({ ...prev, [activeSlot]: uri }));
-      setCharPortraitRolls(prev => ({ ...prev, [activeSlot]: (prev[activeSlot] ?? 0) + 1 }));
-      // Persist portrait immediately to DB so it survives navigation
-      saveCharacterPortraits({ [String(activeSlot)]: uri });
-    } catch (err) {
-      console.error('[Portrait] generation error:', err);
-      const msg = err instanceof Error ? err.message : String(err);
-      setPortraitError(msg.length > 38 ? msg.substring(0, 38) + '...' : msg);
-    } finally {
-      setGeneratingPortraitFor(null);
-    }
-  }, [generatingPortraitFor, activeSlot, buildPartySaves, charPortraitRolls, saveCharacterPortraits]);
-
-  // ── Current selections ──
-
-  const currentRace = races.find(r => r.index === current.race);
-  const currentClass = classes.find(c => c.index === current.charClass);
-  const currentBg = backgrounds.find(b => b.index === current.background);
-  const currentAlign = sortedAlignments.find(a => a.index === current.alignment);
-  const currentSubs = subsForClass(current.charClass);
-  const currentSubData = allSubclasses.find(s => s.index === current.subclass);
-
-  const bgDescription = useMemo(() => {
-    if (!currentBg) return '';
-    const bgRaw = currentBg.raw as Record<string, unknown>;
-    const feature = bgRaw.feature as { name?: string; desc?: string[] } | undefined;
-    return getTranslatedField('backgrounds', current.background, 'desc', lang)
-      || feature?.desc?.join(' ')
-      || '';
-  }, [currentBg, current.background, lang]);
+  }, [
+    launchStep, roster, charPortraits, buildPartySaves, startNewGame, seed, seedHash,
+    lang, setCharPortraits, setLaunchStep, setLaunchSubStep,
+    setPortraitMissingCount, setPortraitConfirmVisible, pendingLaunch, navigation,
+  ]);
 
   // ── Loading State ──
 
@@ -640,30 +348,12 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
         </View>
       </View>
 
-      {/* Roster Tabs */}
-      <View className="flex-row border-b border-primary/20">
-        {[0, 1, 2, 3].map(i => {
-          const char = roster[i];
-          const isActive = activeSlot === i;
-          const cls = char ? classes.find(c => c.index === char.charClass) : null;
-          return (
-            <TouchableOpacity
-              key={i}
-              onPress={() => char && setActiveSlot(i)}
-              className={`flex-1 p-2 items-center border-r border-primary/10 ${
-                isActive ? 'bg-primary/15 border-b-2 border-b-primary' : ''
-              } ${!char ? 'opacity-20' : ''}`}
-            >
-              <Text className={`font-robotomono text-[8px] ${isActive ? 'text-primary' : 'text-primary/50'}`}>
-                {char ? char.name : `SLOT_${i + 1}`}
-              </Text>
-              {char && cls && (
-                <Text className="text-secondary font-robotomono text-[7px]">{cls.name}</Text>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <RosterTabs
+        roster={roster}
+        activeSlot={activeSlot}
+        onSlotPress={setActiveSlot}
+        classes={classes}
+      />
 
       <ScrollView className="flex-1 px-3 pt-4" showsVerticalScrollIndicator={false}>
 
@@ -694,103 +384,18 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
             {currentSubData ? ` · ${currentSubData.name}` : ''}
           </Text>
 
-          {/* Portrait section — collapsible toggle */}
-          <TouchableOpacity
-            onPress={() => setPortraitExpanded(v => !v)}
-            activeOpacity={0.7}
-            className="flex-row items-center justify-between mb-2"
-          >
-            <Text style={{ color: 'rgba(0,255,65,0.45)', fontFamily: 'RobotoMono-Regular', fontSize: 9, letterSpacing: 1 }}>
-              {lang === 'es' ? '— RETRATO —' : '— PORTRAIT —'}
-            </Text>
-            <Text style={{ color: 'rgba(0,255,65,0.45)', fontFamily: 'RobotoMono-Regular', fontSize: 11 }}>
-              {portraitExpanded ? '▲' : '▼'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Portrait row */}
-          {portraitExpanded && (
-          <View className="flex-row items-center">
-            {/* Portrait thumbnail — tap to zoom when portrait exists */}
-            <TouchableOpacity
-              onPress={() => charPortraits[activeSlot] && setPortraitDetailUri(charPortraits[activeSlot])}
-              disabled={!charPortraits[activeSlot]}
-              style={S.portraitBox}
-            >
-              {charPortraits[activeSlot] ? (
-                <Image
-                  source={{ uri: charPortraits[activeSlot] }}
-                  style={S.portraitImage}
-                  resizeMode="cover"
-                />
-              ) : generatingPortraitFor === activeSlot ? (
-                <ActivityIndicator size="small" color="#00FF41" />
-              ) : (
-                <Text style={S.portraitLabel} className="font-robotomono text-[7px] text-center">
-                  {t('party.portrait')}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Portrait action buttons */}
-            <View className="flex-1 ml-3">
-              {!charPortraits[activeSlot] ? (
-                <TouchableOpacity
-                  onPress={handleGeneratePortrait}
-                  disabled={generatingPortraitFor !== null}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: 'rgba(0,255,65,0.4)',
-                    borderRadius: 4,
-                    paddingVertical: 10,
-                    paddingHorizontal: 10,
-                    backgroundColor: 'rgba(0,255,65,0.06)',
-                    opacity: generatingPortraitFor !== null ? 0.5 : 1,
-                  }}
-                >
-                  <Text style={{ color: 'rgba(0,255,65,0.9)', fontFamily: 'RobotoMono-Bold', fontSize: 11, textAlign: 'center' }}>
-                    {generatingPortraitFor === activeSlot
-                      ? (lang === 'es' ? '⏳ GENERANDO...' : '⏳ GENERATING...')
-                      : (lang === 'es' ? '⚡ GENERAR RETRATO' : '⚡ GENERATE PORTRAIT')}
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <View>
-                  <TouchableOpacity
-                    onPress={() => setPortraitDetailUri(charPortraits[activeSlot])}
-                    style={{ borderWidth: 1, borderColor: 'rgba(0,229,255,0.4)', borderRadius: 4, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: 'rgba(0,229,255,0.06)', marginBottom: 6 }}
-                  >
-                    <Text style={{ color: 'rgba(0,229,255,0.9)', fontFamily: 'RobotoMono-Bold', fontSize: 11, textAlign: 'center' }}>
-                      {lang === 'es' ? '🔍 VER RETRATO' : '🔍 VIEW PORTRAIT'}
-                    </Text>
-                  </TouchableOpacity>
-                  {(charPortraitRolls[activeSlot] ?? 0) < MAX_PORTRAIT_ROLLS ? (
-                    <TouchableOpacity
-                      onPress={handleGeneratePortrait}
-                      disabled={generatingPortraitFor !== null}
-                      style={{ borderWidth: 1, borderColor: 'rgba(255,176,0,0.4)', borderRadius: 4, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: 'rgba(255,176,0,0.06)', opacity: generatingPortraitFor !== null ? 0.5 : 1 }}
-                    >
-                      <Text style={{ color: 'rgba(255,176,0,0.9)', fontFamily: 'RobotoMono-Bold', fontSize: 11, textAlign: 'center' }}>
-                        {generatingPortraitFor === activeSlot
-                          ? (lang === 'es' ? '⏳ GENERANDO...' : '⏳ GENERATING...')
-                          : `↻ ${lang === 'es' ? 'REGENERAR' : 'REGENERATE'} (${MAX_PORTRAIT_ROLLS - (charPortraitRolls[activeSlot] ?? 0)}/${MAX_PORTRAIT_ROLLS})`}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={{ color: 'rgba(0,255,65,0.35)', fontFamily: 'RobotoMono-Regular', fontSize: 9, textAlign: 'center', marginTop: 2 }}>
-                      {lang === 'es' ? `MÁXIMO ALCANZADO (${MAX_PORTRAIT_ROLLS}/${MAX_PORTRAIT_ROLLS})` : `MAX ROLLS (${MAX_PORTRAIT_ROLLS}/${MAX_PORTRAIT_ROLLS})`}
-                    </Text>
-                  )}
-                </View>
-              )}
-              {portraitError && (
-                <Text style={{ color: 'rgba(255,62,62,0.75)', fontFamily: 'RobotoMono-Regular', fontSize: 8, marginTop: 4 }}>
-                  ⚠ {portraitError}
-                </Text>
-              )}
-            </View>
-          </View>
-          )}
+          <PortraitSection
+            lang={lang}
+            portrait={charPortraits[activeSlot] ?? null}
+            portraitRolls={charPortraitRolls[activeSlot] ?? 0}
+            generating={generatingPortraitFor === activeSlot}
+            error={portraitError}
+            expanded={portraitExpanded}
+            maxRolls={MAX_PORTRAIT_ROLLS}
+            onToggleExpand={() => setPortraitExpanded(v => !v)}
+            onGenerate={handleGeneratePortrait}
+            onView={handlePortraitView}
+          />
         </View>
 
         {/* ── 1. Race ── */}
@@ -1204,106 +809,24 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
           </TouchableOpacity>
         </View>
         <TouchableOpacity
-          onPress={() => {
-            if (startingGame) return;
-
-            const missingCount = roster.filter((_, i) => !charPortraits[i]).length;
-
-            const doLaunch = async () => {
-              setStartingGame(true);
-              try {
-                const party = buildPartySaves();
-                startNewGame(seed, seedHash, party);
-
-                // Auto-generate portraits for any character that doesn't have one yet
-                const newPortraits: Record<string, string> = {};
-                for (let i = 0; i < party.length; i++) {
-                  if (!party[i].portrait) {
-                    try {
-                      const uri = await generateCharacterPortrait(party[i]);
-                      setCharPortraits(prev => ({ ...prev, [i]: uri }));
-                      newPortraits[String(i)] = uri;
-                    } catch {
-                      // Portrait generation failed — not blocking
-                    }
-                  }
-                }
-                if (Object.keys(newPortraits).length > 0) {
-                  // Save portraits to dedicated portraits_json column, not inside party_data
-                  saveCharacterPortraits(newPortraits);
-                }
-
-                navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
-              } finally {
-                setStartingGame(false);
-              }
-            };
-
-            if (missingCount > 0) {
-              pendingLaunch.current = doLaunch;
-              setPortraitMissingCount(missingCount);
-              setPortraitConfirmVisible(true);
-            } else {
-              doLaunch();
-            }
-          }}
-          disabled={startingGame}
-          className={`p-3 items-center ${startingGame ? 'bg-primary/50' : 'bg-primary'}`}
+          onPress={handleLaunch}
+          disabled={launchStep !== null}
+          className={`p-3 items-center ${launchStep !== null ? 'bg-primary/50' : 'bg-primary'}`}
         >
-          {startingGame ? (
-            <View className="flex-row items-center">
-              <ActivityIndicator size="small" color="#0A0E0A" style={{ marginRight: 8 }} />
-              <Text className="text-background font-bold font-robotomono">
-                {lang === 'es' ? 'PREPARANDO EXPEDICIÓN...' : 'PREPARING EXPEDITION...'}
-              </Text>
-            </View>
-          ) : (
-            <Text className="text-background font-bold font-robotomono">{t('party.startExpedition')}</Text>
-          )}
+          <Text className="text-background font-bold font-robotomono">{t('party.startExpedition')}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* ── Portrait Detail Modal ── */}
-      <Modal
-        visible={portraitDetailUri !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPortraitDetailUri(null)}
-        statusBarTranslucent
-      >
-        <TouchableOpacity
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.92)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          activeOpacity={1}
-          onPress={() => setPortraitDetailUri(null)}
-        >
-          {portraitDetailUri && (
-            <>
-              <Image
-                source={{ uri: portraitDetailUri }}
-                style={{
-                  width: 300,
-                  height: 440,
-                  borderWidth: 1,
-                  borderColor: 'rgba(0,255,65,0.5)',
-                  borderRadius: 4,
-                }}
-                resizeMode="contain"
-              />
-              <Text
-                style={{ color: 'rgba(0,255,65,0.4)', marginTop: 12, fontSize: 10 }}
-                className="font-robotomono"
-              >
-                TAP TO CLOSE
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </Modal>
+      <LaunchProgressModal
+        visible={launchStep !== null}
+        lang={lang}
+        step={launchStep}
+        subStep={launchSubStep}
+      />
+      <PortraitDetailModal
+        uri={portraitDetailUri}
+        onClose={handlePortraitDetailClose}
+      />
     </View>
   );
 };

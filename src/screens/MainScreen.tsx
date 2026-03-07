@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { TypewriterText } from '../components/TypewriterText';
@@ -12,6 +12,11 @@ import type { ScreenProps } from '../navigation/types';
 const BOOT_KEY_ORDER = [
   'bootKernel', 'bootTower', 'bootSeed', 'bootSouls', 'bootCycle', 'bootDnd', 'bootUplink',
 ] as const;
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
 
 export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
   const { t, lang, setLang } = useI18n();
@@ -41,15 +46,15 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
   const hasSaves = savedGames.length > 0;
   const hasActive = activeGame !== null && activeGame.status === 'active';
 
-  const MENU_ITEMS = [
+  const MENU_ITEMS = useMemo(() => [
     { key: 'continue', labelKey: 'main.continueExpedition', enabled: hasActive, tag: hasActive ? null : 'noSave' },
     { key: 'new', labelKey: 'main.newSeed', enabled: true, tag: null },
     { key: 'load', labelKey: 'main.loadSeed', enabled: hasSaves, tag: hasSaves ? null : 'locked' },
     { key: 'settings', labelKey: 'main.systemConfig', enabled: false, tag: 'locked' },
     { key: 'credits', labelKey: 'main.credits', enabled: false, tag: 'locked' },
-  ] as const;
+  ] as const, [hasActive, hasSaves]);
 
-  const handleMenuPress = (key: string) => {
+  const handleMenuPress = useCallback((key: string) => {
     if (key === 'new') navigation.navigate('Seed');
     if (key === 'continue' && hasActive) {
       if (activeGame?.location === 'map') {
@@ -59,9 +64,9 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
       }
     }
     if (key === 'load') setLoadModalVisible(true);
-  };
+  }, [hasActive, activeGame, navigation]);
 
-  const handleLoadGame = (id: string) => {
+  const handleLoadGame = useCallback((id: string) => {
     const game = savedGames.find(g => g.id === id);
     const ok = loadGame(id);
     if (ok) {
@@ -72,25 +77,20 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
         navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
       }
     }
-  };
+  }, [savedGames, loadGame, navigation]);
 
-  const handleDeleteGame = (id: string, seed: string) => {
+  const handleDeleteGame = useCallback((id: string, seed: string) => {
     setDeleteTarget({ id, seed });
-  };
+  }, []);
 
-  const confirmDelete = () => {
+  const confirmDelete = useCallback(() => {
     if (deleteTarget) {
       removeGame(deleteTarget.id);
       setDeleteTarget(null);
     }
-  };
+  }, [deleteTarget, removeGame]);
 
-  const toggleLang = () => setLang(lang === 'es' ? 'en' : 'es');
-
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-  };
+  const toggleLang = useCallback(() => setLang(lang === 'es' ? 'en' : 'es'), [lang, setLang]);
 
   return (
     <View className="flex-1 bg-background">

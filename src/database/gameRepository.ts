@@ -14,6 +14,7 @@ export type SavedGameRow = {
   status: string;
   location: string;
   map_state: string | null;
+  party_portrait: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -30,6 +31,7 @@ export type SavedGame = {
   status: 'active' | 'completed' | 'dead';
   location: 'village' | 'map';
   mapState: string | null;
+  partyPortrait: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -56,6 +58,7 @@ export type CharacterSave = {
   hp: number;
   maxHp: number;
   alive: boolean;
+  portrait?: string;
 };
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -73,6 +76,7 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
     status: row.status as 'active' | 'completed' | 'dead',
     location: (row.location ?? 'village') as 'village' | 'map',
     mapState: row.map_state ?? null,
+    partyPortrait: row.party_portrait ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -104,14 +108,14 @@ export function createSavedGame(
   return {
     id, seed, seedHash, partyData,
     floor: 1, cycle: 1, phase: 'DAY', gold: 0, status: 'active',
-    location: 'village', mapState: null,
+    location: 'village', mapState: null, partyPortrait: null,
     createdAt: now, updatedAt: now,
   };
 }
 
 export function updateSavedGame(
   id: string,
-  updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState'>>,
+  updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState' | 'partyPortrait'>>,
 ): void {
   const db = getDB();
   const sets: string[] = [];
@@ -148,6 +152,10 @@ export function updateSavedGame(
   if (updates.mapState !== undefined) {
     sets.push('map_state = ?');
     values.push(updates.mapState ?? null as unknown as string);
+  }
+  if (updates.partyPortrait !== undefined) {
+    sets.push('party_portrait = ?');
+    values.push(updates.partyPortrait ?? null as unknown as string);
   }
 
   if (sets.length === 0) return;

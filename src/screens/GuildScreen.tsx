@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
@@ -40,22 +40,33 @@ const CharacterCard = ({ char, lang }: { char: CharacterSave; lang: string }) =>
 
   return (
     <View style={S.card}>
-      {/* Header */}
-      <View style={S.cardHeader}>
-        <Text style={S.charName}>{char.name}</Text>
-        <Text style={[S.statusBadge, { color: hpColor, borderColor: hpColor }]}>
-          {statusLabel}
-        </Text>
+      {/* Portrait + identity row */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
+        {char.portrait ? (
+          <Image source={{ uri: char.portrait }} style={S.charPortrait} resizeMode="cover" />
+        ) : (
+          <View style={S.charPortraitPlaceholder}>
+            <Text style={S.charPortraitInit}>{char.name.charAt(0).toUpperCase()}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1, marginLeft: 8 }}>
+          {/* Header */}
+          <View style={S.cardHeader}>
+            <Text style={S.charName}>{char.name}</Text>
+            <Text style={[S.statusBadge, { color: hpColor, borderColor: hpColor }]}>
+              {statusLabel}
+            </Text>
+          </View>
+          {/* Class / Race / Background */}
+          <View style={S.infoRow}>
+            <Text style={S.infoLabel}>
+              {char.race} · {char.charClass}
+              {char.subclass ? ` (${char.subclass})` : ''}
+            </Text>
+          </View>
+          <Text style={S.bgLabel}>{char.background} · {char.alignment}</Text>
+        </View>
       </View>
-
-      {/* Class / Race / Background */}
-      <View style={S.infoRow}>
-        <Text style={S.infoLabel}>
-          {char.race} · {char.charClass}
-          {char.subclass ? ` (${char.subclass})` : ''}
-        </Text>
-      </View>
-      <Text style={S.bgLabel}>{char.background} · {char.alignment}</Text>
 
       {/* HP Bar */}
       <View style={S.hpContainer}>
@@ -239,6 +250,28 @@ const S = StyleSheet.create({
     color: 'rgba(255,62,62,0.6)',
   },
 
+  // Character portrait
+  charPortrait: {
+    width: 56,
+    height: 72,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.2)',
+  },
+  charPortraitPlaceholder: {
+    width: 56,
+    height: 72,
+    backgroundColor: 'rgba(0,255,65,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  charPortraitInit: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 22,
+    color: 'rgba(0,255,65,0.25)',
+  },
+
   // Character Card
   card: {
     borderWidth: 1,
@@ -351,6 +384,33 @@ const S = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(0,255,65,0.3)',
     marginLeft: 8,
+  },
+
+  // Party Portrait
+  portraitContainer: {
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.3)',
+    overflow: 'hidden',
+  },
+  portraitImage: {
+    width: '100%',
+    height: 200,
+  },
+  portraitOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(10,14,10,0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  portraitLabel: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 8,
+    color: 'rgba(0,255,65,0.8)',
+    letterSpacing: 2,
   },
 
   // Notice

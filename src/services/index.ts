@@ -17,6 +17,45 @@ export {
 } from './translationBridge';
 export { generateFloorNodes } from './mapGenerator';
 export type { MapNode, NodeType } from './mapGenerator';
+export {
+  generateDungeonFloor,
+  applyExplorationState,
+  revealAdjacentRooms,
+  applyFloorMutations,
+  serializeExplorationState,
+  rollGroupPerception,
+} from './dungeonGraphService';
+export type {
+  DungeonRoom,
+  DungeonFloor,
+  FloorExplorationState,
+  RoomType,
+  PerceptionResult,
+} from './dungeonGraphService';
+export {
+  getEvolvedMonster,
+  getMonsterStats,
+  calculateXP,
+  recordKill,
+  getKillCount,
+  checkSecretBossTriggers,
+  getEvolutionTier,
+  SECRET_BOSS_CONDITIONS,
+} from './monsterEvolutionService';
+export type {
+  MonsterStats,
+  KillRecord,
+  SecretBossCondition,
+} from './monsterEvolutionService';
+export {
+  getEnemySprite,
+  preloadFloorSprites,
+  hasCachedSprite,
+  getEnemyEvolutionTier,
+  getEvolvedEnemyType,
+} from './enemySpriteService';
+export type { EnemyType, EnemySprite } from './enemySpriteService';
+
 export { generateRivals, buildRivalPool } from './rivalGenerator';
 export type { RivalEntry } from './rivalGenerator';
 export {

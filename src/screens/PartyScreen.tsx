@@ -6,6 +6,9 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  Image,
+  Modal,
+  StatusBar,
   StyleSheet,
 } from 'react-native';
 import Animated, {
@@ -54,6 +57,7 @@ import {
   type FeatureEntry,
 } from '../constants/dnd5eLevel1';
 import { useGameStore } from '../stores/gameStore';
+import { generateCharacterPortrait } from '../services/geminiImageService';
 import type { CharacterSave } from '../database/gameRepository';
 
 // ─── Types ────────────────────────────────────────────────
@@ -200,6 +204,22 @@ const S = StyleSheet.create({
   },
   bannerSub: { color: 'rgba(0,255,65,0.5)' },
   portraitLabel: { color: 'rgba(0,255,65,0.3)' },
+  portraitGenBtn: { color: 'rgba(0,255,65,0.6)' },
+  portraitBox: {
+    width: 56,
+    height: 56,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.3)',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,255,65,0.04)',
+    overflow: 'hidden',
+  },
+  portraitImage: {
+    width: 56,
+    height: 56,
+  },
   statTotal: { color: 'rgba(0,255,65,0.5)' },
   statTotalRacial: { color: 'rgba(0,229,255,0.7)' },
   summaryLabel: { color: 'rgba(0,229,255,0.5)' },
@@ -354,6 +374,12 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
 
   const [roster, setRoster] = useState<CharacterDraft[]>([mkDefault(0)]);
   const [activeSlot, setActiveSlot] = useState(0);
+  const [charPortraits, setCharPortraits] = useState<Record<number, string>>({});
+  const [charPortraitRolls, setCharPortraitRolls] = useState<Record<number, number>>({});
+  const [generatingPortraitFor, setGeneratingPortraitFor] = useState<number | null>(null);
+  const [portraitError, setPortraitError] = useState<string | null>(null);
+  const [portraitDetailUri, setPortraitDetailUri] = useState<string | null>(null);
+  const [startingGame, setStartingGame] = useState(false);
 
   const current = roster[activeSlot];
   const loading = racesLoading || classesLoading || bgLoading || alignLoading || subLoading;
@@ -453,8 +479,54 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     setActiveSlot(a => Math.max(0, a - 1));
   };
 
+  const buildPartySaves = useCallback((): CharacterSave[] => {
+    return roster.map((c, i) => {
+      const race = races.find(r => r.index === c.race);
+      const rb = race ? getRacialBonuses(race.raw as Record<string, unknown>) : {};
+      const fs = computeFinalStats(c.baseStats, rb);
+      const hp = calcLvl1HP(c.charClass, fs.CON);
+      return {
+        name: c.name,
+        race: c.race,
+        charClass: c.charClass,
+        subclass: c.subclass,
+        background: c.background,
+        alignment: c.alignment,
+        baseStats: c.baseStats,
+        statMethod: c.statMethod,
+        featureChoices: c.featureChoices,
+        hp,
+        maxHp: hp,
+        alive: true,
+        portrait: charPortraits[i],
+      };
+    });
+  }, [roster, races, charPortraits]);
+
   const rerollStats = () => updateCurrent({ baseStats: generateValidRolledStats(), statMethod: 'rolled' });
   const useStdArray = () => updateCurrent({ baseStats: assignStandardArray(current.charClass), statMethod: 'standard' });
+
+  const MAX_PORTRAIT_ROLLS = 2;
+
+  const handleGeneratePortrait = useCallback(async () => {
+    if (generatingPortraitFor !== null) return;
+    const rolls = charPortraitRolls[activeSlot] ?? 0;
+    if (rolls >= MAX_PORTRAIT_ROLLS) return;
+    setGeneratingPortraitFor(activeSlot);
+    setPortraitError(null);
+    try {
+      const char = buildPartySaves()[activeSlot];
+      const uri = await generateCharacterPortrait(char);
+      setCharPortraits(prev => ({ ...prev, [activeSlot]: uri }));
+      setCharPortraitRolls(prev => ({ ...prev, [activeSlot]: (prev[activeSlot] ?? 0) + 1 }));
+    } catch (err) {
+      console.error('[Portrait] generation error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setPortraitError(msg.length > 38 ? msg.substring(0, 38) + '...' : msg);
+    } finally {
+      setGeneratingPortraitFor(null);
+    }
+  }, [generatingPortraitFor, activeSlot, buildPartySaves, charPortraitRolls]);
 
   // ── Current selections ──
 
@@ -564,10 +636,57 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
               {currentSubData ? ` · ${currentSubData.name}` : ''}
             </Text>
           </View>
-          <View className="items-center border border-primary/20 rounded px-2 py-1">
-            <Text style={S.portraitLabel} className="font-robotomono text-[8px]">
-              {t('party.portrait')}
-            </Text>
+          {/* Character Portrait (per active slot) */}
+          <View style={{ alignItems: 'center' }}>
+            <TouchableOpacity
+              onPress={() => {
+                if (charPortraits[activeSlot]) {
+                  setPortraitDetailUri(charPortraits[activeSlot]);
+                } else {
+                  handleGeneratePortrait();
+                }
+              }}
+              disabled={generatingPortraitFor !== null && !charPortraits[activeSlot]}
+              style={S.portraitBox}
+            >
+              {charPortraits[activeSlot] ? (
+                <Image
+                  source={{ uri: charPortraits[activeSlot] }}
+                  style={S.portraitImage}
+                  resizeMode="cover"
+                />
+              ) : generatingPortraitFor === activeSlot ? (
+                <ActivityIndicator size="small" color="#00FF41" />
+              ) : (
+                <>
+                  <Text style={S.portraitLabel} className="font-robotomono text-[7px]">
+                    {t('party.portrait')}
+                  </Text>
+                  <Text style={S.portraitGenBtn} className="font-robotomono text-[7px] mt-1">
+                    {portraitError ?? t('party.generatePortrait')}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+            {/* Reroll button — only shown when portrait exists and rolls remain */}
+            {charPortraits[activeSlot] && (charPortraitRolls[activeSlot] ?? 0) < MAX_PORTRAIT_ROLLS && (
+              <TouchableOpacity
+                onPress={handleGeneratePortrait}
+                disabled={generatingPortraitFor !== null}
+                style={{ marginTop: 3 }}
+              >
+                {generatingPortraitFor === activeSlot ? (
+                  <ActivityIndicator size="small" color="rgba(255,176,0,0.7)" />
+                ) : (
+                  <Text
+                    style={{ color: 'rgba(255,176,0,0.7)', fontSize: 7 }}
+                    className="font-robotomono"
+                  >
+                    ↻ {MAX_PORTRAIT_ROLLS - (charPortraitRolls[activeSlot] ?? 0)}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -982,34 +1101,51 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
           </TouchableOpacity>
         </View>
         <TouchableOpacity
-          onPress={() => {
-            // Convert roster to CharacterSave with computed HP
-            const party: CharacterSave[] = roster.map(c => {
-              const race = races.find(r => r.index === c.race);
-              const rb = race ? getRacialBonuses(race.raw as Record<string, unknown>) : {};
-              const fs = computeFinalStats(c.baseStats, rb);
-              const hp = calcLvl1HP(c.charClass, fs.CON);
-              return {
-                name: c.name,
-                race: c.race,
-                charClass: c.charClass,
-                subclass: c.subclass,
-                background: c.background,
-                alignment: c.alignment,
-                baseStats: c.baseStats,
-                statMethod: c.statMethod,
-                featureChoices: c.featureChoices,
-                hp,
-                maxHp: hp,
-                alive: true,
-              };
-            });
-            startNewGame(seed, seedHash, party);
-            navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
+          onPress={async () => {
+            if (startingGame) return;
+            setStartingGame(true);
+            try {
+              const party = buildPartySaves();
+              const game = startNewGame(seed, seedHash, party);
+
+              // Auto-generate portraits for any character that doesn't have one yet
+              const partyCopy = [...party];
+              let needsPortraitSave = false;
+              for (let i = 0; i < partyCopy.length; i++) {
+                if (!partyCopy[i].portrait) {
+                  try {
+                    const uri = await generateCharacterPortrait(partyCopy[i]);
+                    partyCopy[i] = { ...partyCopy[i], portrait: uri };
+                    setCharPortraits(prev => ({ ...prev, [i]: uri }));
+                    needsPortraitSave = true;
+                  } catch {
+                    // Portrait generation failed — not blocking
+                  }
+                }
+              }
+              if (needsPortraitSave) {
+                const { updateSavedGame } = await import('../database/gameRepository');
+                updateSavedGame(game.id, { partyData: partyCopy });
+              }
+
+              navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
+            } finally {
+              setStartingGame(false);
+            }
           }}
-          className="bg-primary p-3 items-center"
+          disabled={startingGame}
+          className={`p-3 items-center ${startingGame ? 'bg-primary/50' : 'bg-primary'}`}
         >
-          <Text className="text-background font-bold font-robotomono">{t('party.startExpedition')}</Text>
+          {startingGame ? (
+            <View className="flex-row items-center">
+              <ActivityIndicator size="small" color="#0A0E0A" style={{ marginRight: 8 }} />
+              <Text className="text-background font-bold font-robotomono">
+                {lang === 'es' ? 'PREPARANDO EXPEDICIÓN...' : 'PREPARING EXPEDITION...'}
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-background font-bold font-robotomono">{t('party.startExpedition')}</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>

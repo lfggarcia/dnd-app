@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, memo, type ReactNode } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, memo, useRef, type ReactNode } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Image,
   Modal,
-  Alert,
   StatusBar,
   StyleSheet,
 } from 'react-native';
@@ -21,6 +20,7 @@ import Animated, {
   withSequence,
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { TutorialOverlay } from '../components/TutorialOverlay';
 import { useI18n, type Lang } from '../i18n';
@@ -403,6 +403,9 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   const [portraitDetailUri, setPortraitDetailUri] = useState<string | null>(null);
   const [portraitExpanded, setPortraitExpanded] = useState(true);
   const [startingGame, setStartingGame] = useState(false);
+  const [portraitConfirmVisible, setPortraitConfirmVisible] = useState(false);
+  const [portraitMissingCount, setPortraitMissingCount] = useState(0);
+  const pendingLaunch = useRef<(() => void) | null>(null);
 
   const current = roster[activeSlot];
   const loading = racesLoading || classesLoading || bgLoading || alignLoading || subLoading;
@@ -592,6 +595,22 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     <View className="flex-1 bg-background">
       <GlossaryButton />
       <CRTOverlay />
+      <ConfirmModal
+        visible={portraitConfirmVisible}
+        title={lang === 'es' ? 'Retratos pendientes' : 'Pending Portraits'}
+        message={
+          lang === 'es'
+            ? `${portraitMissingCount} personaje${portraitMissingCount !== 1 ? 's' : ''} no tiene${portraitMissingCount !== 1 ? 'n' : ''} retrato generado. Al iniciar la expedición se generarán automáticamente — se usará el primer resultado obtenido. ¿Deseas continuar?`
+            : `${portraitMissingCount} character${portraitMissingCount !== 1 ? 's' : ''} ${portraitMissingCount !== 1 ? "don't" : "doesn't"} have a portrait yet. They will be auto-generated when the expedition starts — the first result will be used automatically. Continue?`
+        }
+        confirmLabel={lang === 'es' ? 'Continuar' : 'Continue'}
+        cancelLabel={lang === 'es' ? 'Cancelar' : 'Cancel'}
+        onConfirm={() => {
+          setPortraitConfirmVisible(false);
+          pendingLaunch.current?.();
+        }}
+        onCancel={() => setPortraitConfirmVisible(false)}
+      />
       <TutorialOverlay
         visible={tutorial.visible}
         steps={tutorial.steps}
@@ -1221,16 +1240,9 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
             };
 
             if (missingCount > 0) {
-              Alert.alert(
-                lang === 'es' ? 'Retratos pendientes' : 'Pending Portraits',
-                lang === 'es'
-                  ? `${missingCount} personaje${missingCount !== 1 ? 's' : ''} no tiene${missingCount !== 1 ? 'n' : ''} retrato generado. Al iniciar la expedición se generarán automáticamente — se usará el primer resultado obtenido. ¿Deseas continuar?`
-                  : `${missingCount} character${missingCount !== 1 ? 's' : ''} ${missingCount !== 1 ? "don't" : "doesn't"} have a portrait yet. They will be auto-generated when the expedition starts — the first result will be used automatically. Continue?`,
-                [
-                  { text: lang === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
-                  { text: lang === 'es' ? 'Continuar' : 'Continue', onPress: doLaunch },
-                ],
-              );
+              pendingLaunch.current = doLaunch;
+              setPortraitMissingCount(missingCount);
+              setPortraitConfirmVisible(true);
             } else {
               doLaunch();
             }

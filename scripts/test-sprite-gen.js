@@ -156,7 +156,7 @@ function buildImg2Img(baseFilename, prompt, seed) {
     '5': {
       inputs: {
         seed, steps: 25, cfg: 7,
-        sampler_name: 'dpm_2_ancestral', scheduler: 'karras', denoise: 0.65,
+        sampler_name: 'euler', scheduler: 'karras', denoise: 0.40,
         model: ['1', 0], positive: ['2', 0], negative: ['3', 0], latent_image: ['11', 0],
       },
       class_type: 'KSampler',
@@ -219,20 +219,23 @@ async function main() {
   // 3. PHASE 2 — img2img (all 4 idle frames, same base sprite)
   const BASE_PROMPT =
     '(masterpiece, best quality), dark fantasy RPG sprite of an undead skeleton warrior, ' +
-    'same character as reference, consistent art style, digital painting, dungeon crawler game art, ' +
+    'exact same character as reference image, identical color palette, same eye color, same weapon design, ' +
+    'same outfit and armor, consistent art style, digital painting, dungeon crawler game art, ' +
     'dark moody background, dramatic lighting, highly detailed, no text, no watermark';
 
   const frameResults = [];
 
-  for (const frame of IDLE_FRAMES) {
-    const seedFrame  = Math.floor(Math.random() * 2 ** 32);
+  // Sequential seeds anchored to the base seed: frames stay in the same "neighbourhood"
+  // of the latent space, which dramatically reduces color/detail drift between frames.
+  for (const [frameIdx, frame] of IDLE_FRAMES.entries()) {
+    const seedFrame  = (seedBase + frameIdx + 1) >>> 0; // wrap at 32-bit
     const framePrompt = `${BASE_PROMPT}, ${frame.pose}`;
     const label       = `IMG2IMG:skeleton_idle_${frame.id}`;
 
     console.log(`\n[PHASE 2 — ${frame.id}] img2img  (seed ${seedFrame})`);
     console.log(`  Pose       : ${frame.pose.slice(0, 64)}…`);
     console.log(`  Input file : ${inputFilename}`);
-    console.log(`  Denoise    : 0.65`);
+    console.log(`  Denoise    : 0.40`);
 
     const pid = await queueWorkflow(label, buildImg2Img(inputFilename, framePrompt, seedFrame));
     console.log(`  prompt_id  : ${pid}`);

@@ -38,8 +38,14 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
     Icons.tsx                 → librería SVG: 20+ iconos (SwordIcon, GuildIcon, etc.). ✅ Funcional
     SliderButton.tsx          → botón deslizable (Gesture Handler). ✅ Funcional
     TorreLogo.tsx             → logo SVG "TORRE" con neón roto + flicker. ✅ Funcional
+    LogoIA.tsx                → logo generado por IA; usado en MainScreen. ✅ Funcional
     TutorialOverlay.tsx       → overlay paso a paso con navegación (next/prev/skip). ✅ Funcional
     TypewriterText.tsx        → texto carácter por carácter. ✅ Funcional
+    party/
+      LaunchProgressModal.tsx → modal de progreso de lanzamiento de expedición. ✅ Funcional
+      PortraitSection.tsx     → sección colapsable de portrait en PartyScreen. ✅ Funcional
+      PortraitDetailModal.tsx → modal de zoom/detalle de portrait. ✅ Funcional
+      RosterTabs.tsx          → tabs del roster de party. ✅ Funcional
   constants/
     dnd5eLevel1.ts            → reglas DnD5e nivel 1: subclases, features, razas, acciones, COMBAT_ACTIONS. ✅ Completo
   database/
@@ -51,6 +57,7 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
   hooks/
     useDatabase.ts            → init DB + seed traducciones + subclases en mount. ✅ Funcional
     useGlossary.ts            → estado de visibilidad del modal de glosario. ✅ Funcional
+    usePartyRoster.ts         → gestión del roster de party (extraído de PartyScreen). ✅ Funcional
     useResources.ts           → fetch DnD 5e con traducción automática. ✅ Funcional
     useTutorial.ts            → navegación de pasos del tutorial. ✅ Funcional
   i18n/
@@ -80,13 +87,13 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
   stores/
     gameStore.ts              → Zustand + SQLite; startNewGame, loadGame, updateProgress, endGame, hydrate, clearActive. ✅ Funcional
   screens/
-    MainScreen.tsx            → menú TorreLogo, boot sequence, toggle idioma; enruta Map/Village según location. ✅
+    MainScreen.tsx            → menú LogoIA (reemplazó TorreLogo), boot sequence, toggle idioma; enruta Map/Village según location. ✅
     SeedScreen.tsx            → input seed + efecto Matrix. ⚠️ Sin validación avanzada de seed
     PartyScreen.tsx           → creación personaje real; portrait Gemini; CharacterActionsPanel; ConfirmModal "Retratos pendientes". ✅ FUNCIONAL
     VillageScreen.tsx         → useGameStore (gold/cycle/phase/floor); rivals/market/amenazas por seed; BackHandler; iconos SVG. ✅ FUNCIONAL
     GuildScreen.tsx           → roster con portraits, HP bar, stats, badges ACTIVO/HERIDO/MUERTO. ✅ FUNCIONAL
-    MapScreen.tsx             → dungeonGraphService integrado: 12-20 rooms, fog-of-war, backtracking, avance de piso; persistencia en map_state; transición BOSS/ELITE/NORMAL → BattleScreen. ✅ FUNCIONAL
-    BattleScreen.tsx          → banner portrait grupo + portraits individuales; log de combate estático. ⚠️ MOCK
+    MapScreen.tsx             → dungeonGraphService integrado: 12-20 rooms, fog-of-war, backtracking, avance de piso; persistencia en map_state; transición BOSS/ELITE/NORMAL → BattleScreen. ✅ FUNCIONAL ⚠️ GAME LOOP ROTO (ver pendiente crítico)
+    BattleScreen.tsx          → banner portrait grupo + portraits individuales; log de combate estático. ⚠️ MOCK — sin params de sala, sin room clearing
     ReportScreen.tsx          → TypewriterText con valores hardcodeados. ⚠️ MOCK
     ExtractionScreen.tsx      → contador animado + "Volver a la villa" en ciclo 60. ✅ CONECTADO
     WorldLogScreen.tsx        → feed de eventos con filtros ALL/COMBAT/LORE/SYSTEM. ⚠️ MOCK DATA
@@ -98,16 +105,17 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
 - **Persistencia de partida** — `useGameStore` (Zustand) persiste `activeGame` + `savedGames`; campos: seed, party, floor, cycle, phase, gold, status, location, mapState, partyPortrait, portraitsJson, expressionsJson
 - **Sistema de retratos IA** — `geminiImageService.ts` genera portraits por personaje vía Gemini API; expresiones faciales (6 variantes) via ComfyUI img2img
 - **Catálogo de enemigos** — `enemySpriteService.ts`: 35+ tipos, 5 animaciones; `monsterEvolutionService.ts`: tiers, XP decay, secret bosses; sprites bundleados con Metro
-- **Dungeon graphs** — `dungeonGraphService.ts`: DAG 12–20 rooms, fog-of-war, mutaciones por ciclo; **pendiente conectar a MapScreen**
+- **Dungeon graphs** — `dungeonGraphService.ts`: DAG 12–20 rooms, fog-of-war, mutaciones por ciclo; **conectado a MapScreen** ✅
 - **Routing por estado** — MainScreen enruta a MapScreen o VillageScreen según `location` guardado
 - **Generador determinístico** — PRNG djb2+LCG: rivals, market, amenazas, nodos de mapa
 - **i18n bilingüe** — ES/EN, fallback chain: translations DB → raw API data
 
-### Pendiente crítico (próximo sprint — Sprint 4)
-1. **Motor de combate DnD 5e** — BattleScreen sin tiradas, sin HP dinámico, sin turnos reales
-2. **`simulateWorld(cycle)`** — parties IA no simulan progreso real aún
-3. **ReportScreen** — conectada a resultados reales de combate (actualmente hardcodeada)
-4. **HP dinámico de personajes** — el campo `alive` existe en `CharacterSave` pero HP no se reduce en combate
+### Pendiente crítico (próximo sprint — Sprint 4A + 4B)
+1. **🔴 CRÍTICO — Game loop roto**: `Battle: undefined` en `RootStackParamList` → BattleScreen no recibe ni `roomId` ni `roomType`. Al terminar combate (mock "Force End"), ReportScreen navega a `Extraction`, no de vuelta al mapa. La sala **nunca** se marca `visited: true` → el BOSS nunca se limpia → nunca se puede avanzar de piso. **Sprint 4A** arregla esto antes del motor real.
+2. **Motor de combate DnD 5e** — BattleScreen sin tiradas, sin HP dinámico, sin turnos reales (**Sprint 4B**)
+3. **`simulateWorld(cycle)`** — parties IA no simulan progreso real aún
+4. **ReportScreen** — conectada a resultados reales de combate (actualmente hardcodeada)
+5. **HP dinámico de personajes** — el campo `alive` existe en `CharacterSave` pero HP no se reduce en combate
 
 ---
 

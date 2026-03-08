@@ -7,6 +7,22 @@ Versiones siguiendo [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased] — 2026-03-08
 
+### Added (Refactor de PartyScreen + LogoIA)
+
+- **`LogoIA.tsx`** — componente de logo generado por IA que reemplaza `TorreLogo` en `MainScreen.tsx`; `TorreLogo.tsx` se mantiene disponible en components
+- **`src/components/party/`** — refactor de `PartyScreen.tsx` en sub-componentes: `LaunchProgressModal.tsx` (modal de progreso de lanzamiento), `PortraitSection.tsx` (sección de portrait colapsable), `PortraitDetailModal.tsx` (modal de detalle/zoom de portrait), `RosterTabs.tsx` (tabs de roster de personajes)
+- **`hooks/usePartyRoster.ts`** — lógica de gestión del roster de party extraída de PartyScreen
+- **`scripts/generate-expressions.js`** — generación batch de 7 expresiones faciales (neutral/angry/sad/surprised/wounded/scared/determined) por personaje via ComfyUI img2img; usa workflow `02-expression-inpaint.json`; CLI: `--character <name> --input <image.png> [--expression <key>]`
+
+### Changed (Refactor)
+
+- **`MainScreen.tsx`** — usa `LogoIA` en lugar de `TorreLogo`
+- **`PartyScreen.tsx`** — delegación de UI a sub-componentes en `components/party/`
+
+---
+
+## [Unreleased] — 2026-03-08
+
 ### Added (Sprint 3 completo — Motor de Dungeon conectado)
 
 - **`characterStats.ts`** — utilidades puras DnD 5e sin React ni estado: `assignStandardArray` (standard array por prioridad de clase), `generateValidRolledStats` (4d6 drop lowest con validación de total), `getRacialBonuses` (differential de API raw), `computeFinalStats` (aplica racial, cap 20), `getSubclassFeatures`, `pickRaceName`; tabla `CLASS_STAT_PRIORITY` para 12 clases; `ALIGNMENT_ORDER`; `STANDARD_ARRAY`

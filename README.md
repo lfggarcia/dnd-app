@@ -113,6 +113,44 @@ Main → Seed → Party → Village → Map → Battle → Report → Extraction
 
 ---
 
+## Copilot AI Workflow
+
+Este proyecto tiene skills y agents de GitHub Copilot configurados en `.github/`.
+
+### Skills (automáticas por contexto)
+
+Se activan solas cuando Copilot detecta que la pregunta hace match con su dominio. No necesitas escribir nada especial.
+
+| Skill | Se activa cuando hablas de... |
+|---|---|
+| `torre-context` | Arquitectura general, qué archivo hace qué |
+| `torre-sprint` | "qué hacemos hoy?", next task, roadmap |
+| `torre-combat-engine` | BattleScreen, combate, turnos, d20, HP |
+| `torre-math-engine` | Fórmulas, hit chance, XP, damage, scaling |
+| `torre-party-rules` | Party creation, personajes, nivel, muerte |
+| `torre-economy` | Gold, loot, items, revive, boss drops |
+| `torre-ai-system` | IA parties, bounty, moral, simulación |
+| `torre-politics` | Guild, alianzas, reputación, extorsión |
+| `torre-tech-arch` | SQLite schema, Zustand, seed model, offline |
+| `torre-time-system` | Ciclos, day/night, season, simulación temporal |
+| `torre-code-quality` | Code review, refactor, NativeWind, performance |
+| `torre-doc-sync` | Actualizar docs, sprint status, HANDOFF, CHANGELOG |
+
+### Agents (invocación manual con @)
+
+En VS Code Copilot Chat (modo Agent), invoca con `@nombre`:
+
+| Agent | Cuándo usarlo |
+|---|---|
+| `@torre-session-starter` | Al inicio de cada sesión — carga contexto y propone qué hacer |
+| `@torre-implementer` | Para implementar una tarea completa del sprint |
+| `@torre-debugger` | Para diagnosticar un bug específico |
+| `@torre-game-designer` | Para validar si una nueva mecánica encaja en el diseño |
+
+> Los agents están definidos en `.github/agents/`. Requiere VS Code Copilot Chat con Agent mode habilitado.
+
+---
+
 ## Setup
 
 ```sh

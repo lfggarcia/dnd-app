@@ -29,6 +29,8 @@
 | El boss nunca se puede limpiar → no se puede avanzar de piso | Depende del bug anterior | `dungeonGraphService.ts`, `MapScreen.tsx` |
 | `ReportScreen` navega a Extraction en vez de volver al Mapa | Navegación mal conectada post-combate | `ReportScreen.tsx` |
 | iOS: bug al guardar/borrar party | Pendiente investigar | `gameRepository.ts`, `gameStore.ts` |
+| ~~Node overlap~~ | ~~Salas secretas y principales en misma banda y~~ | ✅ Corregido — `dungeonGraphService.ts` |
+| ~~Premature room reveal~~ | ~~Reveal al tap, no al volver de combate~~ | ✅ Corregido — `useFocusEffect` en `MapScreen.tsx` |
 
 ---
 
@@ -52,11 +54,13 @@ Portraits de personaje vía Google Gemini, variantes de expresión facial vía C
 
 #### Tareas
 
+- [x] `MapScreen.tsx` — node select + bottom action panel (`▶ ENTRAR`); overlay de descenso de piso (`isDescending`)
+- [x] `MapScreen.tsx` — visual overhaul: corner brackets, SVG grid bg, glow rings, enhanced current-room indicator, top color strips, fog nodes eliminados
+- [x] `dungeonGraphService.ts` — fix node overlap: main rooms `y ∈ [0.05, 0.82]`, secret rooms `y ≥ 0.93`
+- [x] `MapScreen.tsx` — fix premature reveal: `useFocusEffect` revela adyacentes al volver de combate
 - [ ] `src/navigation/types.ts` — añadir params: `Battle: { roomId: string; roomType: RoomType }` y `Report: { roomId: string; roomWasCleared: boolean }`
-- [ ] `MapScreen.tsx` — pasar `roomId` + `roomType` al navegar a BattleScreen
 - [ ] `BattleScreen.tsx` — leer params de ruta; al terminar combate (victoria mock) navegar a Report con `{ roomId, roomWasCleared: true }`
 - [ ] `ReportScreen.tsx` — recibir params; al "Continuar" navegar de vuelta a MapScreen (no a Extraction)
-- [ ] `MapScreen.tsx` — al volver de Report, marcar la sala como `visited: true` y persistir `mapState`
 - [ ] Verificar que `isBossCleared` activa correctamente el panel de avance de piso
 - [ ] Test manual: entrar a room → batalla → reporte → mapa → sala marcada visitada → boss limpio → avanzar piso
 
@@ -211,13 +215,14 @@ WorldLogScreen (desde GuildScreen)
 
 ## 🎯 Próxima Acción Inmediata
 
-**Sprint 4A, Tarea 1:**
+**Sprint 4A — siguiente tarea:**
 ```
 Editar src/navigation/types.ts:
   Battle: { roomId: string; roomType: RoomType }
   Report: { roomId: string; roomWasCleared: boolean }
 ```
-Luego conectar el flow: MapScreen → BattleScreen → ReportScreen → MapScreen con marking de sala.
+Luego conectar BattleScreen (leer params, navegar a Report) y ReportScreen (navegar de vuelta al Mapa, no a Extraction).
+Una vez conectado: sala se marca visited → boss se puede limpiar → avanzar piso funciona end-to-end.
 
 ---
 

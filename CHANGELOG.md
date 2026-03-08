@@ -7,6 +7,34 @@ Versiones siguiendo [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased] — 2026-03-08
 
+### Added (MapScreen UX — Select + Panel + Visual Overhaul)
+
+- **Node select + bottom action panel** — tocar un nodo accesible ya no navega directamente; lo selecciona y muestra un panel de acción con botón `▶ ENTRAR`; retoca el mismo nodo lo deselecciona; backtrack a sala visitada sigue siendo silencioso
+- **Floor descent loading overlay** — al avanzar de piso aparece un overlay fullscreen (`isDescending`) que muestra "DESCENDIENDO · PISO N · Explorando territorio desconocido..." hasta que el nuevo piso esté listo
+- **`MapBackground` SVG grid** — retícula de puntos/líneas CRT sobre el canvas del mapa via `react-native-svg`; `pointerEvents="none"` (no interfiere con inputs)
+- **Corner bracket decoration** — cuatro ángulos decorativos (`nodeBracketTL/TR/BL/BR`) en cada nodo revelado; color derivado del tipo de sala
+- **Room color-coded action panel** — panel inferior colorizado por `borderColor`/`textColor` del tipo de sala seleccionada; descripción temática via `getRoomActionDesc()`
+- **`getRoomActionDesc()`** — helper que devuelve texto descriptivo por tipo de sala (NORMAL/ELITE/BOSS/TREASURE/SECRET/EVENT/START)
+- **Glow ring on accessible nodes** — aro de borde fino alrededor de habitaciones alcanzables; se vuelve doble y más brillante cuando el nodo está seleccionado
+- **Enhanced current-room indicator** — anillo interno pulsante (Reanimated) + anillo externo estático; NODE_SIZE 56→64px; icono BOSS 22px vs 20px resto
+- **Top color strip per node** — franja de 3px en el borde superior de cada nodo con el color del tipo de sala (opacidad 0.65)
+- **`useFocusEffect` reveal** — al volver de Battle → Report → Extraction, se revela las habitaciones adyacentes a la sala de combate actual si aún no estaban reveladas; evita reveal prematuro antes de resolver el combate
+
+### Fixed
+
+- **[fix] Node overlap** — `dungeonGraphService.ts`: habitaciones principales ahora confinadas a `y ∈ [0.05, 0.82]`; salas secretas colocadas en `y ≥ 0.93` — elimina solapamiento visual entre layouts principales y secretos
+- **[fix] Premature room revelation** — la revelación de salas adyacentes se difiere hasta volver del combate (useFocusEffect), no al hacer tap en el nodo
+
+### Changed
+
+- **[chore] Fog nodes removed** — las habitaciones no reveladas ya no renderizan el nodo `?` opaco; simplemente no aparecen en el mapa (comportamiento fog correcto)
+- **[chore] Room panel colorized** — `roomPanel` ahora toma `borderTopColor` del color del tipo de sala seleccionada en vez de verde fijo
+- **[chore] Room action descriptions** — panel de sala visitada/no visitada muestra texto temático (`getRoomActionDesc`) en lugar de texto genérico
+
+---
+
+## [Unreleased] — 2026-03-08
+
 ### Added (Refactor de PartyScreen + LogoIA)
 
 - **`LogoIA.tsx`** — componente de logo generado por IA que reemplaza `TorreLogo` en `MainScreen.tsx`; `TorreLogo.tsx` se mantiene disponible en components

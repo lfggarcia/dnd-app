@@ -190,3 +190,36 @@ Decide cycle action:
 On cycle advance:
   └── Engine simulates all AI parties up to current cycle
 ```
+
+---
+
+## Skills de Sistemas TORRE
+
+Cada sistema del juego tiene su propio skill con detalles completos:
+
+| Skill | Sistema | Cuándo usar |
+|---|---|---|
+| `torre-combat-engine` | Combate DnD 5e | BattleScreen, ReportScreen, combate por turnos |
+| `torre-math-engine` | Fórmulas exactas | Hit/damage/XP/iniciativa/escalado/probabilidades |
+| `torre-ai-system` | IA + Bounty + Moral | Simulación IA, decision engine, bounty, perfil estratégico |
+| `torre-time-system` | Ciclos + Temporada | Avance de ciclo, simulación batch, día/noche |
+| `torre-economy` | Economía + Loot | Oro, drops, loot de jefe, costo de revivir |
+| `torre-party-rules` | Parties + Jugador | Creación de personajes, herencia de nivel, muerte |
+| `torre-politics` | Gremio + Alianzas | Guild, alianzas, extorsión, world log, bounty diplomático |
+| `torre-tech-arch` | Arquitectura + DB | SQLite schema, GameState, Zustand, seed model, persistencia |
+| `torre-code-quality` | Calidad de código | NativeWind, hooks, memoización, anti-patrones RN |
+| `torre-doc-sync` | Documentación | Actualizar PROJECT_PLAN.md, HANDOFF.md, CHANGELOG.md |
+| `torre-sprint` | Sprint / Planning | Qué sigue, estado del sprint, próximas tareas |
+
+---
+
+## Agents TORRE
+
+Agentes especializados para flujos de trabajo completos (`.github/agents/`):
+
+| Agent | Propósito | Cuándo usar |
+|---|---|---|
+| `torre-implementer` | Implementar features del sprint | Escribir código, wiring de pantallas, crear servicios |
+| `torre-debugger` | Encontrar y fixear bugs | Crashes, navegación rota, estado no persistido |
+| `torre-game-designer` | Validar diseño de juego | Nuevas mecánicas, balance, reglas DnD 5e |
+| `torre-session-starter` | Arrancar sesión de trabajo | "¿Qué hacemos hoy?", inicio de sesión, siguiente tarea |

@@ -148,9 +148,11 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
 
     if (!room.visited && (room.type === 'NORMAL' || room.type === 'ELITE' || room.type === 'BOSS')) {
       navigation.navigate('Battle');
-    } else {
+    } else if (!room.visited) {
+      // Unvisited non-combat room: show action panel
       setSelectedRoom(room);
     }
+    // Visited rooms (backtracking): just move there silently — no panel
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floor, currentRoomId, navigation, updateProgress]);
 
@@ -339,8 +341,8 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
         })}
       </ScrollView>
 
-      {/* Boss cleared — advance floor */}
-      {isBossCleared && !selectedRoom && (
+      {/* Boss cleared — advance floor (takes priority over room panel) */}
+      {isBossCleared && (
         <View style={styles.bossPanel}>
           <Text style={styles.bossPanelTitle}>☠  PISO {floorIndex} CONQUISTADO</Text>
           <Text style={styles.bossPanelDesc}>El guardián del piso ha caído. El próximo descenso aguarda.</Text>

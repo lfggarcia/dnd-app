@@ -26,10 +26,10 @@ import {
 } from '../services/dungeonGraphService';
 
 // ─── Canvas dimensions (computed once at module load) ────────────────────────
-const { width: SCREEN_W } = Dimensions.get('window');
-const CANVAS_W = SCREEN_W;
-const CANVAS_H = 720;
-const NODE_SIZE = 52;
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const CANVAS_W = Math.max(SCREEN_W, 460);   // ensure enough horizontal room
+const CANVAS_H = Math.max(SCREEN_H - 160, 800); // dynamic: leave space for bars
+const NODE_SIZE = 56;
 const NODE_HALF = NODE_SIZE / 2;
 
 // ─── Room visual styles ───────────────────────────────────────────────────────
@@ -114,7 +114,19 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
 
   // ─── Accessibility ─────────────────────────────────────────────────────────
   const currentRoom = floor.rooms.find(r => r.id === currentRoomId);
-  const accessibleIds = new Set(currentRoom?.connections ?? []);
+  // Reverse connections: visited rooms that connect TO the current room (backtracking)
+  const reverseIds = new Set<number>(
+    floor.rooms
+      .filter(r => r.visited && r.connections.includes(currentRoomId))
+      .map(r => r.id)
+  );
+  const accessibleIds = new Set<number>([
+    ...(currentRoom?.connections ?? []),
+    ...reverseIds,
+  ]);
+
+  // ─── Floor advancement ────────────────────────────────────────────────────
+  const isBossCleared = currentRoom?.type === 'BOSS' && currentRoom.visited;
 
   // ─── Room press ─────────────────────────────────────────────────────────────
   const handleRoomPress = useCallback((room: DungeonRoom) => {
@@ -134,13 +146,26 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     const savedState = serializeExplorationState(afterReveal, room.id);
     updateProgress({ location: 'map', mapState: JSON.stringify(savedState) });
 
-    if (room.type === 'NORMAL' || room.type === 'ELITE' || room.type === 'BOSS') {
+    if (!room.visited && (room.type === 'NORMAL' || room.type === 'ELITE' || room.type === 'BOSS')) {
       navigation.navigate('Battle');
     } else {
       setSelectedRoom(room);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floor, currentRoomId, navigation, updateProgress]);
+
+  const handleNextFloor = useCallback(() => {
+    const newFloorIndex = floorIndex + 1;
+    const base = generateDungeonFloor(activeGame?.seedHash ?? '0', newFloorIndex);
+    const withMutations = applyFloorMutations(base, cycle);
+    const withReveal = revealAdjacentRooms(withMutations, withMutations.startRoomId);
+    const newState = serializeExplorationState(withReveal, withMutations.startRoomId);
+    updateProgress({ floor: newFloorIndex, mapState: JSON.stringify(newState) });
+    setFloor(withReveal);
+    setCurrentRoomId(withMutations.startRoomId);
+    setSelectedRoom(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [floorIndex, activeGame, cycle, updateProgress]);
 
   // ─── Save & exit ───────────────────────────────────────────────────────────
   const handleSaveAndExit = useCallback(() => {
@@ -167,9 +192,16 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
         <TouchableOpacity onPress={() => setSaveExitVisible(true)} style={styles.exitBtn}>
           <Text style={styles.exitText}>✕ {t('map.exit')}</Text>
         </TouchableOpacity>
-        <Text style={styles.titleText}>
-          {t('common.floor')} {String(floorIndex).padStart(2, '0')} · {t('map.title')}
-        </Text>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={styles.titleText}>
+            {t('common.floor')} {String(floorIndex).padStart(2, '0')} · {t('map.title')}
+          </Text>
+          {currentRoom && (
+            <Text style={styles.currentRoomHint}>
+              {ROOM_STYLES[currentRoom.type].icon} {currentRoom.label}
+            </Text>
+          )}
+        </View>
         <Text style={styles.cycleText}>{t('common.cycle')}: {String(cycle).padStart(2, '0')}/60</Text>
       </View>
 
@@ -186,12 +218,15 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
         </Text>
       </View>
 
-      {/* Scrollable Map Canvas — vertical scroll through the dungeon */}
+      {/* Scrollable Map Canvas — pan through the dungeon */}
       <ScrollView
         style={styles.mapScroll}
         contentContainerStyle={{ width: CANVAS_W, height: CANVAS_H }}
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
+        maximumZoomScale={2}
+        minimumZoomScale={0.6}
+        bouncesZoom
       >
         {/* Diagonal connection lines */}
         {floor.rooms.map(room =>
@@ -211,7 +246,9 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
             // Centre the line at the midpoint between the two nodes, then rotate
             const cx = (x1 + x2) / 2;
             const cy = (y1 + y2) / 2;
-            const isActivePath = room.id === currentRoomId && accessibleIds.has(targetId);
+            const isActivePath =
+              (room.id === currentRoomId && accessibleIds.has(targetId)) ||
+              (targetId === currentRoomId && reverseIds.has(room.id));
 
             return (
               <View
@@ -253,7 +290,8 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
             );
           }
 
-          const opacity = isCurrent ? 1 : room.visited ? 0.45 : isAccessible ? 1 : 0.25;
+          const isBacktrack = reverseIds.has(room.id);
+          const opacity = isCurrent ? 1 : room.visited ? (isAccessible ? 0.7 : 0.4) : isAccessible ? 1 : 0.2;
 
           return (
             <TouchableOpacity
@@ -272,10 +310,13 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
-                <Text style={{ fontSize: 15, color: rs.textColor }}>{rs.icon}</Text>
+                <Text style={{ fontSize: 16, color: rs.textColor }}>{rs.icon}</Text>
                 <Text style={[styles.roomLabel, { color: rs.textColor }]}>
                   {room.label.split('_')[0]}
                 </Text>
+                {isBacktrack && (
+                  <View style={styles.backDot} />
+                )}
               </View>
 
               {isCurrent && (
@@ -298,14 +339,30 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
         })}
       </ScrollView>
 
+      {/* Boss cleared — advance floor */}
+      {isBossCleared && !selectedRoom && (
+        <View style={styles.bossPanel}>
+          <Text style={styles.bossPanelTitle}>☠  PISO {floorIndex} CONQUISTADO</Text>
+          <Text style={styles.bossPanelDesc}>El guardián del piso ha caído. El próximo descenso aguarda.</Text>
+          <TouchableOpacity onPress={handleNextFloor} style={styles.nextFloorBtn}>
+            <Text style={styles.nextFloorBtnText}>▶  DESCENDER AL PISO {floorIndex + 1}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Non-combat room panel */}
       {selectedRoom && (
         <View style={styles.roomPanel}>
           <Text style={styles.roomPanelTitle}>
-            {ROOM_STYLES[selectedRoom.type].icon} {selectedRoom.label}
-            {selectedRoom.mutated ? ' [MUTADO]' : ''}
+            {ROOM_STYLES[selectedRoom.type].icon}{'  '}{selectedRoom.label}
+            {selectedRoom.mutated ? '  [MUTADO]' : ''}
+            {selectedRoom.visited ? '  ✓' : ''}
           </Text>
-          <Text style={styles.roomPanelDesc}>{t('map.safeZoneDesc')}</Text>
+          <Text style={styles.roomPanelDesc}>
+            {selectedRoom.visited
+              ? `Sala ya explorada · Tipo: ${selectedRoom.type}`
+              : t('map.safeZoneDesc')}
+          </Text>
           <View style={{ flexDirection: 'row' }}>
             {(selectedRoom.type === 'START' || selectedRoom.type === 'TREASURE' || selectedRoom.type === 'SECRET') && (
               <TouchableOpacity onPress={handleReturnToVillage} style={styles.returnBtn}>
@@ -364,6 +421,7 @@ const styles = StyleSheet.create({
   exitBtn:        { width: 60 },
   exitText:       { fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)' },
   titleText:      { fontFamily: 'RobotoMono-Bold', fontSize: 11, color: '#00FF41' },
+  currentRoomHint:{ fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.55)', marginTop: 1 },
   cycleText:      { fontFamily: 'RobotoMono-Regular', fontSize: 9, color: '#FF9F0A' },
   metaBar:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.02)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.06)' },
   metaText:       { fontFamily: 'RobotoMono-Regular', fontSize: 7, color: 'rgba(0,255,65,0.5)' },
@@ -372,11 +430,17 @@ const styles = StyleSheet.create({
   fogNode:        { position: 'absolute', width: NODE_SIZE, height: NODE_SIZE, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(0,255,65,0.08)', backgroundColor: 'rgba(0,0,0,0.5)' },
   fogIcon:        { fontSize: 10, color: 'rgba(0,255,65,0.15)', fontFamily: 'RobotoMono-Regular' },
   nodeWrapper:    { position: 'absolute', width: NODE_SIZE, height: NODE_SIZE, alignItems: 'center', justifyContent: 'center' },
-  roomLabel:      { fontSize: 6, fontFamily: 'RobotoMono-Regular', marginTop: 1 },
+  roomLabel:      { fontSize: 7, fontFamily: 'RobotoMono-Regular', marginTop: 1 },
   mutationDot:    { position: 'absolute', top: -4, right: -4, width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF453A' },
   roomPanel:      { borderTopWidth: 1, borderTopColor: 'rgba(0,255,65,0.4)', padding: 12, backgroundColor: 'rgba(0,255,65,0.04)' },
   roomPanelTitle: { fontFamily: 'RobotoMono-Bold', fontSize: 9, color: '#00FF41', marginBottom: 4 },
   roomPanelDesc:  { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.6)', marginBottom: 8 },
+  bossPanel:      { borderTopWidth: 1, borderTopColor: '#FF453A', padding: 14, backgroundColor: 'rgba(255,69,58,0.08)' },
+  bossPanelTitle: { fontFamily: 'RobotoMono-Bold', fontSize: 11, color: '#FF453A', marginBottom: 4 },
+  bossPanelDesc:  { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(255,69,58,0.7)', marginBottom: 10 },
+  nextFloorBtn:   { borderWidth: 1, borderColor: '#FF453A', paddingVertical: 10, alignItems: 'center' },
+  nextFloorBtnText: { fontFamily: 'RobotoMono-Bold', fontSize: 13, color: '#FF453A' },
+  backDot:        { position: 'absolute', top: -4, left: -4, width: 7, height: 7, borderRadius: 3.5, backgroundColor: 'rgba(0,229,255,0.8)' },
   returnBtn:      { flex: 1, borderWidth: 1, borderColor: '#00E5FF', padding: 8, alignItems: 'center', marginRight: 8 },
   returnBtnText:  { fontFamily: 'RobotoMono-Regular', fontSize: 11, color: '#00E5FF' },
   cancelBtn:      { borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', padding: 8, alignItems: 'center', width: 80 },

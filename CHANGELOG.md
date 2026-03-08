@@ -5,6 +5,18 @@ Versiones siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased] — 2026-03-08
+
+### Added (Sprint 3 completo — Motor de Dungeon conectado)
+
+- **`characterStats.ts`** — utilidades puras DnD 5e sin React ni estado: `assignStandardArray` (standard array por prioridad de clase), `generateValidRolledStats` (4d6 drop lowest con validación de total), `getRacialBonuses` (differential de API raw), `computeFinalStats` (aplica racial, cap 20), `getSubclassFeatures`, `pickRaceName`; tabla `CLASS_STAT_PRIORITY` para 12 clases; `ALIGNMENT_ORDER`; `STANDARD_ARRAY`
+
+### Changed (Sprint 3 — MapScreen conectado a dungeonGraphService)
+
+- **`MapScreen.tsx`** — reemplaza el `mapGenerator.ts` simple (8 nodos) por `dungeonGraphService`: `generateDungeonFloor` (12-20 habitaciones), `applyFloorMutations` (mutaciones por ciclo), `applyExplorationState` y `serializeExplorationState` (persistencia en `map_state` sin nueva migración); fog-of-war visual con nodos `?`; navegación entre habitaciones con backtracking (reverse connections); habitaciones NORMAL/ELITE/BOSS no visitadas disparan `navigation.navigate('Battle')`; `handleNextFloor` genera siguiente piso al limpiar BOSS; estado de exploración persistido en `map_state` antes de navegar
+
+---
+
 ## [Unreleased] — 2026-03-07
 
 ### Added (Sistema de Retratos y Expresiones — Gemini + ComfyUI)

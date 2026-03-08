@@ -9,9 +9,9 @@
 
 TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React Native. Una torre de 100 pisos, 60 ciclos por temporada, ~10 parties simultáneas (1-2 jugador + resto IA), combate táctico DnD 5e, sistema de política y alianzas, motor de simulación determinístico por seed.
 
-**Estado hoy:** 11 pantallas navegables, base de datos SQLite schema v6, portraits de personaje generados por Google Gemini, variantes de expresión via ComfyUI, dungeon graph service con 12–20 habitaciones por piso, catálogo de 35+ enemigos con stats completos y sistema de evolución, sprites pre-generados bundleados. La lógica de combate (BattleScreen, ReportScreen) sigue siendo mock.
+**Estado hoy:** 11 pantallas navegables, base de datos SQLite schema v6, portraits de personaje generados por Google Gemini, variantes de expresión via ComfyUI, dungeon graph service con 12–20 habitaciones por piso + fog-of-war + navegación real integrado en MapScreen, catálogo de 35+ enemigos con stats completos y sistema de evolución, `characterStats.ts` con utilidades puras de stats DnD 5e. La lógica de combate (BattleScreen, ReportScreen) sigue siendo mock.
 
-**Lo más urgente:** motor de combate DnD 5e real (BattleScreen), conectar `dungeonGraphService` al MapScreen, `simulateWorld(cycle)` para que las parties IA existan como actores.
+**Lo más urgente:** motor de combate DnD 5e real (BattleScreen), `simulateWorld(cycle)` para que las parties IA existan como actores.
 
 ---
 
@@ -60,7 +60,8 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
   services/
     api5e.ts                  → fetch DnD 5e API (24 endpoints). ✅ Funcional
     backgroundSeed.ts         → seed de backgrounds custom en init. ✅ Funcional
-    dungeonGraphService.ts    → grafos dungeon 12–20 rooms, fog-of-war, salas secretas, mutaciones. ✅ Implementado (pendiente conectar a MapScreen)
+    characterStats.ts           → utilidades puras DnD 5e: `assignStandardArray`, `generateValidRolledStats`, `getRacialBonuses`, `computeFinalStats`, `pickRaceName`, `CLASS_STAT_PRIORITY` (12 clases). ✅ Funcional
+    dungeonGraphService.ts    → grafos dungeon 12–20 rooms, fog-of-war, salas secretas, mutaciones; integrado en MapScreen. ✅ CONECTADO
     enemySpriteService.ts     → catálogo 35+ enemigos, 5 animaciones, SpriteSet types. ✅ Funcional
     geminiImageService.ts     → generateCharacterPortrait() vía Gemini; prompts por raza/clase/trasfondo/alineamiento. ✅ Funcional
     mapGenerator.ts           → 8 nodos DAG por seed+floor (usado en MapScreen). ✅ Funcional
@@ -84,7 +85,7 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
     PartyScreen.tsx           → creación personaje real; portrait Gemini; CharacterActionsPanel; ConfirmModal "Retratos pendientes". ✅ FUNCIONAL
     VillageScreen.tsx         → useGameStore (gold/cycle/phase/floor); rivals/market/amenazas por seed; BackHandler; iconos SVG. ✅ FUNCIONAL
     GuildScreen.tsx           → roster con portraits, HP bar, stats, badges ACTIVO/HERIDO/MUERTO. ✅ FUNCIONAL
-    MapScreen.tsx             → 8 nodos seed+floor; radar Reanimated; SAFE_ZONE interactiva; estado persistido SQLite. ✅ FUNCIONAL
+    MapScreen.tsx             → dungeonGraphService integrado: 12-20 rooms, fog-of-war, backtracking, avance de piso; persistencia en map_state; transición BOSS/ELITE/NORMAL → BattleScreen. ✅ FUNCIONAL
     BattleScreen.tsx          → banner portrait grupo + portraits individuales; log de combate estático. ⚠️ MOCK
     ReportScreen.tsx          → TypewriterText con valores hardcodeados. ⚠️ MOCK
     ExtractionScreen.tsx      → contador animado + "Volver a la villa" en ciclo 60. ✅ CONECTADO
@@ -102,11 +103,11 @@ TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React N
 - **Generador determinístico** — PRNG djb2+LCG: rivals, market, amenazas, nodos de mapa
 - **i18n bilingüe** — ES/EN, fallback chain: translations DB → raw API data
 
-### Pendiente crítico (próximo sprint)
+### Pendiente crítico (próximo sprint — Sprint 4)
 1. **Motor de combate DnD 5e** — BattleScreen sin tiradas, sin HP dinámico, sin turnos reales
-2. **Conectar `dungeonGraphService` → MapScreen** — reemplaza el simple `mapGenerator.ts`
-3. **`simulateWorld(cycle)`** — parties IA no simulan progreso real aún
-4. **Modal de progreso de expedición** — flujo de inicio muestra texto estático; pendiente modal paso a paso
+2. **`simulateWorld(cycle)`** — parties IA no simulan progreso real aún
+3. **ReportScreen** — conectada a resultados reales de combate (actualmente hardcodeada)
+4. **HP dinámico de personajes** — el campo `alive` existe en `CharacterSave` pero HP no se reduce en combate
 
 ---
 

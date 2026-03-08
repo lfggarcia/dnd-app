@@ -1,8 +1,8 @@
 # PROJECT STATUS — TORRE (CYBER_DND)
 
 **Rama:** `main`
-**Fecha:** 2026-03-07
-**Estado general:** 🟡 **PROTOTIPO AVANZADO — Creación de personaje real, sistema de retratos IA, motor de dungeon y monstruos implementados; gameplay de combate aún mock**
+**Fecha:** 2026-03-08
+**Estado general:** 🟡 **PROTOTIPO AVANZADO — Dungeon graph real con fog-of-war, navegación entre habitaciones, evolución de monstruos; motor de combate aún mock**
 
 > Ver `GAME_CONTEXT.md` para la visión completa y `SYSTEMS.MD` como documento fundacional.
 
@@ -44,6 +44,8 @@
 | **Expresiones faciales** | `expressionsJson` por personaje (neutral/happy/angry/sad/surprised/wounded) via ComfyUI img2img; workflow `02-expression-inpaint.json` con FaceDetailer |
 | **Motor de Dungeon** | `dungeonGraphService.ts`: grafos de piso con 12–20 habitaciones, 7 tipos de sala, fog-of-war, salas secretas, mutaciones por ciclo |
 | **Evolución de Monstruos** | `monsterEvolutionService.ts`: tiers por ciclo/piso, stats de 35+ enemigos, XP decay, sistema de jefes secretos |
+| **Stats de Personaje** | `characterStats.ts`: `assignStandardArray`, `generateValidRolledStats`, `getRacialBonuses`, `computeFinalStats`, `pickRaceName`, tabla `CLASS_STAT_PRIORITY` para 12 clases |
+| **UI: MapScreen (dungeon graph)** | Conectado a `dungeonGraphService`: 12–20 habitaciones por piso; fog-of-war visual; navegación entre habitaciones con backtracking; estado de exploración persistido en `map_state`; avance de piso al limpiar BOSS; transición habitación → BattleScreen para NORMAL/ELITE/BOSS |
 | **Catálogo de Sprites** | `enemySpriteService.ts`: 35+ tipos de enemigo, 5 animaciones por tipo; `spriteDbService.ts`: acceso a sprites bundleados; scripts de generación via ComfyUI |
 | **Generador de mapas** | `mapGenerator.ts`: 8 nodos DAG por seed+floor; `dungeonGraphService.ts`: 12-20 rooms con fog of war |
 | Calidad | Imports limpios, navigation tipado, barrel exports en database/services/i18n |
@@ -55,7 +57,7 @@
 | Motor de combate DnD 5e | Sin tiradas reales, sin HP dinámico, sin turnos por iniciativa — BattleScreen es mock | 🔴 Alta |
 | Simulación de mundo | `simulateWorld(cycle)` no existe — parties IA no avanzan realmente | 🔴 Alta |
 | Sistema temporal | Ciclos y fases presentes en el modelo pero sin mecánica de avance real | 🔴 Alta |
-| Conexión Dungeon Graph → MapScreen | `dungeonGraphService.ts` implementado pero MapScreen aún usa el `mapGenerator.ts` simple (8 nodos) | 🟡 Media |
+| ~~Conexión Dungeon Graph → MapScreen~~ | ✅ Completado — MapScreen usa `dungeonGraphService` con 12–20 rooms, fog-of-war, mutaciones y avance de piso | ~~🟡 Media~~ |
 | Portraits: modal de carga detallada | Flujo de inicio de expedición solo muestra texto estático; pendiente modal de progreso paso a paso | 🟡 Media |
 | Parties IA | Rivals generados determinísticamente pero sin simulación real de progreso | 🟡 Media |
 | Sistema de política | Sin alianzas, sin bounty, sin moral, sin World Log datos reales | 🟡 Media |
@@ -98,17 +100,19 @@
 - [x] GuildScreen con portraits; BattleScreen con banner de portrait + individuales
 - [x] Modal "Retratos pendientes" temático (reemplazó Alert nativo)
 
-### Sprint 3 — Motor de Dungeon (EN PROGRESO 🟡)
+### Sprint 3 — Motor de Dungeon ✅ COMPLETADO
 
 > Objetivo: la exploración del dungeon tiene mecánica real con grafos y persistencia.
 
 - [x] `dungeonGraphService.ts`: grafos de piso 12-20 rooms, fog-of-war, salas secretas, mutaciones
 - [x] `monsterEvolutionService.ts`: tiers por ciclo, stats completos, XP decay, secret bosses
-- [ ] Conectar `dungeonGraphService` a `MapScreen` (reemplazar el simple mapGenerator)
-- [ ] `FloorExplorationState` persistido en `saved_games` (nueva migración v7)
-- [ ] Navegación entre habitaciones dentro del piso
-- [ ] Revelar habitaciones al explorar (fog-of-war visual)
-- [ ] Transición habitación → BattleScreen con enemigos reales del piso
+- [x] `characterStats.ts`: utilidades puras de stats DnD 5e; `assignStandardArray`, `generateValidRolledStats`, stat priorities por clase, racial bonuses
+- [x] Conectar `dungeonGraphService` a `MapScreen` (reemplaza `mapGenerator.ts`)
+- [x] `FloorExplorationState` persistido en `saved_games.map_state` (sin migración adicional — reutiliza v3)
+- [x] Navegación entre habitaciones con backtracking (reversed connections)
+- [x] Revelar habitaciones al explorar (fog-of-war visual con nodos `?`)
+- [x] Transición habitación → BattleScreen para rooms NORMAL / ELITE / BOSS
+- [x] Avance de piso (`handleNextFloor`) al limpiar sala BOSS
 
 ### Sprint 4 — Motor de Combate DnD 5e
 
@@ -167,7 +171,7 @@
 | Sistema de política + moral + bounty: alto acoplamiento | 🟡 Medio | Interfaces claras entre módulos antes de implementar |
 | Gemini API: latencia y cost por portrait generado | 🟡 Medio | Caché en DB; generación lazy (solo al abrir); portrait grupal opcional |
 | Sin ErrorBoundary — crash crashea toda la app | 🟡 Medio | Añadir en App.tsx en Sprint 7 |
-| `dungeonGraphService.ts` no conectado a MapScreen — deuda de Sprint 3 | 🟡 Medio | Prioridad próximo sprint |
+| ~~`dungeonGraphService.ts` no conectado~~ | ✅ Resuelto en Sprint 3 | — |
 
 ---
 
@@ -179,7 +183,7 @@
 | Pantallas proyectadas | 13-15 (gestión de alianzas, detalle de habitación, config, dungeon detail) |
 | Componentes reutilizables | 10 (CRTOverlay, TypewriterText, SliderButton, DatabaseGate, GlossaryModal, TorreLogo, TutorialOverlay, ConfirmModal, CharacterActionsPanel, Icons) |
 | Hooks custom | 4 (useDatabase, useGlossary, useResources, useTutorial) |
-| Servicios | 13 (api5e, syncService, translationBridge, rulesConfig, subclassSeed, backgroundSeed, translationSeed, rivalGenerator, mapGenerator, dungeonGraphService, enemySpriteService, monsterEvolutionService, spriteDbService) |
+| Servicios | 14 (api5e, syncService, translationBridge, rulesConfig, subclassSeed, backgroundSeed, translationSeed, rivalGenerator, mapGenerator, dungeonGraphService, enemySpriteService, monsterEvolutionService, spriteDbService, characterStats) |
 | Stores | 1 (useGameStore con SQLite) |
 | Tablas en DB | 5 (resources, translations, sync_meta, saved_games + indexes) |
 | Migraciones DB | 6 (v1 schema, v2 saved_games, v3 location+mapState, v4 party_portrait, v5 portraits_json, v6 expressions_json) |

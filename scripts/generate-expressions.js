@@ -50,7 +50,8 @@ if (major < 18) { console.error(`Node 18+ required (you have ${process.version})
 
 // --- Quality tags ------------------------------------------------------------
 const QUALITY_PREFIX = 'score_9, score_8_up, score_8, masterpiece, best quality, expressive eyes, perfect face, 748cmstyle, usnr';
-const QUALITY_NEG    = 'score_6, score_5, score_4, civit_nsfw, ugly face, low res, blurry face, different person, different character, neutral expression, closed eyes, disfigured, deformed, extra teeth, wrong anatomy, bad proportions';
+const QUALITY_NEG    = 'score_6, score_5, score_4, civit_nsfw, ugly face, low res, blurry face, different person, different character, neutral expression, closed eyes, disfigured, deformed, extra teeth, wrong anatomy, bad proportions, bad teeth, deformed teeth, bumps, poor anatomy, deformed skin, exaggerated veins, malformed veins, deformed veins, giant anatomy, disproportionate anatomy, bad proportion';
+const QUALITY_NEG_EYE = `${QUALITY_NEG}, same eye color, eye color changed, different eye color`;
 
 // --- Expression definitions --------------------------------------------------
 // Each expression: positive tags that go AFTER the BREAK (face-only region).
@@ -58,31 +59,33 @@ const QUALITY_NEG    = 'score_6, score_5, score_4, civit_nsfw, ugly face, low re
 const EXPRESSIONS = {
   angry: {
     label:    'Angry',
-    positive: 'clenched teeth, furrowed brows, wide bloodshot intense eyes, fierce battle expression, intense anger, veins on forehead, battle fury face, dramatic chiaroscuro lighting, deep shadows on face',
+    positive: 'clenched teeth, furrowed brows, wide bloodshot eyes, battle fury, BREAK, (angry expression:1.4), (exaggerated facial muscles:1.3), (furrowed brows:1.35), (intense glare:1.3)',
   },
   scared: {
     label:    'Scared',
-    positive: 'wide terrified eyes, raised brows, cold sweat drops, pale trembling lips, horror expression, fear, mouth slightly open, desperate gaze',
+    positive: 'wide terrified eyes, cold sweat, pale skin, trembling lips, horror expression, BREAK, (scared expression:1.4), (exaggerated facial muscles:1.3), (wide eyes:1.35), (raised eyebrows:1.3), (trembling lips:1.2)',
   },
   determined: {
     label:    'Determined',
-    positive: 'sharp focused eyes, calm intensity, set jaw, unwavering fierce gaze, confident expression, battle-ready focus, strong composed face',
+    positive: 'sharp focused eyes, calm intensity, set jaw, unwavering fierce gaze, BREAK, (determined expression:1.5), (focused eyes:1.3), (slightly lowered eyebrows:1.25), (firm lips:1.25)',
   },
   smug: {
     label:    'Smug',
-    positive: 'half-lidded eyes, twisted smirk, one corner of mouth raised, condescending gaze, sinister confidence, arrogant expression',
+    positive: 'half-lidded eyes, twisted smirk, condescending gaze, sinister confidence, BREAK, (smug expression:1.35), (one eyebrow raised:1.3), (asymmetric smirk:1.35), (relaxed eyelids:1.2), (confident gaze:1.2)',
   },
   sad: {
     label:    'Sad',
-    positive: 'tears streaming down face, downcast eyes, trembling chin, grief expression, sorrowful gaze, eyes glistening with tears, broken expression',
+    positive: 'tears streaming, downcast eyes, trembling chin, grief expression, BREAK, (sad expression: 0.7), (exaggerated facial muscles: 1.0), (drooping eyelids: 1.1), (watery eyes: 0.01), (drooping lips: 1.3), (trembling lower lip: 1.0), (tears: 0.001)',
   },
   surprised: {
     label:    'Surprised',
-    positive: 'wide open eyes, raised brows high, open mouth shock, jaw dropped, stunned expression, disbelief on face',
+    positive: 'wide open eyes, raised brows, open mouth shock, jaw drop, BREAK, (surprised expression:1.5), (wide open eyes:1.35), (raised eyebrows:1.3), (open mouth:1.0), (same eye color:1.3), BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.00)',
+    negative: QUALITY_NEG_EYE,
   },
   neutral: {
     label:    'Neutral',
-    positive: 'calm composed face, relaxed expression, neutral gaze, stoic face, serene composure',
+    positive: 'calm composed face, relaxed expression, neutral gaze, BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.00)',
+    negative: QUALITY_NEG_EYE,
   },
   menacing: {
     label:    'Menacing',
@@ -192,8 +195,9 @@ function isValidPng(buf) {
 // --- Workflow builder --------------------------------------------------------
 // Uses the API-format workflow exported from ComfyUI with FaceDetailer.
 // Base image must already be uploaded to ComfyUI/input/
-function buildExpressionWorkflow({ inputImage, positiveExprTags, denoise, seed, filenamePrefix }) {
+function buildExpressionWorkflow({ inputImage, positiveExprTags, negativeText, denoise, seed, filenamePrefix }) {
   const positiveText = `${QUALITY_PREFIX}, BREAK, ${positiveExprTags}`;
+  const negText = negativeText ?? QUALITY_NEG;
 
   return {
     '1': {
@@ -222,7 +226,7 @@ function buildExpressionWorkflow({ inputImage, positiveExprTags, denoise, seed, 
     },
     '7': {
       class_type: 'CLIPTextEncode',
-      inputs: { text: QUALITY_NEG, clip: ['5', 0] },
+      inputs: { text: negText, clip: ['5', 0] },
     },
     '8': {
       class_type: 'LoadImage',
@@ -313,9 +317,10 @@ async function main() {
     log(`▶  ${expr.label} (seed ${seed})`);
 
     const workflow = buildExpressionWorkflow({
-      inputImage:      INPUT_IMG,
+      inputImage:       INPUT_IMG,
       positiveExprTags: expr.positive,
-      denoise:         DENOISE,
+      negativeText:     expr.negative ?? null,
+      denoise:          DENOISE,
       seed,
       filenamePrefix,
     });

@@ -210,7 +210,7 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="flex-1">
+          <ScrollView className="flex-1" scrollEnabled={deleteTarget === null}>
             {savedGames.length === 0 ? (
               <Text className="text-primary/40 font-robotomono text-xs text-center mt-8">
                 {t('main.noSaves')}
@@ -274,49 +274,46 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
               ))
             )}
           </ScrollView>
+
+          {/* Delete Confirmation — inline overlay (iOS only supports one Modal at a time) */}
+          {deleteTarget !== null && (
+            <View
+              className="absolute top-0 left-0 right-0 bottom-0 justify-center items-center"
+              style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+            >
+              <View className="mx-8 w-full max-w-xs border border-primary/40 bg-background p-6">
+                <Text className="text-primary font-robotomono font-bold text-sm mb-3">
+                  {t('main.deleteSave')}
+                </Text>
+                <Text className="text-primary/60 font-robotomono text-xs mb-6">
+                  {t('main.deleteSaveConfirm')} "{deleteTarget?.seed}"?
+                </Text>
+                <View className="flex-row justify-end space-x-4">
+                  <TouchableOpacity
+                    onPress={() => setDeleteTarget(null)}
+                    className="border border-primary/30 px-4 py-2"
+                  >
+                    <Text className="text-primary font-robotomono text-xs">
+                      [{t('common.cancel').toUpperCase()}]
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={confirmDelete}
+                    className="border border-destructive/40 px-4 py-2 ml-3"
+                  >
+                    <Text className="text-destructive font-robotomono text-xs">
+                      [{t('common.confirm').toUpperCase()}]
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        visible={deleteTarget !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDeleteTarget(null)}
-      >
-        <View className="flex-1 justify-center items-center" style={S.deleteOverlay}>
-          <View className="mx-8 w-full max-w-xs border border-primary/40 bg-background p-6">
-            <Text className="text-primary font-robotomono font-bold text-sm mb-3">
-              {t('main.deleteSave')}
-            </Text>
-            <Text className="text-primary/60 font-robotomono text-xs mb-6">
-              {t('main.deleteSaveConfirm')} "{deleteTarget?.seed}"?
-            </Text>
-            <View className="flex-row justify-end space-x-4">
-              <TouchableOpacity
-                onPress={() => setDeleteTarget(null)}
-                className="border border-primary/30 px-4 py-2"
-              >
-                <Text className="text-primary font-robotomono text-xs">
-                  [{t('common.cancel').toUpperCase()}]
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={confirmDelete}
-                className="border border-destructive/40 px-4 py-2 ml-3"
-              >
-                <Text className="text-destructive font-robotomono text-xs">
-                  [{t('common.confirm').toUpperCase()}]
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
 
-const S = StyleSheet.create({
-  deleteOverlay: { backgroundColor: 'rgba(0,0,0,0.85)' },
-});
+const S = StyleSheet.create({});

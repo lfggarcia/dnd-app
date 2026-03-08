@@ -78,13 +78,15 @@ const ALIGNMENT_EXPRESSION: Record<string, string> = {
 };
 
 // Expression presets — used for img2img batch expression generation
+// Prompts match the ComfyUI inpainting workflows in scripts/comfyui-workflows/
 export const EXPRESSION_PRESETS: Record<string, string> = {
-  neutral:   'calm composed neutral expression, relaxed face, steady gaze',
-  happy:     'bright warm cheerful smile, happy sparkling joyful eyes',
-  angry:     'fierce battle rage, furrowed brows, intense wrathful snarl',
-  sad:       'melancholy sorrowful heavy heart, downcast glistening eyes',
-  surprised: 'wide shocked eyes, open mouth, startled expression',
-  wounded:   'pained grimace, weary exhausted, bloodied disheveled beaten',
+  neutral:    'calm composed face, relaxed expression, neutral gaze, BREAK, (character identity consistency:1.4), (same person:1.3)',
+  angry:      'clenched teeth, furrowed brows, wide bloodshot eyes, battle fury, BREAK, (angry expression:1.4), (exaggerated facial muscles:1.3), (furrowed brows:1.35), (intense glare:1.3)',
+  sad:        'tears streaming, downcast eyes, trembling chin, grief expression, BREAK, (sad expression:1.0), (drooping eyelids:1.1), (watery eyes:0.5), (drooping lips:1.3), (trembling lower lip:1.0)',
+  surprised:  'wide open eyes, raised brows, open mouth shock, jaw drop, BREAK, (surprised expression:1.5), (wide open eyes:1.35), (raised eyebrows:1.3), (open mouth:1.0)',
+  determined: 'sharp focused eyes, calm intensity, set jaw, unwavering fierce gaze, BREAK, (determined expression:1.5), (focused eyes:1.3), (slightly lowered eyebrows:1.25), (firm lips:1.25)',
+  scared:     'wide terrified eyes, cold sweat, pale skin, trembling lips, horror expression, BREAK, (scared expression:1.4), (exaggerated facial muscles:1.3), (wide eyes:1.35), (raised eyebrows:1.3), (trembling lips:1.2)',
+  smug:       'half-lidded eyes, twisted smirk, condescending gaze, sinister confidence, BREAK, (smug expression:1.35), (one eyebrow raised:1.3), (asymmetric smirk:1.35), (relaxed eyelids:1.2), (confident gaze:1.2)',
 };
 
 const STAT_FLAVOR: Record<string, string> = {

@@ -155,19 +155,20 @@ function buildRoomGraph(
   layers[0] = [startId];
   layers[layerCount - 1] = [bossId];
 
-  // Assign positions
+  // Assign positions — main rooms constrained to y ∈ [0.05, 0.82] to reserve
+  // the bottom band for secret rooms, preventing overlap between the two.
   const posMap = new Map<number, { x: number; y: number }>();
   layers.forEach((layer, li) => {
     const xPct = (li + 0.5) / layerCount;
     layer.forEach((id, ri) => {
-      const yPct = (ri + 0.5) / Math.max(layer.length, 1);
+      const yPct = 0.05 + ((ri + 0.5) / Math.max(layer.length, 1)) * 0.77;
       posMap.set(id, { x: Math.round(xPct * 100) / 100, y: Math.round(yPct * 100) / 100 });
     });
   });
 
-  // Place secret rooms at random y positions near middle layers
+  // Place secret rooms below main layout (y ≥ 0.93) — guaranteed clear zone.
   secretIds.forEach((id, i) => {
-    posMap.set(id, { x: 0.3 + i * 0.2, y: 0.9 });
+    posMap.set(id, { x: 0.25 + i * 0.25, y: 0.93 + i * 0.02 });
   });
 
   // Build connections: each room in layer N connects to 1-2 rooms in layer N+1

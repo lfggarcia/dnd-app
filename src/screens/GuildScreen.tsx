@@ -1,11 +1,26 @@
-import React, { useMemo, memo } from 'react';
+import React, { useMemo, memo, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
+import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
+import { EXPRESSION_PRESETS } from '../services/geminiImageService';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { CharacterSave, Stats } from '../database/gameRepository';
 import type { ScreenProps } from '../navigation/types';
+
+// ─── Expression labels ────────────────────────────────────
+
+const EXPRESSION_KEYS = Object.keys(EXPRESSION_PRESETS) as string[];
+
+const EXPR_LABEL: Record<string, { es: string; en: string }> = {
+  neutral:   { es: 'Neutral',   en: 'Neutral'   },
+  happy:     { es: 'Contento',  en: 'Happy'     },
+  angry:     { es: 'Ira',       en: 'Angry'     },
+  sad:       { es: 'Triste',    en: 'Sad'       },
+  surprised: { es: 'Sorpresa',  en: 'Surprised' },
+  wounded:   { es: 'Herido',    en: 'Wounded'   },
+};
 
 // ─── Stat modifier helper ─────────────────────────────────
 
@@ -22,7 +37,19 @@ const STAT_LABELS_ES: Record<keyof Stats, string> = {
 
 // ─── Character Card ───────────────────────────────────────
 
-const CharacterCard = memo(({ char, lang }: { char: CharacterSave; lang: string }) => {
+type CardProps = {
+  char: CharacterSave;
+  lang: string;
+  charIndex: number;
+  expressions: Record<string, string> | null;
+  selectedExpression: string;
+  onExpressionChange: (idx: number, key: string) => void;
+  onExpandPortrait: (uri: string) => void;
+};
+
+const CharacterCard = memo(({
+  char, lang, charIndex, expressions, selectedExpression, onExpressionChange, onExpandPortrait,
+}: CardProps) => {
   const hpPct = char.maxHp > 0 ? char.hp / char.maxHp : 0;
   const hpColor = !char.alive
     ? 'rgba(255,62,62,0.8)'
@@ -38,17 +65,33 @@ const CharacterCard = memo(({ char, lang }: { char: CharacterSave; lang: string 
       ? (lang === 'es' ? 'HERIDO' : 'WOUNDED')
       : (lang === 'es' ? 'ACTIVO' : 'ACTIVE');
 
+  // Resolve active portrait: expression variant → base portrait → null
+  const activePortraitUri = (expressions?.[selectedExpression]) ?? char.portrait ?? null;
+  const hasExpressions = expressions !== null && Object.keys(expressions).length > 0;
+
   return (
     <View style={S.card}>
       {/* Portrait + identity row */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
-        {char.portrait ? (
-          <Image source={{ uri: char.portrait }} style={S.charPortrait} resizeMode="cover" />
-        ) : (
-          <View style={S.charPortraitPlaceholder}>
-            <Text style={S.charPortraitInit}>{char.name.charAt(0).toUpperCase()}</Text>
-          </View>
-        )}
+        {/* Tappable portrait */}
+        <TouchableOpacity
+          onPress={() => { if (activePortraitUri) onExpandPortrait(activePortraitUri); }}
+          activeOpacity={activePortraitUri ? 0.8 : 1}
+        >
+          {activePortraitUri ? (
+            <View>
+              <Image source={{ uri: activePortraitUri }} style={S.charPortrait} resizeMode="cover" />
+              <View style={S.expandHint}>
+                <Text style={S.expandHintText}>⤢</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={S.charPortraitPlaceholder}>
+              <Text style={S.charPortraitInit}>{char.name.charAt(0).toUpperCase()}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
         <View style={{ flex: 1, marginLeft: 8 }}>
           {/* Header */}
           <View style={S.cardHeader}>
@@ -65,18 +108,51 @@ const CharacterCard = memo(({ char, lang }: { char: CharacterSave; lang: string 
             </Text>
           </View>
           <Text style={S.bgLabel}>{char.background} · {char.alignment}</Text>
+
+          {/* HP Bar */}
+          <View style={S.hpContainer}>
+            <Text style={[S.hpText, { color: hpColor }]}>
+              HP: {char.hp}/{char.maxHp}
+            </Text>
+            <View style={S.hpBarBg}>
+              <View style={[S.hpBarFill, { width: `${Math.round(hpPct * 100)}%`, backgroundColor: hpColor }]} />
+            </View>
+          </View>
         </View>
       </View>
 
-      {/* HP Bar */}
-      <View style={S.hpContainer}>
-        <Text style={[S.hpText, { color: hpColor }]}>
-          HP: {char.hp}/{char.maxHp}
-        </Text>
-        <View style={S.hpBarBg}>
-          <View style={[S.hpBarFill, { width: `${Math.round(hpPct * 100)}%`, backgroundColor: hpColor }]} />
+      {/* Expression selector — only shown when expressions exist */}
+      {hasExpressions && (
+        <View style={S.exprSection}>
+          <Text style={S.exprSectionLabel}>
+            {lang === 'es' ? 'EXPRESIONES' : 'EXPRESSIONS'}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={S.exprRow}>
+            {EXPRESSION_KEYS.map(key => {
+              const isActive = selectedExpression === key;
+              const hasVariant = !!expressions?.[key];
+              const label = EXPR_LABEL[key]?.[lang === 'es' ? 'es' : 'en'] ?? key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => onExpressionChange(charIndex, key)}
+                  style={[
+                    S.exprPill,
+                    isActive && S.exprPillActive,
+                    !hasVariant && S.exprPillDisabled,
+                  ]}
+                  disabled={!hasVariant}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[S.exprPillText, isActive && S.exprPillTextActive]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
-      </View>
+      )}
 
       {/* Stats Grid */}
       <View style={S.statsGrid}>
@@ -100,6 +176,20 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
 
   const party = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
   const aliveCount = useMemo(() => party.filter(c => c.alive).length, [party]);
+  const expressionsJson = activeGame?.expressionsJson ?? {};
+
+  // Per-character selected expression (defaults to 'neutral')
+  const [selectedExpressions, setSelectedExpressions] = useState<Record<number, string>>({});
+  // Fullscreen portrait modal
+  const [modalUri, setModalUri] = useState<string | null>(null);
+
+  const handleExpressionChange = useCallback((idx: number, key: string) => {
+    setSelectedExpressions(prev => ({ ...prev, [idx]: key }));
+  }, []);
+
+  const handleExpandPortrait = useCallback((uri: string) => {
+    setModalUri(uri);
+  }, []);
 
   return (
     <View className="flex-1 bg-background">
@@ -134,7 +224,16 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
           </View>
         ) : (
           party.map((char, i) => (
-            <CharacterCard key={`${char.name}-${i}`} char={char} lang={lang} />
+            <CharacterCard
+              key={`${char.name}-${i}`}
+              char={char}
+              lang={lang}
+              charIndex={i}
+              expressions={expressionsJson[i] ?? null}
+              selectedExpression={selectedExpressions[i] ?? 'neutral'}
+              onExpressionChange={handleExpressionChange}
+              onExpandPortrait={handleExpandPortrait}
+            />
           ))
         )}
 
@@ -182,6 +281,9 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
       </ScrollView>
 
       <GlossaryButton />
+
+      {/* Fullscreen portrait modal */}
+      <PortraitDetailModal uri={modalUri} onClose={() => setModalUri(null)} />
     </View>
   );
 };
@@ -252,14 +354,14 @@ const S = StyleSheet.create({
 
   // Character portrait
   charPortrait: {
-    width: 56,
-    height: 72,
+    width: 72,
+    height: 96,
     borderWidth: 1,
-    borderColor: 'rgba(0,255,65,0.2)',
+    borderColor: 'rgba(0,255,65,0.3)',
   },
   charPortraitPlaceholder: {
-    width: 56,
-    height: 72,
+    width: 72,
+    height: 96,
     backgroundColor: 'rgba(0,255,65,0.05)',
     borderWidth: 1,
     borderColor: 'rgba(0,255,65,0.2)',
@@ -270,6 +372,18 @@ const S = StyleSheet.create({
     fontFamily: 'RobotoMono-Bold',
     fontSize: 22,
     color: 'rgba(0,255,65,0.25)',
+  },
+  expandHint: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+  },
+  expandHintText: {
+    fontSize: 9,
+    color: 'rgba(0,255,65,0.7)',
   },
 
   // Character Card
@@ -329,6 +443,49 @@ const S = StyleSheet.create({
   hpBarFill: {
     height: 4,
   },
+  // Expression selector
+  exprSection: {
+    marginBottom: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,255,65,0.1)',
+  },
+  exprSectionLabel: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 7,
+    color: 'rgba(0,229,255,0.5)',
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  exprRow: {
+    flexDirection: 'row',
+  },
+  exprPill: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 4,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  exprPillActive: {
+    borderColor: 'rgba(0,229,255,0.8)',
+    backgroundColor: 'rgba(0,229,255,0.1)',
+  },
+  exprPillDisabled: {
+    borderColor: 'rgba(0,255,65,0.08)',
+    opacity: 0.4,
+  },
+  exprPillText: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 8,
+    color: 'rgba(0,255,65,0.5)',
+  },
+  exprPillTextActive: {
+    color: 'rgba(0,229,255,0.9)',
+  },
+
+  // Stats Grid
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',

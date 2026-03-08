@@ -31,7 +31,7 @@ import {
   calcLvl1HP, LVL1_RULES, type FeatureEntry,
 } from '../constants/dnd5eLevel1';
 import { useGameStore } from '../stores/gameStore';
-import { generateCharacterPortrait } from '../services/geminiImageService';
+import { generateCharacterPortrait, generateCharacterExpressions } from '../services/geminiImageService';
 import type { Stats } from '../database/gameRepository';
 
 
@@ -251,6 +251,19 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
               const uri = await generateCharacterPortrait(party[i]);
               setCharPortraits(prev => ({ ...prev, [i]: uri }));
               newPortraits[String(i)] = uri;
+
+              // Auto-generate expression variants (neutral, happy, angry, sad, surprised, wounded)
+              setLaunchStep(
+                lang === 'es'
+                  ? `Generando expresiones para ${party[i].name}`
+                  : `Generating expressions for ${party[i].name}`,
+              );
+              try {
+                const expressions = await generateCharacterExpressions(party[i], uri);
+                useGameStore.getState().saveCharacterExpressions({ [String(i)]: expressions });
+              } catch {
+                // Expression generation is non-blocking
+              }
             } catch {
               // Portrait failure is non-blocking
             }

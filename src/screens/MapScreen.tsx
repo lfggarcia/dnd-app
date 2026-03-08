@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler, Dimensions, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { ScreenProps } from '../navigation/types';
 import Animated, {
@@ -7,55 +7,95 @@ import Animated, {
   useAnimatedStyle,
   withRepeat,
   withTiming,
-  Easing,
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
-import { generateFloorNodes } from '../services/mapGenerator';
-import type { MapNode, NodeType } from '../services/mapGenerator';
+import {
+  generateDungeonFloor,
+  applyExplorationState,
+  revealAdjacentRooms,
+  applyFloorMutations,
+  serializeExplorationState,
+  type DungeonFloor,
+  type DungeonRoom,
+  type FloorExplorationState,
+  type RoomType,
+} from '../services/dungeonGraphService';
 
-const NODE_STYLES: Record<NodeType, { border: string; bg: string; icon: string }> = {
-  COMBAT: { border: 'border-destructive', bg: 'bg-destructive/15', icon: '⚔' },
-  EVENT: { border: 'border-accent', bg: 'bg-accent/15', icon: '?' },
-  SAFE_ZONE: { border: 'border-primary', bg: 'bg-primary/15', icon: '◆' },
-  BOSS: { border: 'border-secondary', bg: 'bg-secondary/20', icon: '☠' },
-  UNKNOWN: { border: 'border-primary/30', bg: 'bg-muted/20', icon: '·' },
+// ─── Canvas dimensions (computed once at module load) ────────────────────────
+const { width: SCREEN_W } = Dimensions.get('window');
+const CANVAS_W = SCREEN_W;
+const CANVAS_H = 720;
+const NODE_SIZE = 52;
+const NODE_HALF = NODE_SIZE / 2;
+
+// ─── Room visual styles ───────────────────────────────────────────────────────
+const ROOM_STYLES: Record<RoomType, { borderColor: string; bgColor: string; icon: string; textColor: string }> = {
+  START:    { borderColor: '#00FF41', bgColor: 'rgba(0,255,65,0.12)',   icon: '▼', textColor: '#00FF41' },
+  NORMAL:   { borderColor: '#FF3B30', bgColor: 'rgba(255,59,48,0.10)',  icon: '⚔', textColor: '#FF3B30' },
+  ELITE:    { borderColor: '#FF9F0A', bgColor: 'rgba(255,159,10,0.12)', icon: '⚡', textColor: '#FF9F0A' },
+  EVENT:    { borderColor: '#00E5FF', bgColor: 'rgba(0,229,255,0.10)',  icon: '?',  textColor: '#00E5FF' },
+  TREASURE: { borderColor: '#FFD60A', bgColor: 'rgba(255,214,10,0.10)', icon: '◆', textColor: '#FFD60A' },
+  BOSS:     { borderColor: '#FF453A', bgColor: 'rgba(255,69,58,0.18)',  icon: '☠', textColor: '#FF453A' },
+  SECRET:   { borderColor: '#BF5AF2', bgColor: 'rgba(191,90,242,0.10)', icon: '✦', textColor: '#BF5AF2' },
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function isExplorationState(parsed: unknown): parsed is FloorExplorationState {
+  return (
+    typeof parsed === 'object' && parsed !== null &&
+    'floorIndex' in parsed && 'visitedRoomIds' in parsed &&
+    'revealedRoomIds' in parsed && 'currentRoomId' in parsed
+  );
+}
+
+function parseExplorationState(raw: string | null | undefined): FloorExplorationState | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (isExplorationState(parsed)) return parsed;
+  } catch { /* ignore */ }
+  return null;
+}
 
 export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const { t } = useI18n();
   const activeGame = useGameStore(s => s.activeGame);
   const updateProgress = useGameStore(s => s.updateProgress);
 
-  const floor = activeGame?.floor ?? 1;
+  const floorIndex = activeGame?.floor ?? 1;
   const cycle = activeGame?.cycle ?? 1;
 
   const [saveExitVisible, setSaveExitVisible] = useState(false);
-  const [selectedSafeZone, setSelectedSafeZone] = useState<MapNode | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<DungeonRoom | null>(null);
 
-  // Generate nodes from seed+floor; restore statuses from persisted map state if available
-  const [nodes, setNodes] = useState<MapNode[]>(() => {
-    const base = generateFloorNodes(activeGame?.seedHash ?? '0', activeGame?.floor ?? 1);
-    try {
-      const raw = activeGame?.mapState;
-      if (raw) {
-        const saved = JSON.parse(raw) as Record<number, MapNode['status']>;
-        return base.map(n => ({ ...n, status: saved[n.id] ?? n.status }));
-      }
-    } catch {}
-    return base;
+  // ─── Floor state — built from dungeonGraphService ──────────────────────────
+  const [floor, setFloor] = useState<DungeonFloor>(() => {
+    let base = generateDungeonFloor(activeGame?.seedHash ?? '0', floorIndex);
+    base = applyFloorMutations(base, cycle);
+
+    const explores = parseExplorationState(activeGame?.mapState);
+    if (explores && explores.floorIndex === floorIndex) {
+      return applyExplorationState(base, explores);
+    }
+    // Fresh floor: reveal start room's immediate neighbours
+    return revealAdjacentRooms(base, base.startRoomId);
   });
 
-  // Mark player as being in the map
+  const [currentRoomId, setCurrentRoomId] = useState<number>(() => {
+    const explores = parseExplorationState(activeGame?.mapState);
+    if (explores && explores.floorIndex === floorIndex) return explores.currentRoomId;
+    return floor.startRoomId;
+  });
+
   useEffect(() => {
     updateProgress({ location: 'map' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Hardware back → open save/exit confirm (same as X button)
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -66,215 +106,239 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     }, [])
   );
 
-  const rotation = useSharedValue(0);
   const pulse = useSharedValue(0.3);
-
   useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 12000, easing: Easing.linear }),
-      -1,
-      false
-    );
-    pulse.value = withRepeat(
-      withTiming(1, { duration: 1500 }),
-      -1,
-      true
-    );
-  }, []);
+    pulse.value = withRepeat(withTiming(1, { duration: 1500 }), -1, true);
+  }, [pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
-  const radarStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
+  // ─── Accessibility ─────────────────────────────────────────────────────────
+  const currentRoom = floor.rooms.find(r => r.id === currentRoomId);
+  const accessibleIds = new Set(currentRoom?.connections ?? []);
 
-  const pulseStyle = useAnimatedStyle(() => ({
-    opacity: pulse.value,
-  }));
+  // ─── Room press ─────────────────────────────────────────────────────────────
+  const handleRoomPress = useCallback((room: DungeonRoom) => {
+    if (room.id === currentRoomId || !accessibleIds.has(room.id)) return;
 
-  const handleNodePress = (node: MapNode) => {
-    if (node.status === 'LOCKED') return;
-    if (node.type === 'COMBAT' || node.type === 'BOSS') {
+    const afterVisit: DungeonFloor = {
+      ...floor,
+      rooms: floor.rooms.map(r => r.id === room.id ? { ...r, visited: true } : r),
+    };
+    const afterReveal = revealAdjacentRooms(afterVisit, room.id);
+    setFloor(afterReveal);
+    setCurrentRoomId(room.id);
+    setSelectedRoom(null);
+
+    // Persist exploration state BEFORE navigating away — so MapScreen
+    // correctly restores the visited room + revealed neighbours on remount.
+    const savedState = serializeExplorationState(afterReveal, room.id);
+    updateProgress({ location: 'map', mapState: JSON.stringify(savedState) });
+
+    if (room.type === 'NORMAL' || room.type === 'ELITE' || room.type === 'BOSS') {
       navigation.navigate('Battle');
-    } else if (node.type === 'SAFE_ZONE') {
-      setSelectedSafeZone(node);
+    } else {
+      setSelectedRoom(room);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [floor, currentRoomId, navigation, updateProgress]);
 
-  const handleSaveAndExit = () => {
-    const nodeSave: Record<number, string> = {};
-    for (const n of nodes) nodeSave[n.id] = n.status;
-    updateProgress({ location: 'map', mapState: JSON.stringify(nodeSave) });
+  // ─── Save & exit ───────────────────────────────────────────────────────────
+  const handleSaveAndExit = useCallback(() => {
+    const state = serializeExplorationState(floor, currentRoomId);
+    updateProgress({ location: 'map', mapState: JSON.stringify(state) });
     navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
-  };
+  }, [floor, currentRoomId, updateProgress, navigation]);
 
-  const handleReturnToVillageFromSafeZone = () => {
-    const nodeSave: Record<number, string> = {};
-    for (const n of nodes) nodeSave[n.id] = n.status;
-    updateProgress({ location: 'village', mapState: JSON.stringify(nodeSave) });
+  const handleReturnToVillage = useCallback(() => {
+    const state = serializeExplorationState(floor, currentRoomId);
+    updateProgress({ location: 'village', mapState: JSON.stringify(state) });
     navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
-  };
+  }, [floor, currentRoomId, updateProgress, navigation]);
+
+  const combatCount = floor.rooms.filter(r => r.type === 'NORMAL' || r.type === 'ELITE').length;
+  const revealedCount = floor.rooms.filter(r => r.revealed).length;
 
   return (
-    <View className="flex-1 bg-background">
+    <View style={styles.container}>
       <CRTOverlay />
 
-
       {/* Top Bar */}
-      <View className="bg-primary/10 px-4 py-2 flex-row justify-between items-center border-b border-primary/30">
-        <TouchableOpacity onPress={() => setSaveExitVisible(true)} style={{ width: 60 }}>
-          <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)' }}>✕ {t('map.exit')}</Text>
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => setSaveExitVisible(true)} style={styles.exitBtn}>
+          <Text style={styles.exitText}>✕ {t('map.exit')}</Text>
         </TouchableOpacity>
-        <Text className="text-primary font-bold font-robotomono text-xs">{t('common.floor')} {String(floor).padStart(2, '0')} · {t('map.title')}</Text>
-        <Text className="text-secondary font-robotomono text-[9px]">{t('common.cycle')}: {String(cycle).padStart(2, '0')}/60</Text>
+        <Text style={styles.titleText}>
+          {t('common.floor')} {String(floorIndex).padStart(2, '0')} · {t('map.title')}
+        </Text>
+        <Text style={styles.cycleText}>{t('common.cycle')}: {String(cycle).padStart(2, '0')}/60</Text>
       </View>
 
-      {/* Day/Night + Floor Info */}
-      <View className="flex-row px-4 py-1 bg-muted/20 border-b border-primary/10">
-        <Text className="text-secondary font-robotomono text-[8px]">☀ {t('common.dayPhase')}</Text>
-        <Text className="text-primary/30 font-robotomono text-[8px] mx-2">|</Text>
-        <Text className="text-primary/50 font-robotomono text-[8px]">{t('map.enemies')}: UNDEAD · ABERRATION</Text>
-        <Text className="text-primary/30 font-robotomono text-[8px] mx-2">|</Text>
-        <Text className="text-primary/50 font-robotomono text-[8px]">{t('map.threat')}: {t('map.moderate')}</Text>
+      {/* Day/Night bar */}
+      <View style={styles.metaBar}>
+        <Text style={styles.metaText}>☀ {t('common.dayPhase')}</Text>
+        <Text style={styles.separator}>|</Text>
+        <Text style={styles.metaText}>{t('map.enemies')}: UNDEAD · ABERRATION</Text>
+        <Text style={styles.separator}>|</Text>
+        <Text style={styles.metaText}>{t('map.threat')}: {t('map.moderate')}</Text>
+        <Text style={styles.separator}>|</Text>
+        <Text style={[styles.metaText, { color: 'rgba(0,229,255,0.6)' }]}>
+          {revealedCount}/{floor.rooms.length} ROOMS
+        </Text>
       </View>
 
-      {/* Map Area */}
-      <View className="flex-1 p-4">
-        <View className="flex-1 relative">
-          {/* Radar Background */}
-          <Animated.View
-            style={[radarStyle, { position: 'absolute', top: '10%', left: '10%', right: '10%', bottom: '10%', borderRadius: 999 }]}
-            className="border border-primary/5 items-center justify-center"
-            pointerEvents="none"
-          >
-            <View className="w-full h-[1px] bg-primary/10 absolute" />
-            <View className="h-full w-[1px] bg-primary/10 absolute" />
-          </Animated.View>
+      {/* Scrollable Map Canvas — vertical scroll through the dungeon */}
+      <ScrollView
+        style={styles.mapScroll}
+        contentContainerStyle={{ width: CANVAS_W, height: CANVAS_H }}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+      >
+        {/* Diagonal connection lines */}
+        {floor.rooms.map(room =>
+          room.connections.map(targetId => {
+            const target = floor.rooms.find(r => r.id === targetId);
+            if (!target || (!room.revealed && !target.revealed)) return null;
 
-          {/* Connection Lines */}
-          <View className="absolute inset-0" pointerEvents="none">
-            {nodes.map(node =>
-              node.connections.map(targetId => {
-                const target = nodes.find(n => n.id === targetId);
-                if (!target) return null;
-                return (
-                  <View
-                    key={`${node.id}-${targetId}`}
-                    className="absolute bg-primary/10"
-                    style={{
-                      left: `${Math.min(node.pos.x, target.pos.x) + 3}%`,
-                      top: `${Math.min(node.pos.y, target.pos.y) + 3}%`,
-                      width: `${Math.abs(target.pos.x - node.pos.x)}%`,
-                      height: 1,
-                    }}
-                  />
-                );
-              })
-            )}
-          </View>
-
-          {/* Nodes */}
-          {nodes.map(node => {
-            const style = NODE_STYLES[node.type];
-            const isAccessible = node.status === 'AVAILABLE' || node.status === 'CURRENT';
+            const x1 = room.pos.x * CANVAS_W;
+            const y1 = room.pos.y * CANVAS_H;
+            const x2 = target.pos.x * CANVAS_W;
+            const y2 = target.pos.y * CANVAS_H;
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            if (length < 1) return null;
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            // Centre the line at the midpoint between the two nodes, then rotate
+            const cx = (x1 + x2) / 2;
+            const cy = (y1 + y2) / 2;
+            const isActivePath = room.id === currentRoomId && accessibleIds.has(targetId);
 
             return (
-              <TouchableOpacity
-                key={node.id}
-                onPress={() => handleNodePress(node)}
-                disabled={!isAccessible}
-                className={`absolute items-center justify-center ${
-                  isAccessible ? '' : 'opacity-40'
-                }`}
+              <View
+                key={`line-${room.id}-${targetId}`}
+                pointerEvents="none"
                 style={{
-                  left: `${node.pos.x}%`,
-                  top: `${node.pos.y}%`,
-                  transform: [{ translateX: -28 }, { translateY: -28 }],
+                  position: 'absolute',
+                  left: cx - length / 2,
+                  top: cy,
+                  width: length,
+                  height: 1,
+                  backgroundColor: isActivePath
+                    ? 'rgba(0,255,65,0.55)'
+                    : 'rgba(0,255,65,0.13)',
+                  transform: [{ rotate: `${angle}deg` }],
                 }}
-              >
-                <View className={`w-14 h-14 border-2 items-center justify-center ${style.border} ${style.bg}`}>
-                  <Text className="text-lg">{style.icon}</Text>
-                  <Text className={`text-[6px] font-robotomono ${
-                    node.type === 'BOSS' ? 'text-secondary' :
-                    node.type === 'COMBAT' ? 'text-destructive' :
-                    node.type === 'EVENT' ? 'text-accent' : 'text-primary'
-                  }`}>
-                    {t(`map.nodeTypes.${node.type}`)}
-                  </Text>
-                </View>
-                {node.status === 'CURRENT' && (
-                  <Animated.View style={pulseStyle} className="absolute -inset-1 border border-primary" />
-                )}
-                {node.label && (
-                  <Text className="text-primary/50 font-robotomono text-[6px] mt-[2px]">{node.label}</Text>
-                )}
-                {node.status === 'LOCKED' && (
-                  <View className="absolute inset-0 bg-background/70 items-center justify-center">
-                    <Text className="text-primary/20 font-robotomono text-xs">?</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              />
             );
-          })}
-        </View>
-      </View>
+          })
+        )}
 
-      {/* Safe Zone Action Panel */}
-      {selectedSafeZone && (
-        <View className="border-t border-primary p-3 bg-primary/5">
-          <Text className="text-primary font-robotomono text-[9px] font-bold mb-1">
-            ◆ {t('map.nodeTypes.SAFE_ZONE')}{selectedSafeZone.label ? ` — ${selectedSafeZone.label}` : ''}
-          </Text>
-          <Text className="text-primary/60 font-robotomono text-[8px] mb-2">
-            {t('map.safeZoneDesc')}
-          </Text>
-          <View className="flex-row">
+        {/* Room nodes */}
+        {floor.rooms.map(room => {
+          const rs = ROOM_STYLES[room.type];
+          const isCurrent = room.id === currentRoomId;
+          const isAccessible = accessibleIds.has(room.id);
+          const posLeft = room.pos.x * CANVAS_W - NODE_HALF;
+          const posTop  = room.pos.y * CANVAS_H - NODE_HALF;
+
+          if (!room.revealed) {
+            return (
+              <View
+                key={room.id}
+                pointerEvents="none"
+                style={[styles.fogNode, { left: posLeft, top: posTop }]}
+              >
+                <Text style={styles.fogIcon}>?</Text>
+              </View>
+            );
+          }
+
+          const opacity = isCurrent ? 1 : room.visited ? 0.45 : isAccessible ? 1 : 0.25;
+
+          return (
             <TouchableOpacity
-              onPress={handleReturnToVillageFromSafeZone}
-              className="flex-1 border border-accent p-2 items-center mr-2"
+              key={room.id}
+              onPress={() => handleRoomPress(room)}
+              disabled={isCurrent || !isAccessible}
+              activeOpacity={0.7}
+              style={[styles.nodeWrapper, { left: posLeft, top: posTop, opacity }]}
             >
-              <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 11, color: '#00E5FF' }}>
-                {t('extraction.returnVillage')}
-              </Text>
+              <View style={{
+                width: NODE_SIZE,
+                height: NODE_SIZE,
+                borderWidth: isCurrent ? 2 : 1,
+                borderColor: rs.borderColor,
+                backgroundColor: rs.bgColor,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Text style={{ fontSize: 15, color: rs.textColor }}>{rs.icon}</Text>
+                <Text style={[styles.roomLabel, { color: rs.textColor }]}>
+                  {room.label.split('_')[0]}
+                </Text>
+              </View>
+
+              {isCurrent && (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[pulseStyle, {
+                    position: 'absolute',
+                    top: -4, left: -4, right: -4, bottom: -4,
+                    borderWidth: 1,
+                    borderColor: rs.borderColor,
+                  }]}
+                />
+              )}
+
+              {room.mutated && !room.visited && (
+                <View style={styles.mutationDot} />
+              )}
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setSelectedSafeZone(null)}
-              className="border border-primary/30 p-2 items-center"
-              style={{ width: 80 }}
-            >
-              <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 11, color: 'rgba(0,255,65,0.5)' }}>
-                {t('common.cancel')}
-              </Text>
+          );
+        })}
+      </ScrollView>
+
+      {/* Non-combat room panel */}
+      {selectedRoom && (
+        <View style={styles.roomPanel}>
+          <Text style={styles.roomPanelTitle}>
+            {ROOM_STYLES[selectedRoom.type].icon} {selectedRoom.label}
+            {selectedRoom.mutated ? ' [MUTADO]' : ''}
+          </Text>
+          <Text style={styles.roomPanelDesc}>{t('map.safeZoneDesc')}</Text>
+          <View style={{ flexDirection: 'row' }}>
+            {(selectedRoom.type === 'START' || selectedRoom.type === 'TREASURE' || selectedRoom.type === 'SECRET') && (
+              <TouchableOpacity onPress={handleReturnToVillage} style={styles.returnBtn}>
+                <Text style={styles.returnBtnText}>{t('extraction.returnVillage')}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => setSelectedRoom(null)} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
       {/* Bottom Info Panel */}
-      <View className="border-t border-primary/30 p-3 bg-muted/10">
-        <View className="flex-row justify-between items-center">
-          <View>
-            <Text className="text-primary font-robotomono text-[8px]">{t('map.scannerResults')}</Text>
-            <Text className="text-primary/60 font-robotomono text-[8px]">
-              {t('map.nodes')}: {nodes.length} · {t('map.combats')}: {nodes.filter(n => n.type === 'COMBAT').length} · {t('map.boss')}: 1
-            </Text>
-          </View>
-          <View className="flex-row">
-            <View className="flex-row items-center mr-3">
-              <View className="w-2 h-2 bg-destructive mr-1" />
-              <Text className="text-[7px] text-primary/40 font-robotomono">{t('map.nodeTypes.COMBAT')}</Text>
+      <View style={styles.bottomBar}>
+        <View>
+          <Text style={styles.scannerLabel}>{t('map.scannerResults')}</Text>
+          <Text style={styles.scannerValues}>
+            {t('map.nodes')}: {floor.rooms.length} · {t('map.combats')}: {combatCount} · {t('map.boss')}: 1
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {([
+            { color: '#FF3B30', label: t('map.nodeTypes.COMBAT') },
+            { color: '#00E5FF', label: t('map.nodeTypes.EVENT') },
+            { color: '#FFD60A', label: 'TREASURE' },
+            { color: '#FF453A', label: t('map.nodeTypes.BOSS') },
+          ] as const).map(({ color, label }) => (
+            <View key={label} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+              <View style={{ width: 6, height: 6, backgroundColor: color, marginRight: 3 }} />
+              <Text style={styles.legendLabel}>{label}</Text>
             </View>
-            <View className="flex-row items-center mr-3">
-              <View className="w-2 h-2 bg-accent mr-1" />
-              <Text className="text-[7px] text-primary/40 font-robotomono">{t('map.nodeTypes.EVENT')}</Text>
-            </View>
-            <View className="flex-row items-center mr-3">
-              <View className="w-2 h-2 bg-primary mr-1" />
-              <Text className="text-[7px] text-primary/40 font-robotomono">{t('map.nodeTypes.SAFE_ZONE')}</Text>
-            </View>
-            <View className="flex-row items-center">
-              <View className="w-2 h-2 bg-secondary mr-1" />
-              <Text className="text-[7px] text-primary/40 font-robotomono">{t('map.nodeTypes.BOSS')}</Text>
-            </View>
-          </View>
+          ))}
         </View>
       </View>
 
@@ -292,3 +356,33 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     </View>
   );
 };
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  container:      { flex: 1, backgroundColor: '#000' },
+  topBar:         { backgroundColor: 'rgba(0,255,65,0.08)', paddingHorizontal: 16, paddingVertical: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.2)' },
+  exitBtn:        { width: 60 },
+  exitText:       { fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)' },
+  titleText:      { fontFamily: 'RobotoMono-Bold', fontSize: 11, color: '#00FF41' },
+  cycleText:      { fontFamily: 'RobotoMono-Regular', fontSize: 9, color: '#FF9F0A' },
+  metaBar:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.02)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.06)' },
+  metaText:       { fontFamily: 'RobotoMono-Regular', fontSize: 7, color: 'rgba(0,255,65,0.5)' },
+  separator:      { fontFamily: 'RobotoMono-Regular', fontSize: 7, color: 'rgba(0,255,65,0.2)', marginHorizontal: 6 },
+  mapScroll:      { flex: 1 },
+  fogNode:        { position: 'absolute', width: NODE_SIZE, height: NODE_SIZE, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(0,255,65,0.08)', backgroundColor: 'rgba(0,0,0,0.5)' },
+  fogIcon:        { fontSize: 10, color: 'rgba(0,255,65,0.15)', fontFamily: 'RobotoMono-Regular' },
+  nodeWrapper:    { position: 'absolute', width: NODE_SIZE, height: NODE_SIZE, alignItems: 'center', justifyContent: 'center' },
+  roomLabel:      { fontSize: 6, fontFamily: 'RobotoMono-Regular', marginTop: 1 },
+  mutationDot:    { position: 'absolute', top: -4, right: -4, width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF453A' },
+  roomPanel:      { borderTopWidth: 1, borderTopColor: 'rgba(0,255,65,0.4)', padding: 12, backgroundColor: 'rgba(0,255,65,0.04)' },
+  roomPanelTitle: { fontFamily: 'RobotoMono-Bold', fontSize: 9, color: '#00FF41', marginBottom: 4 },
+  roomPanelDesc:  { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.6)', marginBottom: 8 },
+  returnBtn:      { flex: 1, borderWidth: 1, borderColor: '#00E5FF', padding: 8, alignItems: 'center', marginRight: 8 },
+  returnBtnText:  { fontFamily: 'RobotoMono-Regular', fontSize: 11, color: '#00E5FF' },
+  cancelBtn:      { borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', padding: 8, alignItems: 'center', width: 80 },
+  cancelBtnText:  { fontFamily: 'RobotoMono-Regular', fontSize: 11, color: 'rgba(0,255,65,0.5)' },
+  bottomBar:      { borderTopWidth: 1, borderTopColor: 'rgba(0,255,65,0.2)', padding: 10, backgroundColor: 'rgba(0,0,0,0.4)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  scannerLabel:   { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: '#00FF41' },
+  scannerValues:  { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.6)' },
+  legendLabel:    { fontSize: 6, color: 'rgba(0,255,65,0.5)', fontFamily: 'RobotoMono-Regular' },
+});

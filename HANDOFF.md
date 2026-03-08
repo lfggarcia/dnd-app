@@ -9,9 +9,9 @@
 
 TORRE es un **RPG de simulación social con estética CRT/cyberpunk** en React Native. Una torre de 100 pisos, 60 ciclos por temporada, ~10 parties simultáneas (1-2 jugador + resto IA), combate táctico DnD 5e, sistema de política y alianzas, motor de simulación determinístico por seed.
 
-**Estado hoy:** 11 pantallas navegables, base de datos SQLite schema v6, portraits de personaje generados por Google Gemini, variantes de expresión via ComfyUI, dungeon graph service con 12–20 habitaciones por piso + fog-of-war + navegación real integrado en MapScreen, catálogo de 35+ enemigos con stats completos y sistema de evolución, `characterStats.ts` con utilidades puras de stats DnD 5e. La lógica de combate (BattleScreen, ReportScreen) sigue siendo mock.
+**Estado hoy:** 11 pantallas navegables, SQLite schema v6, portraits via Gemini, expresiones via ComfyUI, `dungeonGraphService` con 12–20 habitaciones + fog-of-war + navegación integrado en MapScreen. MapScreen UX pulida (node select + action panel `▶ ENTRAR`, overlay de descenso, visual overhaul completo, fix node overlap y premature reveal). La lógica de combate (BattleScreen, ReportScreen) sigue siendo mock; el game loop aún no está cerrado (params Battle/Report pendientes).
 
-**Lo más urgente:** motor de combate DnD 5e real (BattleScreen), `simulateWorld(cycle)` para que las parties IA existan como actores.
+**Lo más urgente:** cerrar el flow Battle → Report → Map (pasar params, marcar sala visited, boss clearable), luego motor de combate DnD 5e real.
 
 ---
 
@@ -342,7 +342,7 @@ GameState { currentSeed, currentCycle, parties[], events[], activeCombat, worldL
 | SeedScreen | ⚠️ UI lista | Input seed (seed se descarta) |
 | PartyScreen | ✅ Funcional | Creación de personaje con datos reales DnD 5e + tutorial + glosario |
 | VillageScreen | ⚠️ Mock | Hub pueblo con edificios y leaderboard hardcodeado |
-| MapScreen | ⚠️ Mock | Mapa de nodos del piso actual (nodos deshabilitados) |
+| MapScreen | ⚠️ Parcial | Mapa dungeon real (12–20 rooms, fog-of-war, backtrack); UX node select + action panel; visual overhaul; fix overlap+reveal; falta cerrar flow de combate (params) |
 | BattleScreen | ⚠️ Mock | Combate táctico (log estático) |
 | ReportScreen | ⚠️ Mock | Resumen post-batalla (hardcoded) |
 | ExtractionScreen | ⚠️ Mock | Loot + retorno (hardcoded) |

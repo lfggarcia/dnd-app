@@ -2,7 +2,7 @@
 
 **Rama:** `main`
 **Fecha:** 2026-03-08
-**Estado general:** 🟡 **PROTOTIPO AVANZADO — Dungeon graph real con fog-of-war, navegación entre habitaciones, evolución de monstruos; motor de combate aún mock**
+**Estado general:** 🟡 **PROTOTIPO AVANZADO — MapScreen UX pulida (select+panel, visual overhaul, fix overlap/reveal); game loop parcialmente cerrado; motor de combate aún mock**
 
 > Ver `GAME_CONTEXT.md` para la visión completa y `SYSTEMS.MD` como documento fundacional.
 
@@ -46,6 +46,9 @@
 | **Evolución de Monstruos** | `monsterEvolutionService.ts`: tiers por ciclo/piso, stats de 35+ enemigos, XP decay, sistema de jefes secretos |
 | **Stats de Personaje** | `characterStats.ts`: `assignStandardArray`, `generateValidRolledStats`, `getRacialBonuses`, `computeFinalStats`, `pickRaceName`, tabla `CLASS_STAT_PRIORITY` para 12 clases |
 | **UI: MapScreen (dungeon graph)** | Conectado a `dungeonGraphService`: 12–20 habitaciones por piso; fog-of-war visual; navegación entre habitaciones con backtracking; estado de exploración persistido en `map_state`; avance de piso al limpiar BOSS; transición habitación → BattleScreen para NORMAL/ELITE/BOSS |
+| **UI: MapScreen UX overhaul** | Node select + bottom action panel (`▶ ENTRAR`); overlay de descenso de piso (`isDescending`); corner brackets; SVG grid bg (`MapBackground`); glow rings en accesibles/seleccionado; enhanced current-room indicator (doble anillo pulsante); top color strips por tipo; fog nodes eliminados; `getRoomActionDesc()` |
+| **Fix: Node overlap** | `dungeonGraphService.ts`: main rooms `y ∈ [0.05, 0.82]`, secret rooms `y ≥ 0.93` — elimina solapamiento visual |
+| **Fix: Premature room reveal** | `useFocusEffect` en MapScreen revela adyacentes al volver de combate, no en tap |
 | **UI: LogoIA** | `LogoIA.tsx`: componente de logo generado por IA (reemplaza TorreLogo en MainScreen); TorreLogo.tsx sigue disponible |
 | **Party sub-components** | `src/components/party/`: `LaunchProgressModal.tsx`, `PortraitSection.tsx`, `PortraitDetailModal.tsx`, `RosterTabs.tsx` — refactor de PartyScreen.tsx en 4 sub-componentes reutilizables |
 | **Hook usePartyRoster** | `hooks/usePartyRoster.ts`: lógica de roster de party extraída de PartyScreen |
@@ -63,6 +66,8 @@
 | Simulación de mundo | `simulateWorld(cycle)` no existe — parties IA no avanzan realmente | 🔴 Alta |
 | Sistema temporal | Ciclos y fases presentes en el modelo pero sin mecánica de avance real | 🔴 Alta |
 | ~~Conexión Dungeon Graph → MapScreen~~ | ✅ Completado — MapScreen usa `dungeonGraphService` con 12–20 rooms, fog-of-war, mutaciones y avance de piso | ~~🟡 Media~~ |
+| ~~Node overlap~~ | ✅ Corregido — `dungeonGraphService.ts` restringe bandas y | ~~🟡 Media~~ |
+| ~~Premature room reveal~~ | ✅ Corregido — `useFocusEffect` revela adyacentes al volver de combate | ~~🟡 Media~~ |
 | Portraits: modal de carga detallada | Flujo de inicio de expedición solo muestra texto estático; pendiente modal de progreso paso a paso | 🟡 Media |
 | Parties IA | Rivals generados determinísticamente pero sin simulación real de progreso | 🟡 Media |
 | Sistema de política | Sin alianzas, sin bounty, sin moral, sin World Log datos reales | 🟡 Media |

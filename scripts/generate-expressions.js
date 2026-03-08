@@ -95,6 +95,15 @@ const EXPRESSIONS = {
     label:    'In Pain',
     positive: 'eyes screwed shut in pain, grimacing mouth open, teeth clenched in agony, face contorted in pain, suffering expression',
   },
+  happy: {
+    label:    'Happy',
+    positive: 'warm happy expression, genuine smile, bright eyes, relaxed eyebrows, joyful expression, soft cheek lift, visible happiness, BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.00)',
+    negative: QUALITY_NEG_EYE,
+  },
+  wounded: {
+    label:    'Wounded',
+    positive: '(painful wounded expression: 1.2), strained face, clenched teeth, trembling lips, exhausted eyes, (visible pain: 1.4), BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.40), (clean hair:1.2), (no hair accessories:1.3), (no ornaments:1.3)',
+  },
 };
 
 // --- CLI args ----------------------------------------------------------------

@@ -87,6 +87,8 @@ export const EXPRESSION_PRESETS: Record<string, string> = {
   determined: 'sharp focused eyes, calm intensity, set jaw, unwavering fierce gaze, BREAK, (determined expression:1.5), (focused eyes:1.3), (slightly lowered eyebrows:1.25), (firm lips:1.25)',
   scared:     'wide terrified eyes, cold sweat, pale skin, trembling lips, horror expression, BREAK, (scared expression:1.4), (exaggerated facial muscles:1.3), (wide eyes:1.35), (raised eyebrows:1.3), (trembling lips:1.2)',
   smug:       'half-lidded eyes, twisted smirk, condescending gaze, sinister confidence, BREAK, (smug expression:1.35), (one eyebrow raised:1.3), (asymmetric smirk:1.35), (relaxed eyelids:1.2), (confident gaze:1.2)',
+  happy:      'warm happy expression, genuine smile, bright eyes, relaxed eyebrows, joyful expression, soft cheek lift, visible happiness, BREAK, (character identity consistency:1.4), (same person:1.3)',
+  wounded:    '(painful wounded expression:1.2), strained face, clenched teeth, trembling lips, exhausted eyes, (visible pain:1.4), BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.40)',
 };
 
 const STAT_FLAVOR: Record<string, string> = {

@@ -1,13 +1,30 @@
-import React, { useMemo, memo, useState, useCallback } from 'react';
+import React, { useMemo, memo, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Image,
   Dimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing,
+} from 'react-native-reanimated';
+import Svg, {
+  Defs,
+  ClipPath,
+  Polygon,
+  Image as SvgImage,
+  Rect,
+  Line,
+  LinearGradient,
+  Stop,
+  Text as SvgText,
+} from 'react-native-svg';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
@@ -20,77 +37,223 @@ import type { ScreenProps } from '../navigation/types';
 
 const SCREEN_W = Dimensions.get('window').width;
 const SCREEN_H = Dimensions.get('window').height;
-const GAP = 2;
-const STRIP_H = Math.min(Math.round(SCREEN_H * 0.62), 520);
-// One accent color per roster slot — gives each character a distinct identity
+const STRIP_H  = Math.min(Math.round(SCREEN_H * 0.62), 520);
+// Diagonal offset in pixels — how far the cut "leans" top→bottom
+const SLANT = 20;
+// Per-character accent colours (CRT palette: green, amber, red, cyan)
 const STRIP_ACCENTS = ['#00FF41', '#FFB000', '#FF3E3E', '#4DBBFF'] as const;
 
-// ─── Party Strip Cell ─────────────────────────────────────
+// ─── Diagonal Panel ───────────────────────────────────────
 
-type StripProps = {
+type DiagPanelProps = {
   char: CharacterSave;
-  portraitUri: string | null;
-  accentColor: string;
-  stripW: number;
+  uri: string | null;
+  accent: string;
+  idx: number;
+  total: number;
   onPress: () => void;
   onLongPress: () => void;
 };
 
-const StripCell = memo(({ char, portraitUri, accentColor, stripW, onPress, onLongPress }: StripProps) => {
-  const hpPct = char.maxHp > 0 ? char.hp / char.maxHp : 0;
+const DiagonalPanel = memo(({
+  char, uri, accent, idx, total, onPress, onLongPress,
+}: DiagPanelProps) => {
+  const W = SCREEN_W / total;
+
+  // ── Clip polygon coords ──────────────────────────────────
+  // Each panel is a trapezoid; dividers lean right (top-inset, bottom-outset).
+  const xl_top = idx === 0          ? 0          : idx * W - SLANT;
+  const xl_bot = idx === 0          ? 0          : idx * W + SLANT;
+  const xr_top = idx === total - 1  ? SCREEN_W   : (idx + 1) * W - SLANT;
+  const xr_bot = idx === total - 1  ? SCREEN_W   : (idx + 1) * W + SLANT;
+  const clipPts = `${xl_top},0 ${xr_top},0 ${xr_bot},${STRIP_H} ${xl_bot},${STRIP_H}`;
+
+  // Unique IDs per panel (SVG defs must be unique across the whole document)
+  const safeName = char.name.replace(/[^a-zA-Z0-9]/g, '');
+  const cpId   = `cp${idx}${safeName}`;
+  const gradId = `gr${idx}${safeName}`;
+
+  // ── HP ───────────────────────────────────────────────────
+  const hpPct   = char.maxHp > 0 ? char.hp / char.maxHp : 0;
   const hpColor = !char.alive
     ? '#FF3E3E'
-    : hpPct > 0.5
-      ? '#00FF41'
-      : hpPct > 0.25
-        ? '#FFB000'
-        : '#FF3E3E';
+    : hpPct > 0.5 ? '#00FF41' : hpPct > 0.25 ? '#FFB000' : '#FF3E3E';
+
+  // ── Image rect inside SVG (slightly wider than panel to let slice fill) ──
+  const imgX = idx * W - W * 0.1;
+  const imgW = W * 1.2;
+
+  // ── Reanimated entrance (slide-up + fade, staggered by idx) ──
+  const translateY = useSharedValue(STRIP_H * 0.28);
+  const opacity    = useSharedValue(0);
+
+  useEffect(() => {
+    const delay = idx * 110;
+    translateY.value = withDelay(delay, withTiming(0, {
+      duration: 620,
+      easing: Easing.out(Easing.cubic),
+    }));
+    opacity.value = withDelay(delay, withTiming(1, { duration: 500 }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const aStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: opacity.value,
+  }));
+
+  // ── Name band geometry (bottom of panel, aligned to diagonal edges) ──
+  const BAND_H = 52;
+  const bandX = xl_bot;
+  const bandW = xr_bot - xl_bot;
 
   return (
-    <TouchableOpacity
-      style={[S.strip, { width: stripW }]}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      activeOpacity={0.85}
-    >
-      {/* Portrait */}
-      {portraitUri ? (
-        <Image source={{ uri: portraitUri }} style={S.stripImage} resizeMode="cover" />
-      ) : (
-        <View style={[S.stripPlaceholder, { borderColor: `${accentColor}22` }]}>
-          <Text style={[S.stripInitial, { color: `${accentColor}33` }]}>
+    <Animated.View style={[StyleSheet.absoluteFillObject, aStyle]} pointerEvents="box-none">
+      {/* ── SVG: portrait + clip + gradient ── */}
+      <Svg width={SCREEN_W} height={STRIP_H}>
+        <Defs>
+          <ClipPath id={cpId}>
+            <Polygon points={clipPts} />
+          </ClipPath>
+
+          {/* Dark-to-accent bottom gradient */}
+          <LinearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0.4"  stopColor="#010a01" stopOpacity="0" />
+            <Stop offset="0.82" stopColor="#010a01" stopOpacity="0.75" />
+            <Stop offset="1"    stopColor="#010a01" stopOpacity="0.97" />
+          </LinearGradient>
+        </Defs>
+
+        {/* Dark background tinted with accent */}
+        <Rect
+          x={0} y={0} width={SCREEN_W} height={STRIP_H}
+          fill={`${accent}0D`}
+          clipPath={`url(#${cpId})`}
+        />
+
+        {/* Portrait */}
+        {uri ? (
+          <SvgImage
+            href={uri}
+            x={imgX} y={0}
+            width={imgW} height={STRIP_H}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#${cpId})`}
+          />
+        ) : (
+          /* Placeholder with large initial */
+          <SvgText
+            x={(xl_top + xr_top) / 2}
+            y={STRIP_H * 0.5 + 18}
+            fill={`${accent}22`}
+            fontSize={64}
+            fontWeight="bold"
+            textAnchor="middle"
+            clipPath={`url(#${cpId})`}
+          >
             {char.name.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-      )}
+          </SvgText>
+        )}
 
-      {/* Dead overlay */}
-      {!char.alive && <View style={S.deadOverlay} />}
+        {/* Bottom gradient fade (simulates vignette / BG removal) */}
+        <Rect
+          x={0} y={0} width={SCREEN_W} height={STRIP_H}
+          fill={`url(#${gradId})`}
+          clipPath={`url(#${cpId})`}
+        />
 
-      {/* Top accent bar */}
-      <View style={[S.accentTopBar, { backgroundColor: accentColor }]} />
+        {/* Dead overlay */}
+        {!char.alive && (
+          <Rect
+            x={0} y={0} width={SCREEN_W} height={STRIP_H}
+            fill="rgba(0,0,0,0.55)"
+            clipPath={`url(#${cpId})`}
+          />
+        )}
 
-      {/* Bottom name band */}
-      <View style={[S.stripBand, { borderTopColor: `${accentColor}55` }]}>
-        {/* HP bar */}
-        <View style={S.stripHpBg}>
-          <View style={[S.stripHpFill, {
-            width: `${Math.round(hpPct * 100)}%` as any,
-            backgroundColor: hpColor,
-          }]} />
-        </View>
-        <Text style={[S.stripName, { color: accentColor }]} numberOfLines={1}>
+        {/* ── Top accent bar ── */}
+        <Rect
+          x={xl_top} y={0}
+          width={xr_top - xl_top} height={3}
+          fill={accent}
+        />
+
+        {/* ── HP bar (just above name band) ── */}
+        <Rect
+          x={bandX} y={STRIP_H - BAND_H - 3}
+          width={bandW} height={2}
+          fill="rgba(255,255,255,0.08)"
+        />
+        <Rect
+          x={bandX} y={STRIP_H - BAND_H - 3}
+          width={bandW * hpPct} height={2}
+          fill={hpColor}
+        />
+
+        {/* ── Diagonal divider line (right edge, accent colour) ── */}
+        {idx < total - 1 && (
+          <Line
+            x1={xr_top} y1={0}
+            x2={xr_bot} y2={STRIP_H}
+            stroke={`${accent}60`}
+            strokeWidth={1.5}
+          />
+        )}
+
+        {/* ── Decorative rotated class text (manga background typography) ── */}
+        <SvgText
+          x={(xl_top + xr_top) / 2}
+          y={STRIP_H * 0.52}
+          fill={`${accent}12`}
+          fontSize={Math.max(18, Math.min(W * 0.28, 32))}
+          fontWeight="bold"
+          textAnchor="middle"
+          transform={`rotate(-90, ${(xl_top + xr_top) / 2}, ${STRIP_H * 0.52})`}
+          clipPath={`url(#${cpId})`}
+        >
+          {char.charClass.toUpperCase()}
+        </SvgText>
+      </Svg>
+
+      {/* ── Name band (RN Text for font support) ── */}
+      <View
+        style={[S.panelBand, {
+          left:   bandX,
+          width:  bandW,
+          bottom: 0,
+          height: BAND_H,
+        }]}
+        pointerEvents="none"
+      >
+        <Text
+          style={[S.panelName, { color: accent }]}
+          numberOfLines={1}
+        >
           {char.name.toUpperCase()}
         </Text>
-        <Text style={S.stripClass} numberOfLines={1}>
+        <Text style={S.panelClass} numberOfLines={1}>
           {char.charClass}
         </Text>
       </View>
-    </TouchableOpacity>
+
+      {/* ── Touch area (nominal panel width; rectangular approximation) ── */}
+      <TouchableOpacity
+        style={{
+          position: 'absolute',
+          left: idx * W,
+          top: 0,
+          width: W,
+          height: STRIP_H,
+        }}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        activeOpacity={0.82}
+      />
+    </Animated.View>
   );
 });
 
-// ─── Party Strip Row ──────────────────────────────────────
+// ─── Manga Collage ────────────────────────────────────────
 
 type CollageProps = {
   party: CharacterSave[];
@@ -99,26 +262,25 @@ type CollageProps = {
   onCharLongPress: (uri: string) => void;
 };
 
-const PartyCollage = memo(({ party, expressionsJson, onCharPress, onCharLongPress }: CollageProps) => {
+const MangaCollage = memo(({ party, expressionsJson, onCharPress, onCharLongPress }: CollageProps) => {
   if (party.length === 0) return null;
-
   const n = party.length;
-  const stripW = Math.floor((SCREEN_W - GAP * (n - 1)) / n);
 
   return (
-    <View style={S.stripRow}>
+    <View style={{ width: SCREEN_W, height: STRIP_H }}>
       {party.map((char, i) => {
         const expressions = expressionsJson[i] ?? null;
-        const portraitUri = expressions?.['neutral'] ?? char.portrait ?? null;
+        const uri = expressions?.['neutral'] ?? char.portrait ?? null;
         return (
-          <StripCell
+          <DiagonalPanel
             key={`${char.name}-${i}`}
             char={char}
-            portraitUri={portraitUri}
-            accentColor={STRIP_ACCENTS[i % STRIP_ACCENTS.length]}
-            stripW={stripW}
+            uri={uri}
+            accent={STRIP_ACCENTS[i % STRIP_ACCENTS.length]}
+            idx={i}
+            total={n}
             onPress={() => onCharPress(i)}
-            onLongPress={() => { if (portraitUri) onCharLongPress(portraitUri); }}
+            onLongPress={() => { if (uri) onCharLongPress(uri); }}
           />
         );
       })}
@@ -132,13 +294,13 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
   const { t, lang } = useI18n();
   const activeGame = useGameStore(s => s.activeGame);
 
-  const party = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
-  const aliveCount = useMemo(() => party.filter(c => c.alive).length, [party]);
+  const party        = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
+  const aliveCount   = useMemo(() => party.filter(c => c.alive).length, [party]);
   const expressionsJson = activeGame?.expressionsJson ?? {};
 
   const [modalUri, setModalUri] = useState<string | null>(null);
 
-  const handleCharPress = useCallback((idx: number) => {
+  const handleCharPress     = useCallback((idx: number) => {
     navigation.navigate('CharacterDetail', { charIndex: idx });
   }, [navigation]);
 
@@ -166,7 +328,7 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
         contentContainerStyle={{ paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Party Collage ── */}
+        {/* ── Manga Collage ── */}
         {party.length > 0 ? (
           <View style={S.collageSection}>
             {/* Section header row */}
@@ -182,7 +344,7 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
               <Text style={S.collageDecor}>[{aliveCount}]</Text>
             </View>
 
-            <PartyCollage
+            <MangaCollage
               party={party}
               expressionsJson={expressionsJson}
               onCharPress={handleCharPress}
@@ -192,7 +354,9 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
             {/* Party metadata strip */}
             <View style={S.partyMetaStrip}>
               <Text style={S.partyMetaText}>
-                {lang === 'es' ? 'GRUPO ACTIVO — CAMPAÑA EN CURSO' : 'ACTIVE PARTY — CAMPAIGN IN PROGRESS'}
+                {lang === 'es'
+                  ? 'GRUPO ACTIVO — CAMPAÑA EN CURSO'
+                  : 'ACTIVE PARTY — CAMPAIGN IN PROGRESS'}
               </Text>
             </View>
           </View>
@@ -319,72 +483,27 @@ const S = StyleSheet.create({
     lineHeight: 32,
   },
 
-  // Strip row (horizontal poster layout)
-  stripRow: {
-    flexDirection: 'row',
-    gap: GAP,
-  },
-  strip: {
-    height: STRIP_H,
-    position: 'relative',
-    overflow: 'hidden',
-    backgroundColor: 'rgba(0,255,65,0.03)',
-  },
-  stripImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  stripPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  stripInitial: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 32,
-  },
-  deadOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  accentTopBar: {
+  // ── Panel name band (RN Text layer over SVG) ──
+  panelBand: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-  },
-  stripBand: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(4,8,4,0.93)',
     paddingHorizontal: 6,
     paddingTop: 6,
     paddingBottom: 7,
-    borderTopWidth: 1,
+    justifyContent: 'flex-end',
   },
-  stripHpBg: {
-    height: 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginBottom: 5,
-  },
-  stripHpFill: {
-    height: 2,
-  },
-  stripName: {
+  panelName: {
     fontFamily: 'RobotoMono-Bold',
     fontSize: 10,
     letterSpacing: 0.5,
     marginBottom: 2,
   },
-  stripClass: {
+  panelClass: {
     fontFamily: 'RobotoMono-Regular',
     fontSize: 8,
     color: 'rgba(255,176,0,0.5)',
     letterSpacing: 0.5,
   },
+
   partyMetaStrip: {
     backgroundColor: 'rgba(0,255,65,0.05)',
     borderTopWidth: 1,

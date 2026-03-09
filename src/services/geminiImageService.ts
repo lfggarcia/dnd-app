@@ -77,18 +77,121 @@ const ALIGNMENT_EXPRESSION: Record<string, string> = {
   'chaotic-evil':   'wild unhinged menacing snarl, frenzied eyes',
 };
 
-// Expression presets — used for img2img batch expression generation
-// Prompts match the ComfyUI inpainting workflows in scripts/comfyui-workflows/
-export const EXPRESSION_PRESETS: Record<string, string> = {
-  neutral:    'calm neutral expression, relaxed face, soft eyes, composed, serene, (neutral expression:1.4), (calm face:1.3)',
-  angry:      'clenched teeth, furrowed brows, narrowed bloodshot eyes, battle fury, rage, intense glare, (angry expression:1.4), (furrowed brows:1.35), (intense glare:1.3)',
-  sad:        'downcast eyes, trembling lips, sorrowful expression, tears welling, grief, (sad expression:1.4), (downcast eyes:1.35), (trembling lips:1.3)',
-  surprised:  'wide open eyes, raised eyebrows, open mouth, shock, astonishment, (surprised expression:1.4), (wide eyes:1.35), (open mouth:1.3)',
-  determined: 'set jaw, focused gaze, firm lips, resolve, unwavering stare, steely eyes, (determined expression:1.4), (focused gaze:1.35), (set jaw:1.3)',
-  fearful:    'wide fearful eyes, pale trembling, pupils dilated, terror, dread, shaking, (fearful expression:1.4), (wide fearful eyes:1.35), (trembling:1.3)',
-  disgusted:  'wrinkled nose, curled upper lip, narrowed eyes, contempt, revulsion, (disgusted expression:1.4), (wrinkled nose:1.35), (curled lip:1.3)',
-  seductive:  'half-lidded eyes, slow smile, parted lips, smoldering gaze, alluring, magnetic presence, (seductive expression:1.4), (half-lidded eyes:1.35), (parted lips:1.3)',
-  happy:      'bright smile, teeth showing, eyes curved with joy, warm expression, genuine laughter, (happy expression:1.4), (bright smile:1.35), (joyful eyes:1.3)',
+// Expression presets — 22 expressions using physical muscle/geometry descriptions
+// (abstract emotion tokens replaced per EXPRESSIONS_WORKFLOW_v1.md section 5)
+// denoise is calibrated per expression; do NOT exceed 0.68 (loses identity above that)
+type ExpressionPreset = { positive: string; negative: string; denoise: number };
+export const EXPRESSION_PRESETS: Record<string, ExpressionPreset> = {
+  neutral: {
+    positive: 'completely relaxed facial muscles, soft steady gaze directly forward, mouth closed naturally, no tension anywhere in face',
+    negative: 'angry, happy, sad, smiling, crying, extreme expression',
+    denoise: 0.55,
+  },
+  angry: {
+    positive: 'inner brow corners sharply pulled down and together, deep vertical furrow between eyebrows, eyes narrowed to slits, jaw clenched, lips pressed tight, face tense',
+    negative: 'neutral expression, closed eyes, happy, sad, extra teeth, bad teeth, deformed teeth',
+    denoise: 0.55,
+  },
+  confident: {
+    positive: 'eyes closed serenely with small satisfied smile, eyebrows relaxed and high, face glowing with inner confidence, small serene smile, supremely self-assured expression',
+    negative: 'anxious, fearful, angry, sad, extreme expression',
+    denoise: 0.55,
+  },
+  confused: {
+    positive: 'head tilted hard to the left shoulder, LEFT eyebrow arched to maximum, RIGHT eyebrow pulled into frown, mouth twisted hard to one side half open with uncertainty, deep forehead furrow left side only',
+    negative: 'neutral expression, straight head, symmetric eyebrows, calm face',
+    denoise: 0.62,
+  },
+  despondent: {
+    positive: 'lower lip pushed WAY out forming prominent visible pout, inner corners of eyebrows raised steeply creating sad brow angle, chin slightly dimpled and trembling, cheeks soft and full with pout, glossy wet eyes from held-back tears',
+    negative: 'happy, smiling, neutral expression, laughing, angry',
+    denoise: 0.65,
+  },
+  determined: {
+    positive: 'eyes narrowed with intense focused gaze, jaw set firmly forward, lips pressed into thin straight line, slight flare of nostrils, brow low and serious, face radiating iron will',
+    negative: 'neutral expression, laughing, crying, relaxed face',
+    denoise: 0.55,
+  },
+  disgusted: {
+    positive: 'eyes wide open directed DOWN with visible disgust, nose bridge wrinkling with horizontal creases bunny lines, mouth firmly pressed closed lips tight shut, one cheek raised from nose wrinkle, eyebrows pulled together and slightly down',
+    negative: 'happy, neutral, eyes closed, head tilted back, pleasure, ecstasy, open mouth, smiling',
+    denoise: 0.60,
+  },
+  fearful: {
+    positive: 'eyes stretched extremely wide whites showing above and below iris, eyebrows raised and pulled together creating forehead wrinkles, mouth slightly open, lower lip trembling, face pale and frozen in terror',
+    negative: 'neutral expression, angry, happy, calm face, relaxed',
+    denoise: 0.55,
+  },
+  fierce: {
+    positive: 'LEFT eye stretched wide open to maximum showing whites all around, RIGHT eye narrowed to predatory slit almost closed, wide unhinged villain grin showing all upper AND lower teeth fully, eyebrows pulling in opposite directions left up right down',
+    negative: 'symmetric eyes, neutral expression, calm face, closed mouth, sad',
+    denoise: 0.68,
+  },
+  flirty: {
+    positive: 'one eyebrow raised high in playful arch, eyes heavy lidded and knowing, slight closed-mouth smile with one corner lifted into smirk, lips closed and defined, gentle head tilt, teasing confident expression',
+    negative: 'neutral expression, angry, scared, open mouth, sad',
+    denoise: 0.55,
+  },
+  happy: {
+    positive: 'cheeks raised and rounded pushing lower eyelids up, eyes curved into crescents, wide open smile showing upper teeth, corners of mouth pulled far back and up, face radiant with joy',
+    negative: 'angry, sad, neutral expression, closed eyes, closed mouth',
+    denoise: 0.62,
+  },
+  hollow: {
+    positive: 'eyes open but staring through everything unseeing, pupils slightly dilated not focused on anything, face muscles completely slack and dropped, jaw hanging slightly open from zero muscle tone, face like nobody is home',
+    negative: 'focused gaze, happy, angry, intense expression, alert face',
+    denoise: 0.55,
+  },
+  incredulous: {
+    positive: 'one eyebrow raised to absolute maximum nearly touching hairline, opposite eyebrow aggressively pulled down in scowl, eyes wide on raised side, squinted on low side, mouth corners pulled sharply down, face screaming disbelief',
+    negative: 'neutral expression, symmetric eyebrows, calm, happy, smiling',
+    denoise: 0.62,
+  },
+  rage: {
+    positive: 'mouth stretched into WIDE unhinged grin showing every single tooth upper and lower rows fully bared, grin so wide it reaches near ears, eyes wide open with veins visible in whites from fury, eyebrows slanting sharply inward over nose in extreme frown WHILE mouth grins',
+    negative: 'closed mouth, neutral expression, calm face, sad expression, mild expression',
+    denoise: 0.68,
+  },
+  sad: {
+    positive: 'inner brow corners pulled upward making arch, lower lip jutting out trembling, eyes glistening with unshed tears, corners of mouth pulled sharply downward, face crumpled in sorrow',
+    negative: 'neutral expression, angry, happy, smiling, dry eyes',
+    denoise: 0.55,
+  },
+  sarcastic: {
+    positive: 'one corner of mouth pulled up in sharp mocking smirk, one eyebrow raised slowly in contempt, other eyebrow flat and low, eyes heavy lidded with disdain, face radiating mockery and superiority',
+    negative: 'neutral expression, sad, scared, sincere expression, symmetric face',
+    denoise: 0.55,
+  },
+  seductive: {
+    positive: 'one eye slightly more closed than the other in lazy wink, tip of tongue barely touching upper lip corner, chin slightly lowered, eyes looking up at viewer through lowered lashes, slow dangerous smile corner of mouth lifted',
+    negative: 'neutral expression, angry, scared, disgusted, sad',
+    denoise: 0.55,
+  },
+  serious: {
+    positive: 'lips closed in thin straight neutral line no curve up or down, slight brow furrow, eyes direct and cold, jaw set firmly, face composed with zero expression beyond controlled intensity',
+    negative: 'smiling, happy, laughing, extreme expression, relaxed brow',
+    denoise: 0.55,
+  },
+  shocked: {
+    positive: 'eyes blown to maximum perfectly round circles with whites visible fully surrounding small iris in center, eyebrows shot straight up to absolute hairline, face frozen completely blank with terror, mouth hanging all the way open jaw dropped fully chin near chest, face drained of all color',
+    negative: 'calm, neutral, closed mouth, eyes not wide, relaxed brow',
+    denoise: 0.68,
+  },
+  surprised: {
+    positive: 'both eyes blown wide open into huge perfect circles, eyebrows shooting up arching high above normal position, forehead creased horizontal from raised eyebrows, jaw dropped naturally mouth open relaxed, face expression of pure delighted surprise',
+    negative: 'neutral expression, angry, sad, calm, extra teeth, deformed teeth',
+    denoise: 0.65,
+  },
+  tired: {
+    positive: 'eyelids drooping so heavy eyes are barely visible as thin slits, head tilted forward with fatigue, face muscles completely relaxed and sagging, dark undereye shadows, mouth hanging open slightly from exhaustion',
+    negative: 'alert expression, wide open eyes, energetic, neutral alert face',
+    denoise: 0.55,
+  },
+  triumph: {
+    positive: 'wide triumphant grin showing teeth, eyes bright and wide with victory, eyebrows raised in elation, chin slightly up, face radiating pride and power',
+    negative: 'sad, defeated, neutral expression, closed eyes, closed mouth',
+    denoise: 0.62,
+  },
 };
 
 const STAT_FLAVOR: Record<string, string> = {
@@ -195,45 +298,50 @@ const POLL_MAX_ATTEMPTS = 80;
 
 // ─── Workflow builder — Illustrious / PerfectDeliberate v8 ───────────────────
 //
-// Node graph (API format):
-//   [1] CheckpointLoaderSimple (perfectDeliberate_v8)
-//   [2] LoraLoader 748cm (0.5)
-//   [3] LoraLoader thiccwithaq (0.7)
-//   [4] LoraLoader USNR (0.6)
-//   [5] CLIPSetLastLayer (clip_skip -2)
-//   [6] CLIPTextEncode (positive)
-//   [7] CLIPTextEncode (negative)
-//   [8] EmptyLatentImage 832x1216
-//   [9] KSampler base (steps 38, cfg 4, dpmpp_2m karras, denoise 1.0)
-//  [10] VAEDecode
-//  [11] UpscaleModelLoader (4x_remacri)
-//  [12] ImageUpscaleWithModel
-//  [13] ImageScale -> 1248x1824 (lanczos)
-//  [14] VAEEncode
-//  [15] KSampler hires (steps 20, cfg 4, denoise 0.55)
-//  [16] VAEDecode
-//  [17] SaveImage -> dnd3-portrait
+// Node graph (API format) — matches 02-portadas-hires-v8-api.json:
+//   [1]  CheckpointLoaderSimple (perfectDeliberate_v8)
+//   [2]  LoraLoader 748cm (0.50)
+//   [3]  LoraLoader thiccwithaq (0.55 — face dominant in Flow 1)
+//   [4]  LoraLoader USNR (0.60)
+//   [5]  LoraLoader Detailer_NoobAI_Incrs_v1 (0.70)
+//   [19] LoraLoader Face_Enhancer_Illustrious (0.45)
+//   [20] LoraLoader Best_Facial_Expression_Helper (kaogei) (0.35)
+//   [6]  CLIPSetLastLayer (clip_skip -2) — clip from [20]
+//   [7]  CLIPTextEncode (positive)
+//   [8]  CLIPTextEncode (negative)
+//   [9]  EmptyLatentImage 832x1216
+//  [10]  KSampler base (38 steps, cfg 4, dpmpp_2m karras, denoise 1.0) — model from [20]
+//  [11]  VAEDecodeTiled tile=512 overlap=32
+//  [12]  UpscaleModelLoader (remacri)
+//  [13]  ImageUpscaleWithModel
+//  [14]  ImageScale -> 1248x1824 lanczos
+//  [15]  VAEEncodeTiled tile=512 overlap=32
+//  [16]  KSampler hires (20 steps, cfg 4, denoise 0.55) — model from [20]
+//  [17]  VAEDecodeTiled tile=512 overlap=32
+//  [18]  SaveImage -> dnd_portrait
 //
 function buildWorkflow(positiveText: string, negativeText: string, seed: number): Record<string, unknown> {
   return {
     '1':  { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' } },
-    '2':  { class_type: 'LoraLoader',             inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5,  strength_clip: 0.5  } },
-    '3':  { class_type: 'LoraLoader',             inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.55, strength_clip: 0.55 } },
-    '4':  { class_type: 'LoraLoader',             inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6,  strength_clip: 0.6  } },
-    '5':  { class_type: 'LoraLoader',             inputs: { model: ['4', 0], clip: ['4', 1], lora_name: 'Detailer_NoobAI_Incrs_v1.safetensors',         strength_model: 0.7,  strength_clip: 0.7  } },
-    '6':  { class_type: 'CLIPSetLastLayer',       inputs: { clip: ['5', 1], stop_at_clip_layer: -2 } },
-    '7':  { class_type: 'CLIPTextEncode',         inputs: { text: positiveText,  clip: ['6', 0] } },
-    '8':  { class_type: 'CLIPTextEncode',         inputs: { text: negativeText,  clip: ['6', 0] } },
+    '2':  { class_type: 'LoraLoader',             inputs: { model: ['1', 0],  clip: ['1', 1],  lora_name: '748cmSDXL.safetensors',                                        strength_model: 0.50, strength_clip: 0.50 } },
+    '3':  { class_type: 'LoraLoader',             inputs: { model: ['2', 0],  clip: ['2', 1],  lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors',                 strength_model: 0.55, strength_clip: 0.55 } },
+    '4':  { class_type: 'LoraLoader',             inputs: { model: ['3', 0],  clip: ['3', 1],  lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',                   strength_model: 0.60, strength_clip: 0.60 } },
+    '5':  { class_type: 'LoraLoader',             inputs: { model: ['4', 0],  clip: ['4', 1],  lora_name: 'Detailer_NoobAI_Incrs_v1.safetensors',                         strength_model: 0.70, strength_clip: 0.70 } },
+    '19': { class_type: 'LoraLoader',             inputs: { model: ['5', 0],  clip: ['5', 1],  lora_name: 'Face_Enhancer_Illustrious.safetensors',                        strength_model: 0.45, strength_clip: 0.45 } },
+    '20': { class_type: 'LoraLoader',             inputs: { model: ['19', 0], clip: ['19', 1], lora_name: 'Best_Facial_Expression_Helper_XTREME_ILLU-000005.safetensors', strength_model: 0.35, strength_clip: 0.35 } },
+    '6':  { class_type: 'CLIPSetLastLayer',       inputs: { clip: ['20', 1], stop_at_clip_layer: -2 } },
+    '7':  { class_type: 'CLIPTextEncode',         inputs: { text: positiveText, clip: ['6', 0] } },
+    '8':  { class_type: 'CLIPTextEncode',         inputs: { text: negativeText, clip: ['6', 0] } },
     '9':  { class_type: 'EmptyLatentImage',       inputs: { width: 832, height: 1216, batch_size: 1 } },
-    '10': { class_type: 'KSampler',               inputs: { seed, steps: 38, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 1.0,  model: ['5', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['9', 0] } },
+    '10': { class_type: 'KSampler',               inputs: { seed, steps: 38, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 1.0,  model: ['20', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['9', 0] } },
     '11': { class_type: 'VAEDecodeTiled',         inputs: { samples: ['10', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
     '12': { class_type: 'UpscaleModelLoader',     inputs: { model_name: 'remacri_original.safetensors' } },
     '13': { class_type: 'ImageUpscaleWithModel',  inputs: { upscale_model: ['12', 0], image: ['11', 0] } },
     '14': { class_type: 'ImageScale',             inputs: { upscale_method: 'lanczos', width: 1248, height: 1824, crop: 'disabled', image: ['13', 0] } },
     '15': { class_type: 'VAEEncodeTiled',         inputs: { pixels: ['14', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
-    '16': { class_type: 'KSampler',               inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.55, model: ['5', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['15', 0] } },
+    '16': { class_type: 'KSampler',               inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.55, model: ['20', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['15', 0] } },
     '17': { class_type: 'VAEDecodeTiled',         inputs: { samples: ['16', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
-    '18': { class_type: 'SaveImage',              inputs: { filename_prefix: 'dnd3-portrait', images: ['17', 0] } },
+    '18': { class_type: 'SaveImage',              inputs: { filename_prefix: 'dnd_portrait', images: ['17', 0] } },
   };
 }
 
@@ -367,54 +475,66 @@ async function uploadImageToComfy(base64DataUri: string): Promise<string> {
 
 // ─── img2img expression workflow ───────────────────────────────────────
 //
-// Same checkpoint + LoRAs as the portrait workflow, but uses LoadImage → VAEEncode
-// instead of EmptyLatentImage, keeping the face consistent (denoise 0.35).
+// 6-LoRA stack identical to portrait workflow (coherence rule).
+// Uses FaceDetailer to inpaint only the face at calibrated denoise per expression.
 //
-// Node graph:
-//   [1-4]  Checkpoint + 3x LoRA (identical weights to portrait workflow)
-//   [5]    CLIPSetLastLayer -2
-//   [6]    CLIPTextEncode positive  ← prompt with expression tokens
-//   [7]    CLIPTextEncode negative
-//   [8]    LoadImage            ← uploaded portrait filename
-//   [9]    VAEEncode            ← encodes portrait into latent space
-//   [10]   KSampler img2img     ← denoise 0.35 = preserves face, shifts expression
-//   [11]   VAEDecode
-//   [12]   SaveImage            ← prefix: dnd3-expression
+// Node graph — matches SUPER-expressions-all-api.json shared node layout:
+//   [1]  Checkpoint
+//   [2]  LoRA 748cm (0.50)
+//   [3]  LoRA thiccwithaq (0.70 — higher than Flow 1 for full face freedom)
+//   [4]  LoRA USNR (0.60)
+//   [5]  LoRA Detailer_NoobAI_Incrs_v1 (0.50)
+//   [6]  LoRA Face_Enhancer_Illustrious (0.45)
+//   [7]  LoRA Best_Facial_Expression_Helper (kaogei) (0.35)
+//   [8]  CLIPSetLastLayer -2
+//   [9]  CLIPTextEncode positive
+//  [10]  LoadImage (uploaded portrait)
+//  [11]  UltralyticsDetectorProvider (face_yolov8n.pt)
+//  [12]  CLIPTextEncode negative
+//  [13]  FaceDetailer — guide_size 512, cfg 4.0, denoise per-expression
+//  [14]  SaveImage
 //
 function buildExpressionWorkflow(
   positiveText: string,
   negativeText: string,
   seed: number,
   uploadedFilename: string,
+  denoise: number,
 ): Record<string, unknown> {
   return {
-    '1':  { class_type: 'CheckpointLoaderSimple',       inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' } },
-    '2':  { class_type: 'LoraLoader',                   inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5, strength_clip: 0.5 } },
-    '3':  { class_type: 'LoraLoader',                   inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.7, strength_clip: 0.7 } },
-    '4':  { class_type: 'LoraLoader',                   inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6, strength_clip: 0.6 } },
-    '5':  { class_type: 'LoraLoader',                   inputs: { model: ['4', 0], clip: ['4', 1], lora_name: 'Detailer_NoobAI_Incrs_v1.safetensors',         strength_model: 0.5, strength_clip: 0.5 } },
-    '6':  { class_type: 'CLIPSetLastLayer',             inputs: { clip: ['5', 1], stop_at_clip_layer: -2 } },
-    '7':  { class_type: 'CLIPTextEncode',               inputs: { text: positiveText, clip: ['6', 0] } },
-    '8':  { class_type: 'LoadImage',                    inputs: { image: uploadedFilename } },
-    '9':  { class_type: 'UltralyticsDetectorProvider',  inputs: { model_name: 'bbox/face_yolov8n.pt' } },
-    '10': { class_type: 'CLIPTextEncode',               inputs: { text: negativeText, clip: ['6', 0] } },
-    '11': { class_type: 'FaceDetailer',                 inputs: {
-      guide_size: 768, guide_size_for: true, max_size: 1024,
-      seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.45,
+    '1':  { class_type: 'CheckpointLoaderSimple',      inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' } },
+    '2':  { class_type: 'LoraLoader',                  inputs: { model: ['1', 0],  clip: ['1', 1],  lora_name: '748cmSDXL.safetensors',                                        strength_model: 0.50, strength_clip: 0.50 } },
+    '3':  { class_type: 'LoraLoader',                  inputs: { model: ['2', 0],  clip: ['2', 1],  lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors',                 strength_model: 0.70, strength_clip: 0.70 } },
+    '4':  { class_type: 'LoraLoader',                  inputs: { model: ['3', 0],  clip: ['3', 1],  lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',                   strength_model: 0.60, strength_clip: 0.60 } },
+    '5':  { class_type: 'LoraLoader',                  inputs: { model: ['4', 0],  clip: ['4', 1],  lora_name: 'Detailer_NoobAI_Incrs_v1.safetensors',                         strength_model: 0.50, strength_clip: 0.50 } },
+    '6':  { class_type: 'LoraLoader',                  inputs: { model: ['5', 0],  clip: ['5', 1],  lora_name: 'Face_Enhancer_Illustrious.safetensors',                        strength_model: 0.45, strength_clip: 0.45 } },
+    '7':  { class_type: 'LoraLoader',                  inputs: { model: ['6', 0],  clip: ['6', 1],  lora_name: 'Best_Facial_Expression_Helper_XTREME_ILLU-000005.safetensors', strength_model: 0.35, strength_clip: 0.35 } },
+    '8':  { class_type: 'CLIPSetLastLayer',            inputs: { clip: ['7', 1], stop_at_clip_layer: -2 } },
+    '9':  { class_type: 'CLIPTextEncode',              inputs: { text: positiveText, clip: ['8', 0] } },
+    '10': { class_type: 'LoadImage',                   inputs: { image: uploadedFilename } },
+    '11': { class_type: 'UltralyticsDetectorProvider', inputs: { model_name: 'bbox/face_yolov8n.pt' } },
+    '12': { class_type: 'CLIPTextEncode',              inputs: { text: negativeText, clip: ['8', 0] } },
+    '13': { class_type: 'FaceDetailer',                inputs: {
+      guide_size: 512, guide_size_for: true, max_size: 1024,
+      seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise,
       feather: 5, noise_mask: true, force_inpaint: true,
       bbox_threshold: 0.5, bbox_dilation: 10, bbox_crop_factor: 3,
       sam_detection_hint: 'center-1', sam_dilation: 0, sam_threshold: 0.93,
       sam_bbox_expansion: 0, sam_mask_hint_threshold: 0.7, sam_mask_hint_use_negative: 'False',
       drop_size: 10, wildcard: '', cycle: 1, inpaint_model: false, noise_mask_feather: 20,
       tiled_encode: false, tiled_decode: false,
-      image: ['8', 0], model: ['5', 0], clip: ['6', 0], vae: ['1', 2],
-      positive: ['7', 0], negative: ['10', 0], bbox_detector: ['9', 0],
+      image: ['10', 0], model: ['7', 0], clip: ['8', 0], vae: ['1', 2],
+      positive: ['9', 0], negative: ['12', 0], bbox_detector: ['11', 0],
     } },
-    '12': { class_type: 'SaveImage',                    inputs: { filename_prefix: 'dnd3-expression', images: ['11', 0] } },
+    '14': { class_type: 'SaveImage', inputs: { filename_prefix: 'dnd3-expression', images: ['13', 0] } },
   };
 }
 
-function buildExpressionPrompt(char: CharacterPortraitInput, expressionTokens: string): { positive: string; negative: string } {
+function buildExpressionPrompt(
+  char: CharacterPortraitInput,
+  expressionPositive: string,
+  expressionNegative: string,
+): { positive: string; negative: string } {
   const skinAnchorMap: Record<string, string> = {
     tiefling:   'pale skin',
     drow:       'dark grey skin',
@@ -427,13 +547,14 @@ function buildExpressionPrompt(char: CharacterPortraitInput, expressionTokens: s
     skinAnchor,
     'human woman',
     'BREAK',
-    expressionTokens,
-    'expressive eyes, perfect face, 748cmstyle, usnr',
+    expressionPositive,
+    'expressive eyes, perfect face, 748cmstyle, usnr, kaogei',
   ].join(', ');
 
   const negative = [
     'score_6, score_5, score_4, ugly face, low res, blurry face',
     'different person, different character',
+    expressionNegative,
     'disfigured, deformed, bad anatomy, face markings, forehead mark, skin tattoo',
   ].join(', ');
 
@@ -441,8 +562,8 @@ function buildExpressionPrompt(char: CharacterPortraitInput, expressionTokens: s
 }
 
 /**
- * Generates all expression variants (neutral, happy, angry, sad, surprised, wounded)
- * for a single character using img2img from their base portrait.
+ * Generates all 22 expression variants for a single character using FaceDetailer
+ * img2img from their base portrait. Each expression uses a calibrated denoise value.
  *
  * @param char         Character data (race, class, etc.) for prompt building
  * @param portraitBase64  The character's existing portrait as a base64 data URI
@@ -459,17 +580,17 @@ export async function generateCharacterExpressions(
 
   const results: Record<string, string> = {};
 
-  for (const [expressionKey, expressionTokens] of Object.entries(EXPRESSION_PRESETS)) {
+  for (const [expressionKey, preset] of Object.entries(EXPRESSION_PRESETS)) {
     __DEV__ && console.log(`[ComfyUI] Generating expression: ${expressionKey}`);
 
     const seed = Math.floor(Math.random() * 2 ** 32);
-    const { positive, negative } = buildExpressionPrompt(char, expressionTokens);
-    const workflow = buildExpressionWorkflow(positive, negative, seed, uploadedFilename);
+    const { positive, negative } = buildExpressionPrompt(char, preset.positive, preset.negative);
+    const workflow = buildExpressionWorkflow(positive, negative, seed, uploadedFilename, preset.denoise);
 
     const promptId = await queuePrompt(workflow);
     const entry = await pollHistory(promptId);
 
-    const images = entry.outputs?.['12']?.images;
+    const images = entry.outputs?.['14']?.images;
     if (!images || images.length === 0) {
       __DEV__ && console.warn(`[ComfyUI] No output for expression: ${expressionKey}, skipping`);
       continue;

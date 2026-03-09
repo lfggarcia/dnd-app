@@ -34,12 +34,28 @@ const PORTRAIT_H = Math.round(SCREEN_W * 1.35);
 const EXPRESSION_KEYS = Object.keys(EXPRESSION_PRESETS) as string[];
 
 const EXPR_LABELS: Record<string, { es: string; en: string }> = {
-  neutral:   { es: 'NEUTRO', en: 'NEUTRAL' },
-  happy:     { es: 'FELIZ',  en: 'HAPPY'   },
-  angry:     { es: 'IRA',    en: 'ANGRY'   },
-  sad:       { es: 'TRISTE', en: 'SAD'     },
-  surprised: { es: 'SORPR',  en: 'SURPR'   },
-  wounded:   { es: 'HERIDO', en: 'WOUNDED' },
+  neutral:    { es: 'NEUTRO',   en: 'NEUTRAL'  },
+  angry:      { es: 'IRA',      en: 'ANGRY'    },
+  confident:  { es: 'SEGURO',   en: 'CONFID'   },
+  confused:   { es: 'CONFUSO',  en: 'CONFSD'   },
+  despondent: { es: 'ABATIDO',  en: 'DESPND'   },
+  determined: { es: 'FIRME',    en: 'DETRMN'   },
+  disgusted:  { es: 'ASCO',     en: 'DISGST'   },
+  fearful:    { es: 'MIEDO',    en: 'FEARFL'   },
+  fierce:     { es: 'FEROZ',    en: 'FIERCE'   },
+  flirty:     { es: 'COQUETO',  en: 'FLIRTY'   },
+  happy:      { es: 'FELIZ',    en: 'HAPPY'    },
+  hollow:     { es: 'VACÍO',    en: 'HOLLOW'   },
+  incredulous:{ es: 'INCRÉDULO',en: 'INCRDL'   },
+  rage:       { es: 'RABIA',    en: 'RAGE'     },
+  sad:        { es: 'TRISTE',   en: 'SAD'      },
+  sarcastic:  { es: 'SARCASMO', en: 'SARC'     },
+  seductive:  { es: 'SEDUCTOR', en: 'SEDUCT'   },
+  serious:    { es: 'SERIO',    en: 'SERIOUS'  },
+  shocked:    { es: 'IMPACTO',  en: 'SHOCKD'   },
+  surprised:  { es: 'SORPR',    en: 'SURPR'    },
+  tired:      { es: 'CANSADO',  en: 'TIRED'    },
+  triumph:    { es: 'TRIUNFO',  en: 'TRIUMP'   },
 };
 
 const STAT_KEYS: (keyof Stats)[] = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];

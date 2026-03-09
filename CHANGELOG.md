@@ -5,6 +5,29 @@ Versiones siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased] — 2026-03-09
+
+### Added (Sprint 4A — Cerrar el Game Loop + Sprint 4B — Motor de Combate DnD 5e)
+
+- **`src/services/combatEngine.ts`** (nuevo) — motor de combate auto-resolve DnD 5e completo:
+  - PRNG `djb2 + LCG` seeded por `roomId` (misma sala → mismo combate siempre)
+  - `generateEnemiesForRoom(roomType, roomId, cycle, floor)` — genera enemigos determinísticamente por tipo de sala; pools diferenciados para NORMAL/ELITE/BOSS/SECRET/EVENT/TREASURE
+  - `resolveCombat(party, enemies, roomId, killRecords)` — resuelve combate por turnos: iniciativa `DEX_mod + d20`, hit roll `(attackMod + PROF_BONUS) vs AC`, nat-1 fumble, nat-20 crit, daño `WeaponDice + statMod` (×2 dados en crit), HP tracking por actor
+  - Tabla `CLASS_WEAPON_DICE` por clase, `PROF_BONUS = 2`, AC `10 + DEX_mod` (sin armadura MVP)
+  - XP decay via `calculateXP(monster, prevKills)`; gold = `round(totalXp × 0.15) + rng(5, 25)`
+  - `damageDone: Record<string, number>` — daño acumulado por nombre de personaje
+  - `log: string[]` — líneas de combate secuenciales para animación en `BattleScreen`
+  - `CombatResult`, `CombatPartyMember`, `CombatEnemy` types exportados
+- **`src/stores/gameStore.ts`** — añadido `lastCombatResult: CombatResult | null` (in-memory, no persistido) + acción `setCombatResult(result)` para pasar datos de `BattleScreen` → `ReportScreen` sin navigation params
+- **`src/navigation/types.ts`** — `Battle: { roomId: string; roomType: RoomType }` y `Report: { roomId: string; roomWasCleared: boolean }` con tipos completos
+
+### Changed (Sprint 4A + 4B)
+
+- **`BattleScreen.tsx`** — reescrito completamente: genera enemigos con `generateEnemiesForRoom`, resuelve combate con `resolveCombat` en `useMemo` (una vez al montar); log animado línea por línea (70ms/línea) con auto-scroll; HP bars de party actualizan a post-combate al terminar la animación; botón deshabilitado durante animación; `handleContinue` persiste HP via `updateProgress({ partyData })`, guarda resultado en store via `setCombatResult`, navega a `Report` con `{ roomId, roomWasCleared }`
+- **`ReportScreen.tsx`** — reescrito completamente: eliminado todo mock `REPORT_DATA`; lee `lastCombatResult` del store; muestra enemigos derrotados reales, estado de party real (HP antes/después, vivo/muerto), XP y gold reales; gráfico de barras de daño por personaje (solo si hay datos); outcome con fallback a `roomWasCleared` si el store está vacío; navega de vuelta a `Map`
+
+---
+
 ## [Unreleased] — 2026-03-08
 
 ### Added (MapScreen UX — Select + Panel + Visual Overhaul)

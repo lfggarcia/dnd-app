@@ -1,8 +1,8 @@
 # PROJECT STATUS — TORRE (CYBER_DND)
 
 **Rama:** `main`
-**Fecha:** 2026-03-08
-**Estado general:** 🟡 **PROTOTIPO AVANZADO — MapScreen UX pulida (select+panel, visual overhaul, fix overlap/reveal); game loop parcialmente cerrado; motor de combate aún mock**
+**Fecha:** 2026-03-09
+**Estado general:** 🟡 **PROTOTIPO AVANZADO — Game loop cerrado (Map→Battle→Report→Map); motor de combate DnD 5e real (iniciativa, tiradas, HP dinámico, log animado); Sprint 5 siguiente**
 
 > Ver `GAME_CONTEXT.md` para la visión completa y `SYSTEMS.MD` como documento fundacional.
 
@@ -45,7 +45,11 @@
 | **Motor de Dungeon** | `dungeonGraphService.ts`: grafos de piso con 12–20 habitaciones, 7 tipos de sala, fog-of-war, salas secretas, mutaciones por ciclo |
 | **Evolución de Monstruos** | `monsterEvolutionService.ts`: tiers por ciclo/piso, stats de 35+ enemigos, XP decay, sistema de jefes secretos |
 | **Stats de Personaje** | `characterStats.ts`: `assignStandardArray`, `generateValidRolledStats`, `getRacialBonuses`, `computeFinalStats`, `pickRaceName`, tabla `CLASS_STAT_PRIORITY` para 12 clases |
+| **Motor de Combate DnD 5e** | `combatEngine.ts`: PRNG seeded por roomId, `generateEnemiesForRoom`, `resolveCombat` con iniciativa/hit/daño/crit/HP; `damageDone` tracked; `log[]` animable; XP decay + gold; `CombatResult` type |
 | **UI: MapScreen (dungeon graph)** | Conectado a `dungeonGraphService`: 12–20 habitaciones por piso; fog-of-war visual; navegación entre habitaciones con backtracking; estado de exploración persistido en `map_state`; avance de piso al limpiar BOSS; transición habitación → BattleScreen para NORMAL/ELITE/BOSS |
+| **UI: BattleScreen** | Combat engine real: enemigos generados por `generateEnemiesForRoom`; combate resuelto por `resolveCombat`; log animado 70ms/línea con auto-scroll; HP bars actualizan post-combat; persiste HP via `updateProgress`; navega a Report con resultado |
+| **UI: ReportScreen** | Lee `lastCombatResult` del store: enemigos derrotados reales, party status HP antes/después, XP y gold reales, gráfico barras daño por personaje; navega de vuelta a Map |
+| **Game Loop cerrado** | `navigation/types.ts` con params tipados; Map → Battle (roomId/roomType) → Report (roomId/roomWasCleared) → Map; `lastCombatResult` in-memory en gameStore |
 | **UI: MapScreen UX overhaul** | Node select + bottom action panel (`▶ ENTRAR`); overlay de descenso de piso (`isDescending`); corner brackets; SVG grid bg (`MapBackground`); glow rings en accesibles/seleccionado; enhanced current-room indicator (doble anillo pulsante); top color strips por tipo; fog nodes eliminados; `getRoomActionDesc()` |
 | **Fix: Node overlap** | `dungeonGraphService.ts`: main rooms `y ∈ [0.05, 0.82]`, secret rooms `y ≥ 0.93` — elimina solapamiento visual |
 | **Fix: Premature room reveal** | `useFocusEffect` en MapScreen revela adyacentes al volver de combate, no en tap |
@@ -61,8 +65,6 @@
 
 | Área | Detalle | Prioridad |
 |------|---------|-----------|
-| Motor de combate DnD 5e | Sin tiradas reales, sin HP dinámico, sin turnos por iniciativa — BattleScreen es mock | 🔴 Alta |
-| **Game loop roto** | BattleScreen recibe `Battle: undefined` (sin roomId/roomType); tras combate ReportScreen navega a Extraction, no de vuelta al Mapa; la sala nunca se marca `visited` → boss nunca se puede limpiar → never se puede avanzar de piso | 🔴 **Crítico** |
 | Simulación de mundo | `simulateWorld(cycle)` no existe — parties IA no avanzan realmente | 🔴 Alta |
 | Sistema temporal | Ciclos y fases presentes en el modelo pero sin mecánica de avance real | 🔴 Alta |
 | ~~Conexión Dungeon Graph → MapScreen~~ | ✅ Completado — MapScreen usa `dungeonGraphService` con 12–20 rooms, fog-of-war, mutaciones y avance de piso | ~~🟡 Media~~ |
@@ -71,7 +73,7 @@
 | Portraits: modal de carga detallada | Flujo de inicio de expedición solo muestra texto estático; pendiente modal de progreso paso a paso | 🟡 Media |
 | Parties IA | Rivals generados determinísticamente pero sin simulación real de progreso | 🟡 Media |
 | Sistema de política | Sin alianzas, sin bounty, sin moral, sin World Log datos reales | 🟡 Media |
-| Combate abstracto IA vs IA | `monsterEvolutionService.ts` y stats listos; falta el motor de resolución | 🟡 Media |
+| Combate abstracto IA vs IA | `combatEngine.ts` base lista; falta el motor probabilístico abstracto (PowerScore) para IA vs IA | 🟡 Media |
 | Testing | Solo 1 test de render básico — cobertura ~0% | 🟡 Media |
 | Performance CRT | 100 Views por pantalla para scanlines | 🟡 Media |
 
@@ -124,30 +126,30 @@
 - [x] Transición habitación → BattleScreen para rooms NORMAL / ELITE / BOSS
 - [x] Avance de piso (`handleNextFloor`) al limpiar sala BOSS
 
-### Sprint 4A — Cerrar el Game Loop (pre-requisito de combate)
+### Sprint 4A — Cerrar el Game Loop (pre-requisito de combate) ✅ COMPLETADO
 
 > Objetivo: el dungeon puede completarse. Rooms se marcan, boss se limpia, pisos se avanzan.
 
-- [ ] `RootStackParamList`: añadir params a `Battle: { roomId: string; roomType: RoomType }` y `Report: { roomId: string; roomWasCleared: boolean }`
-- [ ] `MapScreen`: pasar `roomId` + `roomType` al navegar a BattleScreen
-- [ ] `BattleScreen`: leer params; al terminar combate (victoria/mock) navegar a Report con `roomWasCleared: true`
-- [ ] `ReportScreen`: recibir params; al "Continuar" llamar a callback/navegar de vuelta a MapScreen con resultado
-- [ ] `MapScreen`: al volver de Report, marcar la sala como `visited: true` en `floor` state, persistir `mapState`
-- [ ] Confirmar que `isBossCleared` activa el panel de avance de piso correctamente
+- [x] `RootStackParamList`: añadir params a `Battle: { roomId: string; roomType: RoomType }` y `Report: { roomId: string; roomWasCleared: boolean }`
+- [x] `MapScreen`: pasar `roomId` + `roomType` al navegar a BattleScreen
+- [x] `BattleScreen`: leer params; al terminar combate (victoria/mock) navegar a Report con `roomWasCleared: true`
+- [x] `ReportScreen`: recibir params; al "Continuar" llamar a callback/navegar de vuelta a MapScreen con resultado
+- [x] `MapScreen`: al volver de Report, marcar la sala como `visited: true` en `floor` state, persistir `mapState`
+- [x] Confirmar que `isBossCleared` activa el panel de avance de piso correctamente
 
-### Sprint 4B — Motor de Combate DnD 5e
+### Sprint 4B — Motor de Combate DnD 5e ✅ COMPLETADO
 
 > Objetivo: el combate es real. BattleScreen usa tiradas, HP, AC, turnos.
 
-- [ ] Motor de iniciativa (DEX + d20 seeded)
-- [ ] Hit roll: `(AttackMod + ProfBonus) vs EnemyAC`, clamped 5–95%
-- [ ] Daño: `WeaponBase + StatMod + Bonus - Resistances`, ×2 crítico
-- [ ] HP dinámico: personajes y enemigos con HP real; pantalla de muerte
-- [ ] Turnos: Action · Bonus Action · Reaction · Movement
-- [ ] Log de combate dinámico con TypewriterText
-- [ ] Enemigos generados por `monsterEvolutionService` según tipo de sala y ciclo/piso
-- [ ] Post-combate: XP reward con decay (`monsterEvolutionService`), gold drop
-- [ ] ReportScreen conectada a resultados reales
+- [x] Motor de iniciativa (DEX + d20 seeded)
+- [x] Hit roll: `(AttackMod + ProfBonus) vs EnemyAC`, nat-1 fumble, nat-20 crit
+- [x] Daño: `WeaponBase + StatMod`, ×2 dados en crítico; `damageDone` tracked por actor
+- [x] HP dinámico: HP real persiste post-combate via `updateProgress({ partyData })`
+- [x] Turnos: auto-resolve por orden de iniciativa (simplified MVP)
+- [x] Log de combate dinámico línea por línea (70ms/línea) con auto-scroll
+- [x] Enemigos generados por `generateEnemiesForRoom(roomType, roomId, cycle, floor)` — determinístico
+- [x] XP decay via `calculateXP`, gold = `round(totalXp × 0.15) + rng(5, 25)`
+- [x] ReportScreen conectada a `lastCombatResult` del store (no mock)
 
 ### Sprint 5 — Motor de Simulación (Mundo Vivo)
 
@@ -205,7 +207,7 @@
 | Pantallas proyectadas | 13-15 (gestión de alianzas, detalle de habitación, config, dungeon detail) |
 | Componentes reutilizables | 15 (CRTOverlay, TypewriterText, SliderButton, DatabaseGate, GlossaryModal, TorreLogo, LogoIA, TutorialOverlay, ConfirmModal, CharacterActionsPanel, Icons + party/: LaunchProgressModal, PortraitSection, PortraitDetailModal, RosterTabs) |
 | Hooks custom | 5 (useDatabase, useGlossary, useResources, useTutorial, usePartyRoster) |
-| Servicios | 14 (api5e, syncService, translationBridge, rulesConfig, subclassSeed, backgroundSeed, translationSeed, rivalGenerator, mapGenerator, dungeonGraphService, enemySpriteService, monsterEvolutionService, spriteDbService, characterStats) |
+| Servicios | 15 (api5e, syncService, translationBridge, rulesConfig, subclassSeed, backgroundSeed, translationSeed, rivalGenerator, mapGenerator, dungeonGraphService, enemySpriteService, monsterEvolutionService, spriteDbService, characterStats, **combatEngine**) |
 | Stores | 1 (useGameStore con SQLite) |
 | Tablas en DB | 5 (resources, translations, sync_meta, saved_games + indexes) |
 | Migraciones DB | 6 (v1 schema, v2 saved_games, v3 location+mapState, v4 party_portrait, v5 portraits_json, v6 expressions_json) |

@@ -2,6 +2,7 @@ import React, { useMemo, memo, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
@@ -14,11 +15,11 @@ import Animated, {
   withDelay,
   Easing,
 } from 'react-native-reanimated';
+import MaskedView from '@react-native-masked-view/masked-view';
 import Svg, {
   Defs,
   ClipPath,
   Polygon,
-  Image as SvgImage,
   Rect,
   Line,
   LinearGradient,
@@ -39,7 +40,7 @@ const SCREEN_W = Dimensions.get('window').width;
 const SCREEN_H = Dimensions.get('window').height;
 const STRIP_H  = Math.min(Math.round(SCREEN_H * 0.62), 520);
 // Diagonal offset in pixels — how far the cut "leans" top→bottom
-const SLANT = 20;
+const SLANT = 60;
 // Per-character accent colours (CRT palette: green, amber, red, cyan)
 const STRIP_ACCENTS = ['#00FF41', '#FFB000', '#FF3E3E', '#4DBBFF'] as const;
 
@@ -109,14 +110,56 @@ const DiagonalPanel = memo(({
 
   return (
     <Animated.View style={[StyleSheet.absoluteFillObject, aStyle]} pointerEvents="box-none">
-      {/* ── SVG: portrait + clip + gradient ── */}
-      <Svg width={SCREEN_W} height={STRIP_H}>
+
+      {/* ── Layer 1: MaskedView — portrait clipped to trapezoid (native Image) ── */}
+      <MaskedView
+        style={StyleSheet.absoluteFillObject}
+        maskElement={
+          <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+            <Svg width={SCREEN_W} height={STRIP_H}>
+              <Polygon points={clipPts} fill="white" />
+            </Svg>
+          </View>
+        }
+      >
+        {/* Accent tint */}
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: `${accent}0D` }]} />
+
+        {/* Portrait (native Image — no SVG bridge) */}
+        {uri ? (
+          <Image
+            source={{ uri }}
+            style={{
+              position: 'absolute',
+              left: imgX,
+              top: 0,
+              width: imgW,
+              height: STRIP_H,
+            }}
+            resizeMode="cover"
+          />
+        ) : (
+          /* Placeholder */
+          <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
+            <Text style={{ color: `${accent}22`, fontSize: 64, fontWeight: 'bold' }}>
+              {char.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
+
+        {/* Dead overlay */}
+        {!char.alive && (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.55)' }]} />
+        )}
+      </MaskedView>
+
+      {/* ── Layer 2: SVG decorative overlays (gradient + bars + divider + class text) ── */}
+      <Svg width={SCREEN_W} height={STRIP_H} style={StyleSheet.absoluteFillObject}>
         <Defs>
           <ClipPath id={cpId}>
             <Polygon points={clipPts} />
           </ClipPath>
-
-          {/* Dark-to-accent bottom gradient */}
+          {/* Dark bottom gradient */}
           <LinearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0.4"  stopColor="#010a01" stopOpacity="0" />
             <Stop offset="0.82" stopColor="#010a01" stopOpacity="0.75" />
@@ -124,73 +167,30 @@ const DiagonalPanel = memo(({
           </LinearGradient>
         </Defs>
 
-        {/* Dark background tinted with accent */}
-        <Rect
-          x={0} y={0} width={SCREEN_W} height={STRIP_H}
-          fill={`${accent}0D`}
-          clipPath={`url(#${cpId})`}
-        />
-
-        {/* Portrait */}
-        {uri ? (
-          <SvgImage
-            href={uri}
-            x={imgX} y={0}
-            width={imgW} height={STRIP_H}
-            preserveAspectRatio="xMidYMid slice"
-            clipPath={`url(#${cpId})`}
-          />
-        ) : (
-          /* Placeholder with large initial */
-          <SvgText
-            x={(xl_top + xr_top) / 2}
-            y={STRIP_H * 0.5 + 18}
-            fill={`${accent}22`}
-            fontSize={64}
-            fontWeight="bold"
-            textAnchor="middle"
-            clipPath={`url(#${cpId})`}
-          >
-            {char.name.charAt(0).toUpperCase()}
-          </SvgText>
-        )}
-
-        {/* Bottom gradient fade (simulates vignette / BG removal) */}
+        {/* Bottom gradient fade */}
         <Rect
           x={0} y={0} width={SCREEN_W} height={STRIP_H}
           fill={`url(#${gradId})`}
           clipPath={`url(#${cpId})`}
         />
 
-        {/* Dead overlay */}
-        {!char.alive && (
-          <Rect
-            x={0} y={0} width={SCREEN_W} height={STRIP_H}
-            fill="rgba(0,0,0,0.55)"
-            clipPath={`url(#${cpId})`}
-          />
-        )}
+        {/* Top accent bar */}
+        <Rect x={xl_top} y={0} width={xr_top - xl_top} height={3} fill={accent} />
 
-        {/* ── Top accent bar ── */}
-        <Rect
-          x={xl_top} y={0}
-          width={xr_top - xl_top} height={3}
-          fill={accent}
-        />
-
-        {/* ── HP bar (just above name band) ── */}
+        {/* HP bar track */}
         <Rect
           x={bandX} y={STRIP_H - BAND_H - 3}
           width={bandW} height={2}
           fill="rgba(255,255,255,0.08)"
         />
+        {/* HP bar fill */}
         <Rect
           x={bandX} y={STRIP_H - BAND_H - 3}
           width={bandW * hpPct} height={2}
           fill={hpColor}
         />
 
-        {/* ── Diagonal divider line (right edge, accent colour) ── */}
+        {/* Diagonal divider line (right edge) */}
         {idx < total - 1 && (
           <Line
             x1={xr_top} y1={0}
@@ -200,7 +200,7 @@ const DiagonalPanel = memo(({
           />
         )}
 
-        {/* ── Decorative rotated class text (manga background typography) ── */}
+        {/* Decorative rotated class text */}
         <SvgText
           x={(xl_top + xr_top) / 2}
           y={STRIP_H * 0.52}
@@ -215,7 +215,7 @@ const DiagonalPanel = memo(({
         </SvgText>
       </Svg>
 
-      {/* ── Name band (RN Text for font support) ── */}
+      {/* ── Layer 3: Name band (RN Text for font support) ── */}
       <View
         style={[S.panelBand, {
           left:   bandX,
@@ -225,10 +225,7 @@ const DiagonalPanel = memo(({
         }]}
         pointerEvents="none"
       >
-        <Text
-          style={[S.panelName, { color: accent }]}
-          numberOfLines={1}
-        >
+        <Text style={[S.panelName, { color: accent }]} numberOfLines={1}>
           {char.name.toUpperCase()}
         </Text>
         <Text style={S.panelClass} numberOfLines={1}>
@@ -236,7 +233,7 @@ const DiagonalPanel = memo(({
         </Text>
       </View>
 
-      {/* ── Touch area (nominal panel width; rectangular approximation) ── */}
+      {/* ── Layer 4: Touch area ── */}
       <TouchableOpacity
         style={{
           position: 'absolute',

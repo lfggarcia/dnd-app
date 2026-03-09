@@ -350,19 +350,35 @@ human woman, [TONO_PIEL], [RASGO_RACIAL_1], [RASGO_RACIAL_2], [RASGO_RACIAL_3]
 | `WIS` | wise perceptive calm gaze |
 | `CHA` | striking charismatic magnetic presence |
 
-### EXPRESSION_PRESETS (Flujo 2)
+### EXPRESSION_PRESETS (Flujo 2 — Super Workflow: 22 expresiones)
 
-| Clave | Tokens de expresión |
-|---|---|
-| `neutral` | calm relaxed expression, soft gaze |
-| `angry` | clenched teeth, furrowed brows, battle rage |
-| `sad` | tears, downcast eyes, trembling chin |
-| `surprised` | wide open eyes, open mouth, shock |
-| `determined` | focused eyes, firm jaw, intensity |
-| `scared` | terrified eyes, cold sweat, trembling lips |
-| `smug` | half-lidded eyes, crooked smile, arrogance |
-| `happy` | genuine smile, bright eyes |
-| `wounded` | pain expression, clenched teeth, exhaustion |
+> El Super Workflow `SUPER-expressions-all.json` genera las 22 en ~20 segundos total (guide_size=512).  
+> Cada expresión tiene prompt propio con denoise calibrado. Reemplazar `[EYE_COLOR]` antes de correr.
+
+| Clave | Denoise | Descripción |
+|---|---|---|
+| `neutral` | 0.55 | calm relaxed expression, soft gaze |
+| `angry` | 0.55 | clenched teeth, furrowed brows, battle rage |
+| `sad` | 0.55 | downcast eyes, trembling lips, inner brows raised |
+| `determined` | 0.55 | set jaw, focused gaze, firm lips |
+| `serious` | 0.55 | lips in firm straight line, direct gaze |
+| `confident` | 0.55 | eyes closed serenely, small satisfied smile |
+| `flirty` | 0.55 | one eyebrow raised, asymmetric closed-mouth smile |
+| `sarcastic` | 0.55 | sharp unilateral smirk, eyebrow raised contempt |
+| `tired` | 0.55 | eyelids drooping, head sagging, mouth hanging slack |
+| `happy` | 0.62 | bright smile, teeth showing, eyes curved upward |
+| `triumph` | 0.62 | wide triumphant grin, eyes bright with victory |
+| `hollow` | 0.62 | glazed unfocused eyes, slack face, jaw open zero tension |
+| `incredulous` | 0.62 | one eyebrow at hairline, opposite scowl, mouth corners down |
+| `fearful` | 0.62 | wide fearful eyes, pupils dilated |
+| `seductive` | 0.62 | tongue tip at lip corner, asymmetric one-eye wink, looking up through lashes |
+| `confused` | 0.65 | head sharply tilted, extreme asymmetric brows, mouth twisted sideways |
+| `despondent` | 0.65 | prominent pout, steep sad inner brows, glossy restrained-tears eyes |
+| `disgusted` | 0.65 | eyes open staring down, nose tip raised wrinkled, asymmetric sneer lips closed |
+| `shocked` | 0.68 | perfect round circle eyes whites all around, eyebrows at hairline, jaw dropped |
+| `surprised` | 0.65 | eyes huge wide circles, eyebrows high arched, jaw dropped naturally |
+| `fierce` | 0.68 | LEFT eye wide RIGHT eye slit, wide unhinged villain grin all teeth, extreme asymmetric brows |
+| `rage` | 0.68 | fury-grin contradiction: eyebrows inward frown + wide all-teeth grin simultaneously |
 
 ### POSE_TAG (Flujo 3)
 
@@ -470,23 +486,28 @@ Combinar **un tag de cada columna** para crear variaciones distintas entre gener
 
 ```
 Nodo 1   CheckpointLoaderSimple   perfectdeliberate_v8.safetensors
-Nodo 2   LoraLoader               748cmSDXL.safetensors            (0.50 / 0.50)
-Nodo 3   LoraLoader               thiccwithaq-artist-richy-v1_ixl  (0.70 / 0.70)
-Nodo 4   LoraLoader               USNR_STYLE_ILL_V1_lokr3-000024   (0.60 / 0.60)
-Nodo 5   CLIPSetLastLayer         stop_at_clip_layer: -2
-Nodo 6   CLIPTextEncode           → positive
-Nodo 7   CLIPTextEncode           → negative
-Nodo 8   EmptyLatentImage         832×1216, batch 1
-Nodo 9   KSampler (base)          38 steps, CFG 4.0, dpmpp_2m karras, denoise 1.0  [INAMOVIBLE]
-Nodo 10  VAEDecodeTiled           tile=512, overlap=32
-Nodo 11  UpscaleModelLoader       remacri_original.safetensors
-Nodo 12  ImageUpscaleWithModel
-Nodo 13  ImageScale               1248×1824, lanczos
-Nodo 14  VAEEncodeTiled           tile=512, overlap=32
-Nodo 15  KSampler (hires)         20 steps, CFG 4.0, dpmpp_2m karras, denoise 0.55  [INAMOVIBLE]
-Nodo 16  VAEDecodeTiled           tile=512, overlap=32
-Nodo 17  SaveImage                prefix: "dnd3-portrait"
+Nodo 2   LoraLoader               748cmSDXL.safetensors            (0.50)
+Nodo 3   LoraLoader               thiccwithaq-artist-richy-v1_ixl  (0.55)  ← retrato
+Nodo 4   LoraLoader               USNR_STYLE_ILL_V1_lokr3-000024   (0.60)
+Nodo 5   LoraLoader               Detailer_NoobAI_Incrs_v1         (0.70)
+Nodo 19  LoraLoader               Face_Enhancer_Illustrious        (0.45)
+Nodo 20  LoraLoader               kaogei XTREME_ILLU               (0.35)  ← NUEVO
+Nodo 6   CLIPSetLastLayer         stop_at_clip_layer: -2  [conecta desde nodo 20]
+Nodo 7   CLIPTextEncode           → positive
+Nodo 8   CLIPTextEncode           → negative
+Nodo 9   EmptyLatentImage         832×1216, batch 1
+Nodo 10  KSampler (base)          38 steps, CFG 4.0, dpmpp_2m karras, denoise 1.0  [INAMOVIBLE]
+Nodo 11  VAEDecodeTiled           tile=512, overlap=32
+Nodo 12  UpscaleModelLoader       remacri_original.safetensors
+Nodo 13  ImageUpscaleWithModel
+Nodo 14  ImageScale               1248×1824, lanczos
+Nodo 15  VAEEncodeTiled           tile=512, overlap=32
+Nodo 16  KSampler (hires)         20 steps, CFG 4.0, dpmpp_2m karras, denoise 0.55  [INAMOVIBLE]
+Nodo 17  VAEDecodeTiled           tile=512, overlap=32
+Nodo 18  SaveImage                prefix: "dnd_portrait"
 ```
+
+> **Razón del cambio:** Flujo 1 y Flujo 2 deben compartir el mismo stack para que el inpainting no produzca un personaje distinto. Los LoRAs 5 (Face Enhancer) y 6 (kaogei) se agregaron al retrato base después de confirmar coherencia visual con expresiones.
 
 **Resolución final:** 1248×1824 px
 
@@ -513,18 +534,36 @@ Nodo 17  SaveImage                prefix: "dnd3-portrait"
 
 ```
 Nodo 1   CheckpointLoaderSimple   perfectdeliberate_v8.safetensors
-Nodo 2-4 LoraLoader × 3          idéntico al Flujo 1
-Nodo 5   CLIPSetLastLayer         stop_at_clip_layer: -2
-Nodo 6   CLIPTextEncode           → positive (con expressionTokens + "same character, same face, same outfit, expression change only")
-Nodo 7   CLIPTextEncode           → negative
-Nodo 8   LoadImage                uploadedFilename ← retrato base como input
-Nodo 9   VAEEncode
-Nodo 10  KSampler                 20 steps, CFG 4.0, dpmpp_2m karras, denoise 0.35  [INAMOVIBLE]
-Nodo 11  VAEDecode
-Nodo 12  SaveImage                prefix: "dnd3-expression"
+Nodo 2   LoraLoader               748cmSDXL                (0.50)
+Nodo 3   LoraLoader               thiccwithaq              (0.70)
+Nodo 4   LoraLoader               USNR_STYLE_ILL           (0.60)
+Nodo 5   LoraLoader               Detailer_NoobAI_Incrs_v1 (0.50)
+Nodo 6   LoraLoader               Face_Enhancer_Illustrious (0.45)
+Nodo 14  LoraLoader               kaogei XTREME_ILLU       (0.35)
+Nodo 7   CLIPSetLastLayer         stop_at_clip_layer: -2  [conecta desde nodo 14]
+Nodo 8   CLIPTextEncode           → positive (expression tokens + kaogei trigger)
+Nodo 9   CLIPTextEncode           → negative
+Nodo 10  LoadImage                uploadedFilename ← retrato base como input
+Nodo 11  UltralyticsDetectorProvider  face_yolov8n.pt
+Nodo 12  FaceDetailer             cfg=4.0, denoise=variable*, steps=20, guide_size=512  [INAMOVIBLE]
+Nodo 13  SaveImage                prefix: "expression_[nombre]"
 ```
 
-> `denoise 0.35` — valor bajo para preservar identidad del personaje mientras cambia la expresión.
+> `cfg=4.0` — nunca subir de 5.5, destruye geometría facial.  
+> `steps=20` — inamovible.  
+> `guide_size=512` — (era 768) — reduce tiempo de procesamiento del crop facial ~35%. No afecta calidad de expresión.  
+> `kaogei 0.35` — presente pero sin dominar; su función es amplificar lo que el prompt pide.  
+> `[EYE_COLOR]` en el positive: reemplazar con `solid glowing [COLOR]` antes de correr (ej. `solid glowing red`).
+
+#### Denoise por expresión — tabla de valores confirmados
+
+| Expresión | Denoise | Razón |
+|---|---|---|
+| neutral, determined, sad, flirty, sarcastic, tired, serious, confident | `0.55` | Geometría cercana a la base |
+| angry, happy, triumph, hollow, incredulous, fearful | `0.62` | Necesitan más libertad |
+| confused, despondent, disgusted, fierce, shocked, surprised, rage | `0.65–0.68` | Requieren override fuerte del latente base |
+
+> ⚠️ Subir de `0.68` cambia la identidad del personaje — verificar antes de usar valores mayores.
 
 ---
 
@@ -577,20 +616,27 @@ Nodo 17  SaveImage                prefix: "dnd_pose"
 
 | # | Archivo | Flujo 1 | Flujo 2 | Flujo 3 | Función |
 |---|---|---|---|---|---|
-| 1° | `748cmSDXL.safetensors` | `0.50/0.50` | `0.50/0.50` | `0.50/0.50` | Estilo artístico, paleta |
-| 2° | `thiccwithaq-artist-richy-v1_ixl.safetensors` | **`0.55/0.55`** | `0.70/0.70` | **`0.75/0.75`** | Proporciones — peso distinto por flujo |
-| 3° | `USNR_STYLE_ILL_V1_lokr3-000024.safetensors` | `0.60/0.60` | `0.60/0.60` | `0.60/0.60` | Líneas y shading |
-| 4° | `Detailer_NoobAI_Incrs_v1.safetensors` | `0.50/0.50` | `0.50/0.50` | `0.40/0.40` | Detalle facial — **NUEVO** |
+| 1° | `748cmSDXL.safetensors` | `0.50` | `0.50` | `0.50` | Estilo artístico, paleta |
+| 2° | `thiccwithaq-artist-richy-v1_ixl.safetensors` | **`0.55`** | `0.70` | **`0.75`** | Proporciones — peso distinto por flujo |
+| 3° | `USNR_STYLE_ILL_V1_lokr3-000024.safetensors` | `0.60` | `0.60` | `0.60` | Líneas y shading |
+| 4° | `Detailer_NoobAI_Incrs_v1.safetensors` | `0.70` | `0.50` | `0.40` | Detalle facial |
+| 5° | `Face_Enhancer_Illustrious.safetensors` | `0.45` | `0.45` | — | Amplifica expresividad facial |
+| 6° | `Best_Facial_Expression_Helper_XTREME_ILLU-000005.safetensors` | `0.35` | `0.35` | — | Exagera expresiones (kaogei) |
+
+> **Regla crítica — coherencia Flujo 1 → Flujo 2:** Flujos 1 y 2 deben tener el **mismo stack de LoRAs**. Si el retrato base se genera sin los LoRAs 5 y 6, el inpainting de expresiones produce un personaje visualmente diferente. El workflow `02-portadas-hires-v8.json` ya incluye los 6 LoRAs.
 
 > **Por qué `thiccwithaq` varía por flujo:** En Flujo 1 a `0.70+` la LoRA pelea contra los tags de cara y gana — el cuerpo domina el frame. Bajarlo a `0.55` en retratos permite que `face dominant composition` funcione correctamente.
->
-> **Detailer NoobAI Incrs v1:** entrenado sobre Illustrious XL (mismo base que `perfectdeliberate_v8`). Se activa con el trigger word `detailed` ya presente en el Bloque 4. No tiene trigger word adicional. Peso `0.50` en retratos, `0.40` en poses para no sobrecargar el stack existente.
 
-#### LoRA a descargar
-> **Nombre:** Detailer NoobAI Incrs v1  
-> **Archivo:** `Detailer_NoobAI_Incrs_v1.safetensors`  
-> **Destino:** `ComfyUI/models/loras/`  
-> **Trigger word:** `detailed` (ya está en el Bloque 4 fijo)
+> **Trigger words:** `kaogei` (LoRA 6, ya en positivos de Flujo 2), `usnr` (LoRA 3), `748cmstyle` (LoRA 1).
+
+#### LoRAs a descargar
+| Archivo | URL |
+|---|---|
+| `Detailer_NoobAI_Incrs_v1.safetensors` | civitai — Detailer NoobAI Incrs v1 |
+| `Face_Enhancer_Illustrious.safetensors` | civitai.com/models/1625070 |
+| `Best_Facial_Expression_Helper_XTREME_ILLU-000005.safetensors` | civitai.com/models/1204189 |
+
+> **Destino:** `ComfyUI/models/loras/`
 
 ---
 
@@ -752,19 +798,26 @@ Los resultados se guardan en Zustand (`src/stores/gameStore.ts`) y se persisten 
 ### Flujo 1 — Retrato base
 - [ ] Prompt en una sola línea (sin Enter, solo `BREAK,`)
 - [ ] LoRA 748cmSDXL: `0.50`
-- [ ] LoRA thiccwithaq: `0.70`
+- [ ] LoRA thiccwithaq: `0.55` (retrato — no 0.70)
 - [ ] LoRA USNR: `0.60`
+- [ ] LoRA Detailer: `0.70`
+- [ ] LoRA Face Enhancer: `0.45`
+- [ ] LoRA kaogei: `0.35`
+- [ ] CLIPSetLastLayer conecta desde nodo kaogei (nodo 20)
+- [ ] KSamplers conectan model desde nodo kaogei (nodo 20)
 - [ ] EmptyLatentImage: `832 × 1216`
 - [ ] KSampler 1: `38 steps`, `CFG 4.0`, `denoise 1.0`
 - [ ] KSampler 2: `20 steps`, `CFG 4.0`, `denoise 0.55`
 - [ ] VAETiled: `overlap = 32` en todos los nodos
 - [ ] ImageScale: `1248 × 1824`
-- [ ] Bloque 3 con `face large and prominent`, `face in upper third`
 
 ### Flujo 2 — Expresiones
-- [ ] `same character, same face, same outfit, expression change only` en prompt
-- [ ] KSampler: `20 steps`, `CFG 4.0`, `denoise 0.35`
-- [ ] Nodo de salida: `"12"`
+- [ ] Mismo stack de 6 LoRAs que Flujo 1 (crítico para coherencia)
+- [ ] `[EYE_COLOR]` reemplazado por `solid glowing [COLOR]` en nodo 8
+- [ ] Nodo 10: nombre del archivo del retrato base correcto
+- [ ] FaceDetailer: `cfg=4.0`, `denoise=0.55`, `steps=20`
+- [ ] kaogei: `0.35` (no subir — rompe identidad)
+- [ ] Nodo de salida: `"13"`
 
 ### Flujo 3 — Poses
 - [ ] LoRA thiccwithaq: `0.75` (no 0.70)
@@ -788,7 +841,12 @@ Los resultados se guardan en Zustand (`src/stores/gameStore.ts`) y se persisten 
 | **Rostro pequeño en teléfono** | Bloque 3 sin anclas de cara | Verificar `face large and prominent` + `face in upper third` |
 | **Hires-fix destruye composición** | Denoise muy alto | `denoise 0.55` flujo 1/3 — `denoise 0.35` flujo 2 |
 | **Flujo 3 demasiado inocente** | Falta `smoldering gaze`, `slight smirk` | Verificar Bloque 3 de poses completo |
-| **Expresiones no preservan identidad** | Denoise muy alto en flujo 2 | `denoise = 0.35` inamovible |
+| **Expresiones no preservan identidad** | Denoise muy alto en flujo 2 | Ver tabla denoise por expresión — max `0.68` |
+| **Expresión no se entiende / parece otra** | Prompt describe conceptos no geometría | Usar tags anatómicos: `brow crushed downward`, no `angry`. Ver reglas de prompt de expresión |
+| **Boca/labios deformados en expresiones abiertas** | Describir forma geométrica de boca | NUNCA: `O shape`, `square mouth`, `inside of mouth` — solo `jaw dropped naturally` |
+| **disgusted parece éxtasis/placer** | `eyes closed + head back + mouth open` = placer en latent | `eyes OPEN staring downward` + negativo: `eyes closed, head tilted back, pleasure, ecstasy` |
+| **fierce parece tímido/neutral** | Sin asimetría de ojos ni grin | `LEFT eye wide RIGHT eye slit` + `wide unhinged villain grin all teeth` |
+| **rage parece enojado básico** | Solo ceño fruncido | Rabia real = contradicción simultánea: `eyebrows inward frown WHILE mouth grins all teeth` |
 | **Pelo tapando ojos** | Falta tag | `face fully visible no hair over eyes` en Bloque 4 |
 | **Ornamento/marca en el rostro** | `eldritch`/`warlock`/`arcane` generan marcas faciales automáticamente | Ver regla Bloque 4 — usar negativo completo con `forehead mark, forehead gem, face tattoo, facial runes` |
 | **Rostro opaco/flat** | Detailer muy bajo | Subir Detailer a `0.70` nodo 5 — agregar tags de definición en Bloque 4 |

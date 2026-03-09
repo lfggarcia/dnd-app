@@ -20,7 +20,9 @@
  *   --character  <name>   Character folder name (required)
  *   --input      <file>   Image filename in ComfyUI/input/ (required)
  *   --expression <name>   Generate only this expression (optional)
- *   --denoise    <float>  Override denoise value 0.35–0.80 (default: 0.7)
+ *   --skin       <tone>   Skin anchor for identity (default: 'fair skin')
+ *                         e.g. 'pale skin' (tiefling), 'olive skin' (half-orc), 'dark grey skin' (drow)
+ *   --denoise    <float>  Override FaceDetailer denoise 0.40–0.50 (default: 0.45)
  *   --resume              Skip already completed expressions
  *   --list                Print available expressions and exit
  *
@@ -30,6 +32,7 @@
  *   loras/        748cmSDXL.safetensors
  *                 thiccwithaq-artist-richy-v1_ixl.safetensors
  *                 USNR_STYLE_ILL_V1_lokr3-000024.safetensors
+ *                 Detailer_NoobAI_Incrs_v1.safetensors
  *   ultralytics/bbox/  face_yolov8n.pt
  */
 'use strict';
@@ -50,59 +53,56 @@ if (major < 18) { console.error(`Node 18+ required (you have ${process.version})
 
 // --- Quality tags ------------------------------------------------------------
 const QUALITY_PREFIX = 'score_9, score_8_up, score_8, masterpiece, best quality, expressive eyes, perfect face, 748cmstyle, usnr';
-const QUALITY_NEG    = 'score_6, score_5, score_4, civit_nsfw, ugly face, low res, blurry face, different person, different character, neutral expression, closed eyes, disfigured, deformed, extra teeth, wrong anatomy, bad proportions, bad teeth, deformed teeth, bumps, poor anatomy, deformed skin, exaggerated veins, malformed veins, deformed veins, giant anatomy, disproportionate anatomy, bad proportion';
-const QUALITY_NEG_EYE = `${QUALITY_NEG}, same eye color, eye color changed, different eye color`;
+const QUALITY_NEG    = 'score_6, score_5, score_4, civit_nsfw, ugly face, low res, blurry face, different person, different character, disfigured, deformed, bad anatomy, face markings, forehead mark, skin tattoo';
 
-// --- Expression definitions --------------------------------------------------
-// Each expression: positive tags that go AFTER the BREAK (face-only region).
-// Keep them face/expression-focused — FaceDetailer only repaints the face.
+// --- Expression definitions (v2 — 9 expressions) ----------------------------
+// Positive tags go AFTER the BREAK — FaceDetailer only repaints the face.
+// Skin anchor ([SKIN_TONE], human woman) is injected by the runner below.
 const EXPRESSIONS = {
+  neutral: {
+    label:    'Neutral',
+    positive: 'calm neutral expression, relaxed face, soft eyes, composed, serene, (neutral expression:1.4), (calm face:1.3)',
+    negative: `${QUALITY_NEG}, angry, happy, sad, smiling, crying`,
+  },
   angry: {
     label:    'Angry',
-    positive: 'clenched teeth, furrowed brows, wide bloodshot eyes, battle fury, BREAK, (angry expression:1.4), (exaggerated facial muscles:1.3), (furrowed brows:1.35), (intense glare:1.3)',
-  },
-  scared: {
-    label:    'Scared',
-    positive: 'wide terrified eyes, cold sweat, pale skin, trembling lips, horror expression, BREAK, (scared expression:1.4), (exaggerated facial muscles:1.3), (wide eyes:1.35), (raised eyebrows:1.3), (trembling lips:1.2)',
-  },
-  determined: {
-    label:    'Determined',
-    positive: 'sharp focused eyes, calm intensity, set jaw, unwavering fierce gaze, BREAK, (determined expression:1.5), (focused eyes:1.3), (slightly lowered eyebrows:1.25), (firm lips:1.25)',
-  },
-  smug: {
-    label:    'Smug',
-    positive: 'half-lidded eyes, twisted smirk, condescending gaze, sinister confidence, BREAK, (smug expression:1.35), (one eyebrow raised:1.3), (asymmetric smirk:1.35), (relaxed eyelids:1.2), (confident gaze:1.2)',
+    positive: 'clenched teeth, furrowed brows, narrowed bloodshot eyes, battle fury, rage, intense glare, (angry expression:1.4), (furrowed brows:1.35), (intense glare:1.3)',
+    negative: `${QUALITY_NEG}, neutral expression, closed eyes, happy, sad, extra teeth, bad teeth, deformed teeth`,
   },
   sad: {
     label:    'Sad',
-    positive: 'tears streaming, downcast eyes, trembling chin, grief expression, BREAK, (sad expression: 0.7), (exaggerated facial muscles: 1.0), (drooping eyelids: 1.1), (watery eyes: 0.01), (drooping lips: 1.3), (trembling lower lip: 1.0), (tears: 0.001)',
+    positive: 'downcast eyes, trembling lips, sorrowful expression, tears welling, grief, (sad expression:1.4), (downcast eyes:1.35), (trembling lips:1.3)',
+    negative: `${QUALITY_NEG}, neutral expression, angry, happy, smiling`,
   },
   surprised: {
     label:    'Surprised',
-    positive: 'wide open eyes, raised brows, open mouth shock, jaw drop, BREAK, (surprised expression:1.5), (wide open eyes:1.35), (raised eyebrows:1.3), (open mouth:1.0), (same eye color:1.3), BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.00)',
-    negative: QUALITY_NEG_EYE,
+    positive: 'wide open eyes, raised eyebrows, open mouth, shock, astonishment, (surprised expression:1.4), (wide eyes:1.35), (open mouth:1.3)',
+    negative: `${QUALITY_NEG}, neutral expression, angry, sad, calm, extra teeth, deformed teeth`,
   },
-  neutral: {
-    label:    'Neutral',
-    positive: 'calm composed face, relaxed expression, neutral gaze, BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.00)',
-    negative: QUALITY_NEG_EYE,
+  determined: {
+    label:    'Determined',
+    positive: 'set jaw, focused gaze, firm lips, resolve, unwavering stare, steely eyes, (determined expression:1.4), (focused gaze:1.35), (set jaw:1.3)',
+    negative: `${QUALITY_NEG}, neutral expression, laughing, crying`,
   },
-  menacing: {
-    label:    'Menacing',
-    positive: 'cold predatory eyes, thin cruel smile, sinister threatening expression, dark malice in eyes, dangerous calculating gaze',
+  fearful: {
+    label:    'Fearful',
+    positive: 'wide fearful eyes, pale trembling, pupils dilated, terror, dread, shaking, (fearful expression:1.4), (wide fearful eyes:1.35), (trembling:1.3)',
+    negative: `${QUALITY_NEG}, neutral expression, angry, happy, calm`,
   },
-  pain: {
-    label:    'In Pain',
-    positive: 'eyes screwed shut in pain, grimacing mouth open, teeth clenched in agony, face contorted in pain, suffering expression',
+  disgusted: {
+    label:    'Disgusted',
+    positive: 'wrinkled nose, curled upper lip, narrowed eyes, contempt, revulsion, (disgusted expression:1.4), (wrinkled nose:1.35), (curled lip:1.3)',
+    negative: `${QUALITY_NEG}, neutral expression, happy, neutral`,
+  },
+  seductive: {
+    label:    'Seductive',
+    positive: 'half-lidded eyes, slow smile, parted lips, smoldering gaze, alluring, magnetic presence, (seductive expression:1.4), (half-lidded eyes:1.35), (parted lips:1.3)',
+    negative: `${QUALITY_NEG}, neutral expression, angry, scared`,
   },
   happy: {
     label:    'Happy',
-    positive: 'warm happy expression, genuine smile, bright eyes, relaxed eyebrows, joyful expression, soft cheek lift, visible happiness, BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.00)',
-    negative: QUALITY_NEG_EYE,
-  },
-  wounded: {
-    label:    'Wounded',
-    positive: '(painful wounded expression: 1.2), strained face, clenched teeth, trembling lips, exhausted eyes, (visible pain: 1.4), BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.40), (clean hair:1.2), (no hair accessories:1.3), (no ornaments:1.3)',
+    positive: 'bright smile, teeth showing, eyes curved with joy, warm expression, genuine laughter, (happy expression:1.4), (bright smile:1.35), (joyful eyes:1.3)',
+    negative: `${QUALITY_NEG}, angry, sad, neutral expression, closed eyes`,
   },
 };
 
@@ -126,7 +126,8 @@ if (hasFlag('--list')) {
 const CHARACTER  = getArg('--character');
 const INPUT_IMG  = getArg('--input');
 const ONLY_EXPR  = getArg('--expression');
-const DENOISE    = parseFloat(getArg('--denoise', '0.7'));
+const SKIN_TONE  = getArg('--skin', 'fair skin');   // e.g. 'pale skin', 'olive skin'
+const DENOISE    = parseFloat(getArg('--denoise', '0.45'));
 const RESUME     = hasFlag('--resume');
 
 if (!CHARACTER || !INPUT_IMG) {
@@ -201,94 +202,34 @@ function isValidPng(buf) {
   return buf.length > 5_000 && PNG_MAGIC.every((b, i) => buf[i] === b);
 }
 
-// --- Workflow builder --------------------------------------------------------
-// Uses the API-format workflow exported from ComfyUI with FaceDetailer.
-// Base image must already be uploaded to ComfyUI/input/
-function buildExpressionWorkflow({ inputImage, positiveExprTags, negativeText, denoise, seed, filenamePrefix }) {
-  const positiveText = `${QUALITY_PREFIX}, BREAK, ${positiveExprTags}`;
-  const negText = negativeText ?? QUALITY_NEG;
-
+// --- Workflow builder (v2 — FaceDetailer + Detailer LoRA) -------------------
+// Node layout mirrors 03-expression-*.json canonical workflows.
+// cfg=4.0 is CRITICAL — cfg>4.5 changes skin tone dramatically.
+function buildExpressionWorkflow({ inputImage, positiveText, negativeText, denoise, seed, filenamePrefix }) {
   return {
-    '1': {
-      class_type: 'CheckpointLoaderSimple',
-      inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' },
-    },
-    '2': {
-      class_type: 'LoraLoader',
-      inputs: { lora_name: '748cmSDXL.safetensors', strength_model: 0.5, strength_clip: 0.5, model: ['1', 0], clip: ['1', 1] },
-    },
-    '3': {
-      class_type: 'LoraLoader',
-      inputs: { lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.7, strength_clip: 0.7, model: ['2', 0], clip: ['2', 1] },
-    },
-    '4': {
-      class_type: 'LoraLoader',
-      inputs: { lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors', strength_model: 0.6, strength_clip: 0.6, model: ['3', 0], clip: ['3', 1] },
-    },
-    '5': {
-      class_type: 'CLIPSetLastLayer',
-      inputs: { stop_at_clip_layer: -2, clip: ['4', 1] },
-    },
-    '6': {
-      class_type: 'CLIPTextEncode',
-      inputs: { text: positiveText, clip: ['5', 0] },
-    },
-    '7': {
-      class_type: 'CLIPTextEncode',
-      inputs: { text: negText, clip: ['5', 0] },
-    },
-    '8': {
-      class_type: 'LoadImage',
-      inputs: { image: inputImage },
-    },
-    '9': {
-      class_type: 'UltralyticsDetectorProvider',
-      inputs: { model_name: 'bbox/face_yolov8n.pt' },
-    },
-    '10': {
-      class_type: 'FaceDetailer',
-      inputs: {
-        guide_size:                768,
-        guide_size_for:            true,
-        max_size:                  1024,
-        seed,
-        steps:                     20,
-        cfg:                       6,
-        sampler_name:              'dpmpp_2m',
-        scheduler:                 'karras',
-        denoise,
-        feather:                   5,
-        noise_mask:                true,
-        force_inpaint:             true,
-        bbox_threshold:            0.5,
-        bbox_dilation:             10,
-        bbox_crop_factor:          3,
-        sam_detection_hint:        'center-1',
-        sam_dilation:              0,
-        sam_threshold:             0.93,
-        sam_bbox_expansion:        0,
-        sam_mask_hint_threshold:   0.7,
-        sam_mask_hint_use_negative:'False',
-        drop_size:                 10,
-        wildcard:                  '',
-        cycle:                     1,
-        inpaint_model:             false,
-        noise_mask_feather:        20,
-        tiled_encode:              false,
-        tiled_decode:              false,
-        image:          ['8',  0],
-        model:          ['4',  0],
-        clip:           ['5',  0],
-        vae:            ['1',  2],
-        positive:       ['6',  0],
-        negative:       ['7',  0],
-        bbox_detector:  ['9',  0],
-      },
-    },
-    '11': {
-      class_type: 'SaveImage',
-      inputs: { filename_prefix: filenamePrefix, images: ['10', 0] },
-    },
+    '1':  { class_type: 'CheckpointLoaderSimple',      inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' } },
+    '2':  { class_type: 'LoraLoader',                  inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5, strength_clip: 0.5 } },
+    '3':  { class_type: 'LoraLoader',                  inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.7, strength_clip: 0.7 } },
+    '4':  { class_type: 'LoraLoader',                  inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6, strength_clip: 0.6 } },
+    '5':  { class_type: 'LoraLoader',                  inputs: { model: ['4', 0], clip: ['4', 1], lora_name: 'Detailer_NoobAI_Incrs_v1.safetensors',         strength_model: 0.5, strength_clip: 0.5 } },
+    '6':  { class_type: 'CLIPSetLastLayer',            inputs: { stop_at_clip_layer: -2, clip: ['5', 1] } },
+    '7':  { class_type: 'CLIPTextEncode',              inputs: { text: positiveText,  clip: ['6', 0] } },
+    '8':  { class_type: 'LoadImage',                   inputs: { image: inputImage } },
+    '9':  { class_type: 'UltralyticsDetectorProvider', inputs: { model_name: 'bbox/face_yolov8n.pt' } },
+    '10': { class_type: 'CLIPTextEncode',              inputs: { text: negativeText, clip: ['6', 0] } },
+    '11': { class_type: 'FaceDetailer',                inputs: {
+      guide_size: 768, guide_size_for: true, max_size: 1024,
+      seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise,
+      feather: 5, noise_mask: true, force_inpaint: true,
+      bbox_threshold: 0.5, bbox_dilation: 10, bbox_crop_factor: 3,
+      sam_detection_hint: 'center-1', sam_dilation: 0, sam_threshold: 0.93,
+      sam_bbox_expansion: 0, sam_mask_hint_threshold: 0.7, sam_mask_hint_use_negative: 'False',
+      drop_size: 10, wildcard: '', cycle: 1, inpaint_model: false, noise_mask_feather: 20,
+      tiled_encode: false, tiled_decode: false,
+      image: ['8', 0], model: ['5', 0], clip: ['6', 0], vae: ['1', 2],
+      positive: ['7', 0], negative: ['10', 0], bbox_detector: ['9', 0],
+    } },
+    '12': { class_type: 'SaveImage', inputs: { filename_prefix: filenamePrefix, images: ['11', 0] } },
   };
 }
 
@@ -308,6 +249,7 @@ async function main() {
 
   log(`Character : ${CHARACTER}`);
   log(`Input     : ${INPUT_IMG}`);
+  log(`Skin tone : ${SKIN_TONE}`);
   log(`Denoise   : ${DENOISE}`);
   log(`Expressions: ${expressionEntries.map(([k]) => k).join(', ')}`);
   console.log('');
@@ -325,11 +267,15 @@ async function main() {
 
     log(`▶  ${expr.label} (seed ${seed})`);
 
+    // Inject skin anchor into positive: [quality + skin + race_anchor] BREAK [expr_tags] [style]
+    const positiveText = `${QUALITY_PREFIX}, ${SKIN_TONE}, human woman, BREAK, ${expr.positive}`;
+    const negativeText = expr.negative ?? QUALITY_NEG;
+
     const workflow = buildExpressionWorkflow({
-      inputImage:       INPUT_IMG,
-      positiveExprTags: expr.positive,
-      negativeText:     expr.negative ?? null,
-      denoise:          DENOISE,
+      inputImage:  INPUT_IMG,
+      positiveText,
+      negativeText,
+      denoise:     DENOISE,
       seed,
       filenamePrefix,
     });

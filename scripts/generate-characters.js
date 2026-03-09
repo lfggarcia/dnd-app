@@ -18,11 +18,14 @@
  *
  * Requirements: Node 18+ (native fetch)
  * ComfyUI must be reachable at COMFY_URL with the following models installed:
- *   checkpoints/    perfectDeliberate_v8.safetensors
- *   loras/          748cm_ILL_v1.0.safetensors
- *                   thiccwithaq-artist-v1_ixl.safetensors
- *                   USNR_STYLE_ILL_V1.0.safetensors
- *   upscale_models/ 4x_remacri.pth
+ *   checkpoints/    perfectdeliberate_v8.safetensors
+ *   loras/          748cmSDXL.safetensors
+ *                   thiccwithaq-artist-richy-v1_ixl.safetensors
+ *                   USNR_STYLE_ILL_V1_lokr3-000024.safetensors
+ *                   Detailer_NoobAI_Incrs_v1.safetensors
+ *                   Face_Enhancer_Illustrious.safetensors
+ *                   Best_Facial_Expression_Helper_XTREME_ILLU-000005.safetensors
+ *   upscale_models/ remacri_original.safetensors
  */
 'use strict';
 
@@ -186,9 +189,10 @@ function isValidPng(buf) {
   return buf.length > 10_000 && PNG_MAGIC.every((b, i) => buf[i] === b);
 }
 
-// --- Workflow builder — Illustrious + PerfectDeliberate v8 -------------------
+// --- Workflow builder — Illustrious + PerfectDeliberate v8 + 6 LoRAs --------
 //
-// Identical node graph to generate-sprites.js (mirrors 01-base-sprite.json).
+// Node graph mirrors 02-portadas-hires-v8-api.json.
+// Nodes 19 and 20 use non-consecutive IDs to match the JSON exactly.
 // For character portraits: portrait orientation 832x1216 -> 1248x1824 hires.
 //
 function buildCharacterWorkflow(positiveText, negativeText, seed) {
@@ -197,18 +201,20 @@ function buildCharacterWorkflow(positiveText, negativeText, seed) {
     '2':  { class_type: 'LoraLoader',              inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5,  strength_clip: 0.5  } },
     '3':  { class_type: 'LoraLoader',              inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.55, strength_clip: 0.55 } },
     '4':  { class_type: 'LoraLoader',              inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6,  strength_clip: 0.6  } },
-    '5':  { class_type: 'LoraLoader',              inputs: { model: ['4', 0], clip: ['4', 1], lora_name: 'Detailer_NoobAI_Incrs_v1.safetensors',         strength_model: 0.7,  strength_clip: 0.7  } },
-    '6':  { class_type: 'CLIPSetLastLayer',        inputs: { clip: ['5', 1], stop_at_clip_layer: -2 } },
+    '5':  { class_type: 'LoraLoader',              inputs: { model: ['4', 0],  clip: ['4', 1],  lora_name: 'Detailer_NoobAI_Incrs_v1.safetensors',                         strength_model: 0.70, strength_clip: 0.70 } },
+    '19': { class_type: 'LoraLoader',              inputs: { model: ['5', 0],  clip: ['5', 1],  lora_name: 'Face_Enhancer_Illustrious.safetensors',                        strength_model: 0.45, strength_clip: 0.45 } },
+    '20': { class_type: 'LoraLoader',              inputs: { model: ['19', 0], clip: ['19', 1], lora_name: 'Best_Facial_Expression_Helper_XTREME_ILLU-000005.safetensors', strength_model: 0.35, strength_clip: 0.35 } },
+    '6':  { class_type: 'CLIPSetLastLayer',        inputs: { clip: ['20', 1], stop_at_clip_layer: -2 } },
     '7':  { class_type: 'CLIPTextEncode',          inputs: { text: positiveText, clip: ['6', 0] } },
     '8':  { class_type: 'CLIPTextEncode',          inputs: { text: negativeText, clip: ['6', 0] } },
     '9':  { class_type: 'EmptyLatentImage',        inputs: { width: 832, height: 1216, batch_size: 1 } },
-    '10': { class_type: 'KSampler',                inputs: { seed, steps: 38, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 1.0,  model: ['5', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['9', 0] } },
+    '10': { class_type: 'KSampler',                inputs: { seed, steps: 38, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 1.0,  model: ['20', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['9', 0] } },
     '11': { class_type: 'VAEDecodeTiled',          inputs: { samples: ['10', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
     '12': { class_type: 'UpscaleModelLoader',      inputs: { model_name: 'remacri_original.safetensors' } },
     '13': { class_type: 'ImageUpscaleWithModel',   inputs: { upscale_model: ['12', 0], image: ['11', 0] } },
     '14': { class_type: 'ImageScale',              inputs: { upscale_method: 'lanczos', width: 1248, height: 1824, crop: 'disabled', image: ['13', 0] } },
     '15': { class_type: 'VAEEncodeTiled',          inputs: { pixels: ['14', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
-    '16': { class_type: 'KSampler',                inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.55, model: ['5', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['15', 0] } },
+    '16': { class_type: 'KSampler',                inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.55, model: ['20', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['15', 0] } },
     '17': { class_type: 'VAEDecodeTiled',          inputs: { samples: ['16', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
     '18': { class_type: 'SaveImage',               inputs: { filename_prefix: 'torre_character', images: ['17', 0] } },
   };
@@ -281,7 +287,7 @@ async function main() {
   const singleKey = args.includes('--character') ? args[args.indexOf('--character') + 1] : null;
 
   console.log('\n=== TORRE - Character Portrait Generator ===');
-  console.log(`  Model     : PerfectDeliberate v8 + 4 LoRAs (Illustrious + Detailer)`);
+  console.log(`  Model     : PerfectDeliberate v8 + 6 LoRAs (Illustrious + Detailer + Face_Enhancer + kaogei)`);
   console.log(`  Resolution: 832x1216 base -> 1248x1824 hires (Remacri)`);
   console.log(`  Resume    : ${resume ? 'ON' : 'OFF'}`);
   console.log(`  Target    : ${singleKey ?? 'all characters'}`);

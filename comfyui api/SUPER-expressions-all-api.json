@@ -1,0 +1,2422 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "perfectdeliberate_v8.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "2": {
+    "inputs": {
+      "lora_name": "748cmSDXL.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0.5,
+      "model": [
+        "1",
+        0
+      ],
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 1 — 748cmSDXL (0.50)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "lora_name": "thiccwithaq-artist-richy-v1_ixl.safetensors",
+      "strength_model": 0.7,
+      "strength_clip": 0.7,
+      "model": [
+        "2",
+        0
+      ],
+      "clip": [
+        "2",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 2 — thiccwithaq (0.70)"
+    }
+  },
+  "4": {
+    "inputs": {
+      "lora_name": "USNR_STYLE_ILL_V1_lokr3-000024.safetensors",
+      "strength_model": 0.6,
+      "strength_clip": 0.6,
+      "model": [
+        "3",
+        0
+      ],
+      "clip": [
+        "3",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 3 — USNR_STYLE_ILL (0.60)"
+    }
+  },
+  "5": {
+    "inputs": {
+      "lora_name": "Detailer_NoobAI_Incrs_v1.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0.5,
+      "model": [
+        "4",
+        0
+      ],
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 4 — Detailer_NoobAI_Incrs_v1 (0.50)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "lora_name": "Face_Enhancer_Illustrious.safetensors",
+      "strength_model": 0.45,
+      "strength_clip": 0.45,
+      "model": [
+        "5",
+        0
+      ],
+      "clip": [
+        "5",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 5 — Face Enhancer Illustrious (0.45 — expression amplifier)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "stop_at_clip_layer": -2,
+      "clip": [
+        "14",
+        1
+      ]
+    },
+    "class_type": "CLIPSetLastLayer",
+    "_meta": {
+      "title": "CLIP Set Last Layer"
+    }
+  },
+  "10": {
+    "inputs": {
+      "image": "dnd_portrait_00013_.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image — CAMBIAR al retrato base (compartido)"
+    }
+  },
+  "11": {
+    "inputs": {
+      "model_name": "bbox/face_yolov8n.pt"
+    },
+    "class_type": "UltralyticsDetectorProvider",
+    "_meta": {
+      "title": "UltralyticsDetectorProvider — face_yolov8n"
+    }
+  },
+  "14": {
+    "inputs": {
+      "lora_name": "Best_Facial_Expression_Helper_XTREME_ILLU-000005.safetensors",
+      "strength_model": 0.35,
+      "strength_clip": 0.35,
+      "model": [
+        "6",
+        0
+      ],
+      "clip": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 6 — kaogei expression helper (0.60)"
+    }
+  },
+  "100": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, [EYE_COLOR] eyes, inner brow corners sharply pulled down and together, deep vertical furrow between eyebrows, eyes narrowed to slits, jaw clenched, lips pressed tight, face tense, (angry expression:1.15), (furrowed inner brows:1.1), (narrowed eyes:1.05), expressive eyes, perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — angry"
+    }
+  },
+  "101": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, low res, blurry face, different person, neutral expression, happy, sad, open eyes, raised eyebrows, disfigured, deformed, deformed face, distorted face, melting face, asymmetrical face, bad anatomy, face markings, forehead mark, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — angry"
+    }
+  },
+  "102": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 892987454041073,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "100",
+        0
+      ],
+      "negative": [
+        "101",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — angry"
+    }
+  },
+  "103": {
+    "inputs": {
+      "filename_prefix": "expression_angry",
+      "images": [
+        "102",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — angry"
+    }
+  },
+  "104": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, [EYE_COLOR] eyes, eyes closed serenely with small satisfied smile, eyebrows relaxed and high, face glowing with inner confidence, small serene smile, supremely self-assured expression, (confident expression:1.15), (serene smile:1.1), (self-assured face:1.05), expressive eyes, perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — confident"
+    }
+  },
+  "105": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, uncertain, sad, angry, open wide eyes, deformed face, distorted face, melting face, asymmetrical face, face markings, forehead mark, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — confident"
+    }
+  },
+  "106": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 649390365317899,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "104",
+        0
+      ],
+      "negative": [
+        "105",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — confident"
+    }
+  },
+  "107": {
+    "inputs": {
+      "filename_prefix": "expression_confident",
+      "images": [
+        "106",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — confident"
+    }
+  },
+  "108": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, head tilted hard to the left shoulder, LEFT eyebrow arched to maximum, RIGHT eyebrow pulled into frown, mouth twisted hard to one side half open with uncertainty, deep forehead furrow left side only, (head sharply tilted left:1.15), (extreme asymmetric brows left high right low:1.1), (mouth twisted sideways:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — confused"
+    }
+  },
+  "109": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, neutral expression, confident, head straight, symmetrical eyebrows, closed mouth, deformed face, distorted face, asymmetrical face, face markings, blood, liquid on face, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips, toothpick, pencil in mouth, object between lips, stick in mouth",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — confused"
+    }
+  },
+  "110": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 308788084132165,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.62,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "108",
+        0
+      ],
+      "negative": [
+        "109",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — confused"
+    }
+  },
+  "111": {
+    "inputs": {
+      "filename_prefix": "expression_confused",
+      "images": [
+        "110",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — confused"
+    }
+  },
+  "112": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, lower lip pushed WAY out forming prominent visible pout, inner corners of eyebrows raised steeply creating sad brow angle, chin slightly dimpled and trembling, cheeks soft and full with pout, glossy wet eyes from held-back tears, (prominent visible pout lower lip:1.15), (sad inner brow raised steeply:1.1), (glossy restrained-tears eyes:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — despondent"
+    }
+  },
+  "113": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, happy, smiling, neutral, angry, flat lips, deformed face, distorted face, asymmetrical face, face markings, blood, liquid on face, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — despondent"
+    }
+  },
+  "114": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 569903732485805,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.62,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "112",
+        0
+      ],
+      "negative": [
+        "113",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — despondent"
+    }
+  },
+  "115": {
+    "inputs": {
+      "filename_prefix": "expression_despondent",
+      "images": [
+        "114",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — despondent"
+    }
+  },
+  "116": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, [EYE_COLOR] eyes, eyes narrowed with intense focused gaze, jaw set firmly forward, lips pressed into thin straight line, slight flare of nostrils, brow low and serious, face radiating iron will, (determined expression:1.15), (intense narrowed gaze:1.1), (set jaw:1.05), expressive eyes, perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — determined"
+    }
+  },
+  "117": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, low res, blurry face, different person, neutral expression, laughing, crying, wide eyes, disfigured, deformed, deformed face, distorted face, melting face, asymmetrical face, bad anatomy, face markings, forehead mark, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — determined"
+    }
+  },
+  "118": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 94175224682848,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "116",
+        0
+      ],
+      "negative": [
+        "117",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — determined"
+    }
+  },
+  "119": {
+    "inputs": {
+      "filename_prefix": "expression_determined",
+      "images": [
+        "118",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — determined"
+    }
+  },
+  "120": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes OPEN staring downward at something repulsive, eyes wide open directed DOWN with visible disgust in iris, nose bridge wrinkling with horizontal creases bunny lines, mouth firmly pressed closed lips tight shut, one cheek raised from nose wrinkle, eyebrows pulled together and slightly down, (eyes open staring down disgust:1.15), (nose wrinkled horizontal creases bunny lines:1.1), (mouth firmly closed tight lips:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — disgusted"
+    }
+  },
+  "121": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, eyes closed, eyes half closed, head tilted back, pleasure, ecstasy, open mouth, parted lips, teeth showing, tongue, sad, crying, pain, neutral, relaxed nose, deformed face, distorted face, deformed lips, distorted mouth, mouth artifact, lip artifact, liquid on face, blood on face, face markings",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — disgusted"
+    }
+  },
+  "122": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 288452024334179,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.6,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "120",
+        0
+      ],
+      "negative": [
+        "121",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — disgusted (cfg=4.0, denoise=0.68)"
+    }
+  },
+  "123": {
+    "inputs": {
+      "filename_prefix": "expression_disgusted",
+      "images": [
+        "122",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — disgusted"
+    }
+  },
+  "124": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, [EYE_COLOR] eyes, eyes stretched extremely wide whites showing above and below iris, eyebrows raised and pulled together creating forehead wrinkles, mouth slightly open, lower lip trembling, face pale and frozen in terror, (fearful expression:1.15), (extreme wide eyes:1.1), (forehead wrinkles terror:1.05), expressive eyes, perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — fearful"
+    }
+  },
+  "125": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, low res, blurry face, different person, neutral expression, calm, happy, closed eyes, disfigured, deformed, deformed face, distorted face, melting face, asymmetrical face, bad anatomy, face markings, forehead mark, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — fearful"
+    }
+  },
+  "126": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 982653983395348,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "124",
+        0
+      ],
+      "negative": [
+        "125",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — fearful"
+    }
+  },
+  "127": {
+    "inputs": {
+      "filename_prefix": "expression_fearful",
+      "images": [
+        "126",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — fearful"
+    }
+  },
+  "128": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, LEFT eye stretched wide open to maximum showing whites all around, RIGHT eye narrowed to predatory slit almost closed, wide unhinged villain grin showing all upper AND lower teeth fully, grin stretching far to both sides of face, eyebrows pulling in opposite directions left up right down, face of unhinged dangerous excitement, (one eye wide one eye slit:1.15), (wide unhinged grin all teeth showing:1.1), (eyebrows extreme asymmetry:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — fierce"
+    }
+  },
+  "129": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, neutral expression, sad, timid, scared, closed mouth, symmetrical eyes, both eyes same, both eyebrows same, soft expression, deformed face, distorted face, deformed lips, distorted mouth, liquid on face, blood on face, face markings",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — fierce"
+    }
+  },
+  "130": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 118392989688345,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.68,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "128",
+        0
+      ],
+      "negative": [
+        "129",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — fierce (cfg=4.0, denoise=0.68)"
+    }
+  },
+  "131": {
+    "inputs": {
+      "filename_prefix": "expression_fierce",
+      "images": [
+        "130",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — fierce"
+    }
+  },
+  "132": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, one eyebrow raised high in playful arch, eyes heavy lidded and knowing, slight closed-mouth smile with one corner lifted into smirk, lips closed and defined, gentle head tilt, teasing confident expression, (playful arched eyebrow:1.15), (knowing heavy-lidded eyes:1.1), (one-sided closed smirk:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — flirty"
+    }
+  },
+  "133": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, neutral, sad, open mouth, teeth showing, tongue, both eyebrows same, deformed face, distorted face, asymmetrical face, face markings, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — flirty"
+    }
+  },
+  "134": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 799974771820137,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "132",
+        0
+      ],
+      "negative": [
+        "133",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — flirty"
+    }
+  },
+  "135": {
+    "inputs": {
+      "filename_prefix": "expression_flirty",
+      "images": [
+        "134",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — flirty"
+    }
+  },
+  "136": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, [EYE_COLOR] eyes, cheeks raised and rounded pushing lower eyelids up, eyes curved into crescents, wide open smile showing upper teeth, corners of mouth pulled far back and up, face radiant with joy, (happy expression:1.15), (crescent eyes:1.1), (wide smile:1.05), expressive eyes, perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — happy"
+    }
+  },
+  "137": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, low res, blurry face, different person, neutral expression, sad, angry, closed mouth, disfigured, deformed, deformed face, distorted face, melting face, asymmetrical face, bad anatomy, face markings, forehead mark, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — happy"
+    }
+  },
+  "138": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 344917106989504,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.62,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "136",
+        0
+      ],
+      "negative": [
+        "137",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — happy"
+    }
+  },
+  "139": {
+    "inputs": {
+      "filename_prefix": "expression_happy",
+      "images": [
+        "138",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — happy"
+    }
+  },
+  "140": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes with iris faded and dull, eyes open but staring through everything unseeing, pupils slightly dilated not focused on anything, face muscles completely slack and dropped, jaw hanging slightly open from zero muscle tone, face like nobody is home, (unfocused staring-through eyes:1.15), (completely slack dropped face muscles:1.1), (jaw hanging open zero tension:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — hollow"
+    }
+  },
+  "141": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, emotional expression, focused eyes, alert, angry, happy, tense face, closed mouth, clenched jaw, deformed face, distorted face, asymmetrical face, face markings, blood, tears, liquid on face, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — hollow"
+    }
+  },
+  "142": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 644154349687279,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "140",
+        0
+      ],
+      "negative": [
+        "141",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — hollow"
+    }
+  },
+  "143": {
+    "inputs": {
+      "filename_prefix": "expression_hollow",
+      "images": [
+        "142",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — hollow"
+    }
+  },
+  "144": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, one eyebrow raised to absolute maximum nearly touching hairline, opposite eyebrow aggressively pulled down in scowl, eyes wide on raised side, squinted on low side, mouth corners pulled sharply down, face screaming disbelief, (extreme asymmetric eyebrows:1.15), (one eyebrow at hairline:1.1), (mouth corners down in disbelief:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — incredulous"
+    }
+  },
+  "145": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, neutral expression, happy, symmetrical eyebrows, both eyebrows same height, deformed face, distorted face, asymmetrical face, face markings, blood, liquid on face, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — incredulous"
+    }
+  },
+  "146": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 680851070937014,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.62,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "144",
+        0
+      ],
+      "negative": [
+        "145",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — incredulous"
+    }
+  },
+  "147": {
+    "inputs": {
+      "filename_prefix": "expression_incredulous",
+      "images": [
+        "146",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — incredulous"
+    }
+  },
+  "148": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, [EYE_COLOR] eyes, completely relaxed facial muscles, soft steady gaze directly forward, mouth closed naturally, no tension anywhere in face, (neutral expression:1.1), (relaxed face:1.05), expressive eyes, perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — neutral"
+    }
+  },
+  "149": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, low res, blurry face, different person, angry, happy, sad, smiling, crying, disfigured, deformed, deformed face, distorted face, melting face, asymmetrical face, bad anatomy, face markings, forehead mark, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — neutral"
+    }
+  },
+  "150": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 1046671976161715,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "148",
+        0
+      ],
+      "negative": [
+        "149",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — neutral"
+    }
+  },
+  "151": {
+    "inputs": {
+      "filename_prefix": "expression_neutral",
+      "images": [
+        "150",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — neutral"
+    }
+  },
+  "152": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, mouth stretched into WIDE unhinged grin showing every single tooth upper and lower rows fully bared, grin so wide it reaches near ears, eyes wide open with veins visible in whites from fury, eyebrows slanting sharply inward over nose in extreme frown WHILE mouth grins, face of terrifying unhinged fury-grin contradiction, (wide unhinged full-teeth fury grin:1.15), (eyes wide with visible veins:1.1), (eyebrows sharply inward in frown:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — rage"
+    }
+  },
+  "153": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, calm, neutral, sad, closed mouth, tight lips, snarl only, no smile, deformed face, distorted face, deformed lips, distorted mouth, liquid on face, blood on face, face markings",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — rage"
+    }
+  },
+  "154": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 244110925340164,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.68,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "152",
+        0
+      ],
+      "negative": [
+        "153",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — rage (cfg=4.0, denoise=0.68)"
+    }
+  },
+  "155": {
+    "inputs": {
+      "filename_prefix": "expression_rage",
+      "images": [
+        "154",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — rage"
+    }
+  },
+  "156": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, [EYE_COLOR] eyes, inner brow corners pulled upward making arch, lower lip jutting out trembling, eyes glistening with unshed tears, corners of mouth pulled sharply downward, face crumpled in sorrow, (sad expression:1.15), (upward inner brows:1.1), (trembling lower lip:1.05), expressive eyes, perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — sad"
+    }
+  },
+  "157": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, low res, blurry face, different person, neutral expression, happy, smiling, disfigured, deformed, deformed face, distorted face, melting face, droopy face, asymmetrical face, bad anatomy, face markings, forehead mark, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — sad"
+    }
+  },
+  "158": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 556063692196872,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "156",
+        0
+      ],
+      "negative": [
+        "157",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — sad"
+    }
+  },
+  "159": {
+    "inputs": {
+      "filename_prefix": "expression_sad",
+      "images": [
+        "158",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — sad"
+    }
+  },
+  "160": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, one corner of mouth pulled up in sharp mocking smirk, one eyebrow raised slowly in contempt, other eyebrow flat and low, eyes heavy lidded with disdain, face radiating mockery and superiority, (sharp unilateral smirk:1.15), (contemptuous raised eyebrow:1.1), (heavy lidded mocking eyes:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — sarcastic"
+    }
+  },
+  "161": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, neutral expression, sincere smile, sad, full smile, symmetrical mouth, blood on face, liquid on face, drool, tears, deformed face, distorted face, asymmetrical face, face markings, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — sarcastic"
+    }
+  },
+  "162": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 364116449106559,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "160",
+        0
+      ],
+      "negative": [
+        "161",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — sarcastic"
+    }
+  },
+  "163": {
+    "inputs": {
+      "filename_prefix": "expression_sarcastic",
+      "images": [
+        "162",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — sarcastic"
+    }
+  },
+  "164": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, one eye slightly more closed than the other in lazy wink, tip of tongue barely touching upper lip corner, chin slightly lowered, eyes looking up at viewer through lowered lashes, slow dangerous smile corner of mouth lifted, (asymmetric lazy one-eye wink:1.15), (tongue tip touching lip corner:1.1), (looking up through lowered lashes:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — seductive"
+    }
+  },
+  "165": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, neutral expression, wide open eyes, teeth showing, tongue, open mouth wide, deformed face, distorted face, asymmetrical face, face markings, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips, neutral expression, both eyes same, no tongue, closed mouth, symmetrical face",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — seductive"
+    }
+  },
+  "166": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 160665170014913,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "164",
+        0
+      ],
+      "negative": [
+        "165",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — seductive"
+    }
+  },
+  "167": {
+    "inputs": {
+      "filename_prefix": "expression_seductive",
+      "images": [
+        "166",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — seductive"
+    }
+  },
+  "168": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, lips closed in thin straight neutral line no curve up or down, slight brow furrow, eyes direct and cold, jaw set firmly, face composed with zero expression beyond controlled intensity, (lips in thin flat neutral line:1.15), (cold direct eyes slight furrow:1.1), (jaw firmly set face controlled:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — serious"
+    }
+  },
+  "169": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, smiling, happy, open mouth, pouty lips, curved lips, caprichous, deformed face, distorted face, asymmetrical face, face markings, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — serious"
+    }
+  },
+  "170": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 68724206890185,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "168",
+        0
+      ],
+      "negative": [
+        "169",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — serious"
+    }
+  },
+  "171": {
+    "inputs": {
+      "filename_prefix": "expression_serious",
+      "images": [
+        "170",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — serious"
+    }
+  },
+  "172": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, eyes blown to maximum perfectly round circles with whites visible fully surrounding small iris in center, eyebrows shot straight up to absolute hairline, face frozen completely blank with terror, mouth hanging all the way open jaw dropped fully chin near chest, face drained of all color, (perfectly round wide circle eyes whites all around:1.15), (eyebrows at hairline face blank:1.1), (jaw dropped chin down mouth fully open:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — shocked"
+    }
+  },
+  "173": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, calm, neutral, half open eyes, closed mouth, teeth showing, tongue, low eyebrows, small mouth opening, deformed face, distorted face, deformed lips, distorted mouth, liquid on face, blood on face, face markings",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — shocked"
+    }
+  },
+  "174": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 484031203266929,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.68,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "172",
+        0
+      ],
+      "negative": [
+        "173",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — shocked (cfg=4.0, denoise=0.68)"
+    }
+  },
+  "175": {
+    "inputs": {
+      "filename_prefix": "expression_shocked",
+      "images": [
+        "174",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — shocked"
+    }
+  },
+  "176": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, both eyes blown wide open into huge perfect circles, eyebrows shooting up arching high above normal position, forehead creased horizontal from raised eyebrows, jaw dropped naturally mouth open relaxed, face expression of pure delighted surprise, (eyes huge wide perfect circles:1.15), (eyebrows high arched forehead creased:1.1), (jaw dropped open relaxed natural:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — surprised"
+    }
+  },
+  "177": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, neutral, calm, closed mouth, teeth deformed, tongue, low eyebrows, small eyes, squinting, O shape, round lips, square mouth, deformed face, distorted face, deformed lips, distorted mouth, mouth artifact, lip artifact, extra teeth, liquid on face, blood on face, face markings",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — surprised"
+    }
+  },
+  "178": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 131866602746303,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.65,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "176",
+        0
+      ],
+      "negative": [
+        "177",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — surprised (cfg=4.0, denoise=0.68)"
+    }
+  },
+  "179": {
+    "inputs": {
+      "filename_prefix": "expression_surprised",
+      "images": [
+        "178",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — surprised"
+    }
+  },
+  "180": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, solid glowing red eyes, eyelids drooping so heavy eyes are barely visible as thin slits, head tilted forward with fatigue, face muscles completely relaxed and sagging, dark undereye shadows, mouth hanging open slightly from exhaustion, (heavily drooping eyelids barely open:1.15), (head sagging from fatigue:1.1), (exhausted drooping face:1.05), perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — tired"
+    }
+  },
+  "181": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, wide open eyes, alert, energetic, happy, tense, upright head, deformed face, distorted face, asymmetrical face, face markings, blood, liquid on face, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — tired"
+    }
+  },
+  "182": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 210698546177373,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "180",
+        0
+      ],
+      "negative": [
+        "181",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — tired"
+    }
+  },
+  "183": {
+    "inputs": {
+      "filename_prefix": "expression_tired",
+      "images": [
+        "182",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — tired"
+    }
+  },
+  "184": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_8, masterpiece, best quality, BREAK, [EYE_COLOR] eyes, wide triumphant grin showing teeth, eyes bright and wide with victory, eyebrows raised in elation, chin slightly up, face radiating pride and power, (triumph expression:1.15), (triumphant grin:1.1), (victorious face:1.05), expressive eyes, perfect face, 748cmstyle, usnr, kaogei",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — triumph"
+    }
+  },
+  "185": {
+    "inputs": {
+      "text": "score_6, score_5, score_4, ugly face, blurry face, different person, neutral expression, sad, tired, closed mouth, deformed face, distorted face, melting face, asymmetrical face, face markings, forehead mark, deformed lips, distorted lips, deformed mouth, distorted mouth, toothpick, object in mouth, drool, extra teeth, broken teeth, melting lips, lip artifact, mouth artifact, asymmetrical lips",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — triumph"
+    }
+  },
+  "186": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 10218356559898,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.62,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "10",
+        0
+      ],
+      "model": [
+        "14",
+        0
+      ],
+      "clip": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "184",
+        0
+      ],
+      "negative": [
+        "185",
+        0
+      ],
+      "bbox_detector": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer — triumph"
+    }
+  },
+  "187": {
+    "inputs": {
+      "filename_prefix": "expression_triumph",
+      "images": [
+        "186",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save — triumph"
+    }
+  }
+}

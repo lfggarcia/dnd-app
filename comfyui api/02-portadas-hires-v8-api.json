@@ -1,0 +1,349 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "perfectdeliberate_v8.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "2": {
+    "inputs": {
+      "lora_name": "748cmSDXL.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0.5,
+      "model": [
+        "1",
+        0
+      ],
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 1 — 748cmSDXL (0.50)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "lora_name": "thiccwithaq-artist-richy-v1_ixl.safetensors",
+      "strength_model": 0.55,
+      "strength_clip": 0.55,
+      "model": [
+        "2",
+        0
+      ],
+      "clip": [
+        "2",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 2 — thiccwithaq (0.55 — Flujo 1 retrato)"
+    }
+  },
+  "4": {
+    "inputs": {
+      "lora_name": "USNR_STYLE_ILL_V1_lokr3-000024.safetensors",
+      "strength_model": 0.6,
+      "strength_clip": 0.6,
+      "model": [
+        "3",
+        0
+      ],
+      "clip": [
+        "3",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 3 — USNR_STYLE_ILL (0.60)"
+    }
+  },
+  "5": {
+    "inputs": {
+      "lora_name": "Detailer_NoobAI_Incrs_v1.safetensors",
+      "strength_model": 0.7,
+      "strength_clip": 0.7,
+      "model": [
+        "4",
+        0
+      ],
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 4 — Detailer IllustriousXL (0.70 — face definition)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "stop_at_clip_layer": -2,
+      "clip": [
+        "20",
+        1
+      ]
+    },
+    "class_type": "CLIPSetLastLayer",
+    "_meta": {
+      "title": "CLIP Set Last Layer"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "POSITIVE:\nscore_9, score_8_up, score_8, masterpiece, best quality, newest, absurdres, BREAK, 1girl, sole_girl, elf woman, long elegant pointed ears, no horns, no tail, solid glowing silver eyes, forest ranger archer, medium breasts, lean athletic build, toned arms, form-fitting dark forest green leather armor, fitted chest piece with buckles, dark hood pushed back off head, bracers on forearms, quiver strap across chest, bare neck and collarbone visible, silver white long hair, windswept strands framing face, sharp angular elven facial features, calm predatory alertness, hunter quiet confidence, watchful dangerous stillness, BREAK, leaning against stone wall, one knee slightly bent, hip shifted, arms loosely at sides, three-quarter view, from hips up, torso shot, face and chest prominent, face in upper half of frame, looking at viewer, steady calculating gaze, slight knowing smirk, alluring magnetic presence, feminine silhouette, curves visible, ancient stone ruins background moss covered, BREAK, perfect face, highly detailed face, sharp angular elven features, expressive glowing eyes, face fully visible no hair over eyes, clean face edges, cinematic portrait lighting, rim light on face, cool blue-green key light on skin, face illuminated, dark fantasy RPG character portrait, concept art, highly detailed fantasy illustration, dark atmosphere, blurred background, bokeh depth of field, subject sharp foreground, usnr, 748cmstyle",
+      "clip": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive — Flujo 1 Retrato v8"
+    }
+  },
+  "8": {
+    "inputs": {
+      "text": "NEGATIVE:\nscore_6, score_5, score_4, low quality, worst quality, blurry, deformed, bad anatomy, bad hands, poorly drawn hands, extra limbs, missing fingers, fused fingers, watermark, text, logo, signature, photorealistic, photograph, 3d render, explicit nudity, genitals, nipples, multiple people, crowd, long robes, floor length dress, covering robe, shapeless clothing, baggy clothes, flat chest, shapeless body, modest clothing, fully covered, portrait only, close-up face, face dominant, crouching, squatting, sitting curled up, knees blocking body, full body to feet, t-pose, standing straight stiff, face hidden, face small, face far away, face in shadow, dark face, obscured eyes, hair over eyes, ugly, poorly drawn, barefoot, sandals, shoes, round ears, human ears, tiefling, horns, tail, warm tones, orange light, red light, demonic, corrupted",
+      "clip": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative — Flujo 1 Retrato v8"
+    }
+  },
+  "9": {
+    "inputs": {
+      "width": 832,
+      "height": 1216,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image — 832x1216"
+    }
+  },
+  "10": {
+    "inputs": {
+      "seed": 955606954365499,
+      "steps": 38,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": [
+        "20",
+        0
+      ],
+      "positive": [
+        "7",
+        0
+      ],
+      "negative": [
+        "8",
+        0
+      ],
+      "latent_image": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler 1 — 38 steps INAMOVIBLE"
+    }
+  },
+  "11": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 32,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "samples": [
+        "10",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "VAE Decode Tiled — overlap 32"
+    }
+  },
+  "12": {
+    "inputs": {
+      "model_name": "remacri_original.safetensors"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model — remacri"
+    }
+  },
+  "13": {
+    "inputs": {
+      "upscale_model": [
+        "12",
+        0
+      ],
+      "image": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image (remacri 4x)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "width": 1248,
+      "height": 1824,
+      "crop": "disabled",
+      "image": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "ImageScale",
+    "_meta": {
+      "title": "ImageScale — 1248x1824 (alineado con Flujo 1 del código)"
+    }
+  },
+  "15": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 32,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "pixels": [
+        "14",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEEncodeTiled",
+    "_meta": {
+      "title": "VAE Encode Tiled — overlap 32"
+    }
+  },
+  "16": {
+    "inputs": {
+      "seed": 382206033333850,
+      "steps": 20,
+      "cfg": 4,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.55,
+      "model": [
+        "20",
+        0
+      ],
+      "positive": [
+        "7",
+        0
+      ],
+      "negative": [
+        "8",
+        0
+      ],
+      "latent_image": [
+        "15",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler 2 — Hires-fix 20 steps denoise 0.55 INAMOVIBLE"
+    }
+  },
+  "17": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 32,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "samples": [
+        "16",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "VAE Decode Tiled — salida final, overlap 32"
+    }
+  },
+  "18": {
+    "inputs": {
+      "filename_prefix": "dnd_portrait",
+      "images": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image — PNG (compresión JPEG q88 ocurre en la app)"
+    }
+  },
+  "19": {
+    "inputs": {
+      "lora_name": "Face_Enhancer_Illustrious.safetensors",
+      "strength_model": 0.45,
+      "strength_clip": 0.45,
+      "model": [
+        "5",
+        0
+      ],
+      "clip": [
+        "5",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 5 — Face Enhancer Illustrious (0.45 — expression amplifier)"
+    }
+  },
+  "20": {
+    "inputs": {
+      "lora_name": "Best_Facial_Expression_Helper_XTREME_ILLU-000005.safetensors",
+      "strength_model": 0.35,
+      "strength_clip": 0.35,
+      "model": [
+        "19",
+        0
+      ],
+      "clip": [
+        "19",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA 6 — kaogei expression helper (0.60)"
+    }
+  }
+}

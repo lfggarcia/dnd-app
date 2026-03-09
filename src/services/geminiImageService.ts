@@ -80,15 +80,15 @@ const ALIGNMENT_EXPRESSION: Record<string, string> = {
 // Expression presets — used for img2img batch expression generation
 // Prompts match the ComfyUI inpainting workflows in scripts/comfyui-workflows/
 export const EXPRESSION_PRESETS: Record<string, string> = {
-  neutral:    'calm composed face, relaxed expression, neutral gaze, BREAK, (character identity consistency:1.4), (same person:1.3)',
-  angry:      'clenched teeth, furrowed brows, wide bloodshot eyes, battle fury, BREAK, (angry expression:1.4), (exaggerated facial muscles:1.3), (furrowed brows:1.35), (intense glare:1.3)',
-  sad:        'tears streaming, downcast eyes, trembling chin, grief expression, BREAK, (sad expression:1.0), (drooping eyelids:1.1), (watery eyes:0.5), (drooping lips:1.3), (trembling lower lip:1.0)',
-  surprised:  'wide open eyes, raised brows, open mouth shock, jaw drop, BREAK, (surprised expression:1.5), (wide open eyes:1.35), (raised eyebrows:1.3), (open mouth:1.0)',
-  determined: 'sharp focused eyes, calm intensity, set jaw, unwavering fierce gaze, BREAK, (determined expression:1.5), (focused eyes:1.3), (slightly lowered eyebrows:1.25), (firm lips:1.25)',
-  scared:     'wide terrified eyes, cold sweat, pale skin, trembling lips, horror expression, BREAK, (scared expression:1.4), (exaggerated facial muscles:1.3), (wide eyes:1.35), (raised eyebrows:1.3), (trembling lips:1.2)',
-  smug:       'half-lidded eyes, twisted smirk, condescending gaze, sinister confidence, BREAK, (smug expression:1.35), (one eyebrow raised:1.3), (asymmetric smirk:1.35), (relaxed eyelids:1.2), (confident gaze:1.2)',
-  happy:      'warm happy expression, genuine smile, bright eyes, relaxed eyebrows, joyful expression, soft cheek lift, visible happiness, BREAK, (character identity consistency:1.4), (same person:1.3)',
-  wounded:    '(painful wounded expression:1.2), strained face, clenched teeth, trembling lips, exhausted eyes, (visible pain:1.4), BREAK, (character identity consistency:1.4), (same person:1.3), (sweat:0.40)',
+  neutral:    'calm neutral expression, relaxed face, soft eyes, composed, serene, (neutral expression:1.4), (calm face:1.3)',
+  angry:      'clenched teeth, furrowed brows, narrowed bloodshot eyes, battle fury, rage, intense glare, (angry expression:1.4), (furrowed brows:1.35), (intense glare:1.3)',
+  sad:        'downcast eyes, trembling lips, sorrowful expression, tears welling, grief, (sad expression:1.4), (downcast eyes:1.35), (trembling lips:1.3)',
+  surprised:  'wide open eyes, raised eyebrows, open mouth, shock, astonishment, (surprised expression:1.4), (wide eyes:1.35), (open mouth:1.3)',
+  determined: 'set jaw, focused gaze, firm lips, resolve, unwavering stare, steely eyes, (determined expression:1.4), (focused gaze:1.35), (set jaw:1.3)',
+  fearful:    'wide fearful eyes, pale trembling, pupils dilated, terror, dread, shaking, (fearful expression:1.4), (wide fearful eyes:1.35), (trembling:1.3)',
+  disgusted:  'wrinkled nose, curled upper lip, narrowed eyes, contempt, revulsion, (disgusted expression:1.4), (wrinkled nose:1.35), (curled lip:1.3)',
+  seductive:  'half-lidded eyes, slow smile, parted lips, smoldering gaze, alluring, magnetic presence, (seductive expression:1.4), (half-lidded eyes:1.35), (parted lips:1.3)',
+  happy:      'bright smile, teeth showing, eyes curved with joy, warm expression, genuine laughter, (happy expression:1.4), (bright smile:1.35), (joyful eyes:1.3)',
 };
 
 const STAT_FLAVOR: Record<string, string> = {
@@ -121,7 +121,6 @@ function buildCharacterPrompt(char: CharacterPortraitInput): { positive: string;
       if (res) {
         const data = JSON.parse(res.data) as { desc?: string };
         if (data.desc) {
-          // Use first 10 words as soft personality context
           alignSnippet = data.desc.split(/\s+/).slice(0, 10).join(' ');
         }
       }
@@ -134,7 +133,6 @@ function buildCharacterPrompt(char: CharacterPortraitInput): { positive: string;
     const res = getResource('races', char.race);
     if (res) {
       const data = JSON.parse(res.data) as { alignment?: string; age?: string; size_description?: string };
-      // age or size_description give concise visual physical context
       raceSnippet = (data.size_description ?? '').split(/\s+/).slice(0, 8).join(' ');
     }
   } catch { /* skip */ }
@@ -143,6 +141,7 @@ function buildCharacterPrompt(char: CharacterPortraitInput): { positive: string;
     'score_9, score_8_up, score_8, masterpiece, best quality, newest, absurdres',
     'BREAK',
     `1girl, sole_girl, ${race}`,
+    'large breasts, wide hips, hourglass figure, curvy toned body',
     `${sub}${cls}`,
     bg,
     expression,
@@ -150,14 +149,12 @@ function buildCharacterPrompt(char: CharacterPortraitInput): { positive: string;
     statFlavor2,
     raceSnippet,
     alignSnippet,
-    'cowboy shot, from head to knees, 3/4 body visible, dynamic confident pose, outfit and weapon clearly shown',
-    'perfect face, detailed face, expressive eyes, dramatic cinematic lighting',
-    'dark fantasy RPG, concept art, highly detailed fantasy illustration',
-    'dark atmosphere, gothic background, volumetric lighting',
-    'usnr, 748cmstyle',
+    'BREAK',
+    'cowboy shot, face large and prominent, face in upper third of image, face fills upper frame, head and shoulders clearly visible, looking at viewer, 3/4 angle slight side view, upper body visible to waist, slight lean forward pose, face fully visible no obstruction, no hair over eyes, expressive detailed eyes, dramatic close-medium shot',
+    'BREAK',
+    'perfect face, highly detailed face, sharp defined facial features, sharp nose bridge, defined cheekbones, detailed lips, detailed eyelids, detailed iris texture, crisp clean lineart on face, no soft face, no blurry face, clean bare face, no face markings, no face tattoos, no face jewelry, no forehead mark, no forehead gem, face fully visible no hair over eyes, clean face edges, cinematic portrait lighting, rim light on face, soft key light on skin, face illuminated, dark fantasy RPG character portrait, concept art, highly detailed fantasy illustration, dark atmosphere, blurred background, bokeh depth of field, subject sharp foreground, usnr, 748cmstyle',
   ].filter(Boolean).join(', ');
 
-  // Extra negative tokens for non-humanoid races to force human body structure
   const isNonHumanoid = ['dragonborn', 'draconido'].includes(char.race);
   const raceNegative = isNonHumanoid
     ? 'dragon head, monster face, fully reptilian face, animal face, beast head, inhuman head, dragon muzzle, animal snout, non-human face, full dragon transformation,'
@@ -166,10 +163,11 @@ function buildCharacterPrompt(char: CharacterPortraitInput): { positive: string;
   const negative = [
     'score_6, score_5, score_4, low quality, worst quality',
     raceNegative,
-    'blurry, deformed, bad anatomy, extra limbs, watermark, text, logo, signature',
-    'photorealistic, photograph, 3d render, nsfw, multiple people, crowd',
-    'full body shot, full length, head to toe, zoomed out, distant shot',
-    'cut off head, cropped face, bust only, head shot, close-up face only',
+    'blurry, deformed, bad anatomy, extra limbs, missing fingers, fused fingers, watermark, text, logo, signature, photorealistic, photograph, 3d render',
+    'explicit nudity, genitals, nipples, multiple people, crowd',
+    'full body shot, zoomed out, distant shot, cut off head, cropped face, face far away, small face, face secondary, face in shadow, dark face, obscured eyes, hair over eyes',
+    'face tattoo, face markings, face paint, face jewelry, nose ring, face piercing, forehead gem, forehead mark, forehead tattoo, forehead symbol, facial runes, facial ornaments, skin markings, skin tattoos',
+    'flat chest, shapeless body, soft face, blurry face, flat face, undefined features, painterly face, ugly, poorly drawn',
   ].filter(Boolean).join(', ');
 
   return { positive, negative };
@@ -219,22 +217,23 @@ const POLL_MAX_ATTEMPTS = 80;
 function buildWorkflow(positiveText: string, negativeText: string, seed: number): Record<string, unknown> {
   return {
     '1':  { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' } },
-    '2':  { class_type: 'LoraLoader',             inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5, strength_clip: 0.5 } },
-    '3':  { class_type: 'LoraLoader',             inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.7, strength_clip: 0.7 } },
-    '4':  { class_type: 'LoraLoader',             inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6, strength_clip: 0.6 } },
-    '5':  { class_type: 'CLIPSetLastLayer',       inputs: { clip: ['4', 1], stop_at_clip_layer: -2 } },
-    '6':  { class_type: 'CLIPTextEncode',         inputs: { text: positiveText,  clip: ['5', 0] } },
-    '7':  { class_type: 'CLIPTextEncode',         inputs: { text: negativeText,  clip: ['5', 0] } },
-    '8':  { class_type: 'EmptyLatentImage',       inputs: { width: 832, height: 1216, batch_size: 1 } },
-    '9':  { class_type: 'KSampler',               inputs: { seed, steps: 38, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 1.0,  model: ['4', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['8', 0] } },
-    '10': { class_type: 'VAEDecode',              inputs: { samples: ['9', 0],  vae: ['1', 2] } },
-    '11': { class_type: 'UpscaleModelLoader',     inputs: { model_name: 'remacri_original.safetensors' } },
-    '12': { class_type: 'ImageUpscaleWithModel',  inputs: { upscale_model: ['11', 0], image: ['10', 0] } },
-    '13': { class_type: 'ImageScale',             inputs: { upscale_method: 'lanczos', width: 1248, height: 1824, crop: 'disabled', image: ['12', 0] } },
-    '14': { class_type: 'VAEEncode',              inputs: { pixels: ['13', 0], vae: ['1', 2] } },
-    '15': { class_type: 'KSampler',               inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.55, model: ['4', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['14', 0] } },
-    '16': { class_type: 'VAEDecode',              inputs: { samples: ['15', 0], vae: ['1', 2] } },
-    '17': { class_type: 'SaveImage',              inputs: { filename_prefix: 'dnd3-portrait', images: ['16', 0] } },
+    '2':  { class_type: 'LoraLoader',             inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5,  strength_clip: 0.5  } },
+    '3':  { class_type: 'LoraLoader',             inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.55, strength_clip: 0.55 } },
+    '4':  { class_type: 'LoraLoader',             inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6,  strength_clip: 0.6  } },
+    '5':  { class_type: 'LoraLoader',             inputs: { model: ['4', 0], clip: ['4', 1], lora_name: 'Detailer_NoobAI_Incrs_v1.safetensors',         strength_model: 0.7,  strength_clip: 0.7  } },
+    '6':  { class_type: 'CLIPSetLastLayer',       inputs: { clip: ['5', 1], stop_at_clip_layer: -2 } },
+    '7':  { class_type: 'CLIPTextEncode',         inputs: { text: positiveText,  clip: ['6', 0] } },
+    '8':  { class_type: 'CLIPTextEncode',         inputs: { text: negativeText,  clip: ['6', 0] } },
+    '9':  { class_type: 'EmptyLatentImage',       inputs: { width: 832, height: 1216, batch_size: 1 } },
+    '10': { class_type: 'KSampler',               inputs: { seed, steps: 38, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 1.0,  model: ['5', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['9', 0] } },
+    '11': { class_type: 'VAEDecodeTiled',         inputs: { samples: ['10', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
+    '12': { class_type: 'UpscaleModelLoader',     inputs: { model_name: 'remacri_original.safetensors' } },
+    '13': { class_type: 'ImageUpscaleWithModel',  inputs: { upscale_model: ['12', 0], image: ['11', 0] } },
+    '14': { class_type: 'ImageScale',             inputs: { upscale_method: 'lanczos', width: 1248, height: 1824, crop: 'disabled', image: ['13', 0] } },
+    '15': { class_type: 'VAEEncodeTiled',         inputs: { pixels: ['14', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
+    '16': { class_type: 'KSampler',               inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.55, model: ['5', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['15', 0] } },
+    '17': { class_type: 'VAEDecodeTiled',         inputs: { samples: ['16', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
+    '18': { class_type: 'SaveImage',              inputs: { filename_prefix: 'dnd3-portrait', images: ['17', 0] } },
   };
 }
 
@@ -322,8 +321,8 @@ export async function generateCharacterPortrait(char: CharacterPortraitInput): P
 
   const entry = await pollHistory(promptId);
 
-  // Node "17" is the SaveImage node (PerfectDeliberate v8 / Illustrious workflow)
-  const images = entry.outputs?.['17']?.images;
+  // Node "18" is the SaveImage node (PerfectDeliberate v8 / hires workflow)
+  const images = entry.outputs?.['18']?.images;
   if (!images || images.length === 0) {
     throw new Error('[ComfyUI] No output images found in history');
   }
@@ -389,52 +388,54 @@ function buildExpressionWorkflow(
   uploadedFilename: string,
 ): Record<string, unknown> {
   return {
-    '1':  { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' } },
-    '2':  { class_type: 'LoraLoader',             inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5, strength_clip: 0.5 } },
-    '3':  { class_type: 'LoraLoader',             inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.7, strength_clip: 0.7 } },
-    '4':  { class_type: 'LoraLoader',             inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6, strength_clip: 0.6 } },
-    '5':  { class_type: 'CLIPSetLastLayer',       inputs: { clip: ['4', 1], stop_at_clip_layer: -2 } },
-    '6':  { class_type: 'CLIPTextEncode',         inputs: { text: positiveText, clip: ['5', 0] } },
-    '7':  { class_type: 'CLIPTextEncode',         inputs: { text: negativeText, clip: ['5', 0] } },
-    '8':  { class_type: 'LoadImage',              inputs: { image: uploadedFilename, upload: 'image' } },
-    '9':  { class_type: 'VAEEncode',              inputs: { pixels: ['8', 0], vae: ['1', 2] } },
-    '10': { class_type: 'KSampler',               inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.35, model: ['4', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['9', 0] } },
-    '11': { class_type: 'VAEDecode',              inputs: { samples: ['10', 0], vae: ['1', 2] } },
-    '12': { class_type: 'SaveImage',              inputs: { filename_prefix: 'dnd3-expression', images: ['11', 0] } },
+    '1':  { class_type: 'CheckpointLoaderSimple',       inputs: { ckpt_name: 'perfectdeliberate_v8.safetensors' } },
+    '2':  { class_type: 'LoraLoader',                   inputs: { model: ['1', 0], clip: ['1', 1], lora_name: '748cmSDXL.safetensors',                        strength_model: 0.5, strength_clip: 0.5 } },
+    '3':  { class_type: 'LoraLoader',                   inputs: { model: ['2', 0], clip: ['2', 1], lora_name: 'thiccwithaq-artist-richy-v1_ixl.safetensors', strength_model: 0.7, strength_clip: 0.7 } },
+    '4':  { class_type: 'LoraLoader',                   inputs: { model: ['3', 0], clip: ['3', 1], lora_name: 'USNR_STYLE_ILL_V1_lokr3-000024.safetensors',  strength_model: 0.6, strength_clip: 0.6 } },
+    '5':  { class_type: 'LoraLoader',                   inputs: { model: ['4', 0], clip: ['4', 1], lora_name: 'Detailer_NoobAI_Incrs_v1.safetensors',         strength_model: 0.5, strength_clip: 0.5 } },
+    '6':  { class_type: 'CLIPSetLastLayer',             inputs: { clip: ['5', 1], stop_at_clip_layer: -2 } },
+    '7':  { class_type: 'CLIPTextEncode',               inputs: { text: positiveText, clip: ['6', 0] } },
+    '8':  { class_type: 'LoadImage',                    inputs: { image: uploadedFilename } },
+    '9':  { class_type: 'UltralyticsDetectorProvider',  inputs: { model_name: 'bbox/face_yolov8n.pt' } },
+    '10': { class_type: 'CLIPTextEncode',               inputs: { text: negativeText, clip: ['6', 0] } },
+    '11': { class_type: 'FaceDetailer',                 inputs: {
+      guide_size: 768, guide_size_for: true, max_size: 1024,
+      seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.45,
+      feather: 5, noise_mask: true, force_inpaint: true,
+      bbox_threshold: 0.5, bbox_dilation: 10, bbox_crop_factor: 3,
+      sam_detection_hint: 'center-1', sam_dilation: 0, sam_threshold: 0.93,
+      sam_bbox_expansion: 0, sam_mask_hint_threshold: 0.7, sam_mask_hint_use_negative: 'False',
+      drop_size: 10, wildcard: '', cycle: 1, inpaint_model: false, noise_mask_feather: 20,
+      tiled_encode: false, tiled_decode: false,
+      image: ['8', 0], model: ['5', 0], clip: ['6', 0], vae: ['1', 2],
+      positive: ['7', 0], negative: ['10', 0], bbox_detector: ['9', 0],
+    } },
+    '12': { class_type: 'SaveImage',                    inputs: { filename_prefix: 'dnd3-expression', images: ['11', 0] } },
   };
 }
 
 function buildExpressionPrompt(char: CharacterPortraitInput, expressionTokens: string): { positive: string; negative: string } {
-  const race = RACE_VISUAL[char.race] ?? `${char.race.replace(/-/g, ' ')} woman`;
-  const cls  = CLASS_VISUAL[char.charClass] ?? char.charClass;
+  const skinAnchorMap: Record<string, string> = {
+    tiefling:   'pale skin',
+    drow:       'dark grey skin',
+    'half-orc': 'olive skin',
+  };
+  const skinAnchor = skinAnchorMap[char.race] ?? 'fair skin';
 
   const positive = [
     'score_9, score_8_up, score_8, masterpiece, best quality',
+    skinAnchor,
+    'human woman',
     'BREAK',
-    `1girl, sole_girl, ${race}`,
-    cls,
     expressionTokens,
-    'same character, same face, same outfit, expression change only',
-    'cowboy shot, from head to knees, 3/4 body visible',
-    'perfect face, detailed face, expressive eyes, dramatic cinematic lighting',
-    'dark fantasy RPG, concept art, highly detailed fantasy illustration',
-    'dark atmosphere, gothic background',
-    'usnr, 748cmstyle',
-  ].filter(Boolean).join(', ');
-
-  const isNonHumanoid = ['dragonborn', 'draconido'].includes(char.race);
-  const raceNegative = isNonHumanoid
-    ? 'dragon head, monster face, fully reptilian face, animal face,'
-    : '';
+    'expressive eyes, perfect face, 748cmstyle, usnr',
+  ].join(', ');
 
   const negative = [
-    'score_6, score_5, score_4, low quality, worst quality',
-    raceNegative,
-    'blurry, deformed, bad anatomy, extra limbs, watermark, text',
-    'photorealistic, 3d render, nsfw, multiple people',
-    'full body shot, full length, head to toe',
-    'cut off head, cropped face, bust only',
-  ].filter(Boolean).join(', ');
+    'score_6, score_5, score_4, ugly face, low res, blurry face',
+    'different person, different character',
+    'disfigured, deformed, bad anatomy, face markings, forehead mark, skin tattoo',
+  ].join(', ');
 
   return { positive, negative };
 }

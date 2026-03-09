@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RoomType } from '../services/dungeonGraphService';
 
 export type RootStackParamList = {
   Main: undefined;
@@ -7,8 +8,8 @@ export type RootStackParamList = {
   Village: undefined;
   Guild: undefined;
   Map: undefined;
-  Battle: undefined;
-  Report: undefined;
+  Battle: { roomId: string; roomType: RoomType };
+  Report: { roomId: string; roomWasCleared: boolean };
   Extraction: undefined;
   WorldLog: undefined;
   CycleTransition: { from: 'DAY' | 'NIGHT'; to: 'DAY' | 'NIGHT'; cycle: number };

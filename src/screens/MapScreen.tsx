@@ -311,7 +311,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       setSelectedRoom(null);
       const savedState = serializeExplorationState(afterVisit, room.id);
       updateProgress({ location: 'map', mapState: JSON.stringify(savedState) });
-      navigation.navigate('Battle');
+      navigation.navigate('Battle', { roomId: room.id, roomType: room.type });
       return;
     }
     // Non-combat: move, reveal adjacent, keep panel open with post-entry info

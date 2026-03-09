@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, BackHandler, Dimensions, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { ScreenProps } from '../navigation/types';
@@ -125,6 +125,22 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     return floor.startRoomId;
   });
 
+  // Lookup rápido por ID — evita recorrer el array con find() en cada render
+  const roomMap = useMemo(
+    () => new Map(floor.rooms.map(r => [r.id, r])),
+    [floor],
+  );
+
+  // Ref para el timer de transición de piso — permite cancelarlo si el
+  // usuario abandona la pantalla antes de que expire
+  const nextFloorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (nextFloorTimerRef.current) clearTimeout(nextFloorTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     updateProgress({ location: 'map' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,14 +164,14 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   // yet, and if so we apply the reveal now.
   useFocusEffect(
     useCallback(() => {
-      const currentRoomInFloor = floor.rooms.find(r => r.id === currentRoomId);
+      const currentRoomInFloor = roomMap.get(currentRoomId);
       const isCombat =
         currentRoomInFloor?.type === 'NORMAL' ||
         currentRoomInFloor?.type === 'ELITE' ||
         currentRoomInFloor?.type === 'BOSS';
       if (!isCombat || !currentRoomInFloor?.visited) return;
       const needsReveal = currentRoomInFloor.connections.some(
-        cid => !floor.rooms.find(r => r.id === cid)?.revealed,
+        cid => !roomMap.get(cid)?.revealed,
       );
       if (!needsReveal) return;
       const afterReveal = revealAdjacentRooms(floor, currentRoomId);
@@ -163,7 +179,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       const saved = serializeExplorationState(afterReveal, currentRoomId);
       updateProgress({ location: 'map', mapState: JSON.stringify(saved) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [floor, currentRoomId, updateProgress]),
+    }, [roomMap, currentRoomId, floor, updateProgress]),
   );
 
   const pulse = useSharedValue(0.3);
@@ -172,18 +188,30 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   }, [pulse]);
   const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
-  // ─── Accessibility ─────────────────────────────────────────────────────────
-  const currentRoom = floor.rooms.find(r => r.id === currentRoomId);
-  // Reverse connections: visited rooms that connect TO the current room (backtracking)
-  const reverseIds = new Set<number>(
-    floor.rooms
-      .filter(r => r.visited && r.connections.includes(currentRoomId))
-      .map(r => r.id)
+  // ─── Valores derivados memoizados ─────────────────────────────────────────
+  // Se recalculan solo cuando cambia floor o currentRoomId, no en cada render
+  const currentRoom = useMemo(
+    () => roomMap.get(currentRoomId),
+    [roomMap, currentRoomId],
   );
-  const accessibleIds = new Set<number>([
-    ...(currentRoom?.connections ?? []),
-    ...reverseIds,
-  ]);
+
+  // Salas ya visitadas que tienen conexión entrante hacia la sala actual (retroceso)
+  const reverseIds = useMemo(
+    () => new Set<number>(
+      floor.rooms
+        .filter(r => r.visited && r.connections.includes(currentRoomId))
+        .map(r => r.id),
+    ),
+    [floor, currentRoomId],
+  );
+
+  const accessibleIds = useMemo(
+    () => new Set<number>([
+      ...(currentRoom?.connections ?? []),
+      ...reverseIds,
+    ]),
+    [currentRoom, reverseIds],
+  );
 
   // ─── Floor advancement ────────────────────────────────────────────────────
   const isBossCleared = currentRoom?.type === 'BOSS' && currentRoom.visited;
@@ -237,7 +265,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const handleNextFloor = useCallback(() => {
     setIsDescending(true);
     const newFloorIndex = floorIndex + 1;
-    setTimeout(() => {
+    nextFloorTimerRef.current = setTimeout(() => {
       const base = generateDungeonFloor(activeGame?.seedHash ?? '0', newFloorIndex);
       const withMutations = applyFloorMutations(base, cycle);
       const withReveal = revealAdjacentRooms(withMutations, withMutations.startRoomId);
@@ -247,6 +275,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       setCurrentRoomId(withMutations.startRoomId);
       setSelectedRoom(null);
       setIsDescending(false);
+      nextFloorTimerRef.current = null;
     }, 900);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floorIndex, activeGame, cycle, updateProgress]);
@@ -264,8 +293,14 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
   }, [floor, currentRoomId, updateProgress, navigation]);
 
-  const combatCount = floor.rooms.filter(r => r.type === 'NORMAL' || r.type === 'ELITE').length;
-  const revealedCount = floor.rooms.filter(r => r.revealed).length;
+  const combatCount = useMemo(
+    () => floor.rooms.filter(r => r.type === 'NORMAL' || r.type === 'ELITE').length,
+    [floor],
+  );
+  const revealedCount = useMemo(
+    () => floor.rooms.filter(r => r.revealed).length,
+    [floor],
+  );
 
   return (
     <View style={styles.container}>
@@ -324,7 +359,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
         >
           {floor.rooms.flatMap(room =>
             room.connections.map(targetId => {
-              const target = floor.rooms.find(r => r.id === targetId);
+              const target = roomMap.get(targetId);
               // Skip if source not revealed or target doesn't exist in graph.
               if (!target || !room.revealed) return null;
               const cx1 = room.pos.x * CANVAS_W;

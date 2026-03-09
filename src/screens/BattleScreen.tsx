@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, BackHandler, Image, StyleSheet } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
@@ -8,17 +8,21 @@ import type { ScreenProps } from '../navigation/types';
 
 export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
   const { t } = useI18n();
-  const activeGame = useGameStore(s => s.activeGame);
-  const party = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
-  const portrait = activeGame?.partyPortrait ?? null;
-  /** Portraits keyed by character index. portraitsJson takes priority over char.portrait */
-  const portraitsMap = useMemo(
-    () => activeGame?.portraitsJson ?? null,
-    [activeGame],
+  // Selectores granulares — evita re-renders cuando cambian campos ajenos a esta pantalla
+  const partyData = useGameStore(s => s.activeGame?.partyData ?? []);
+  const portrait = useGameStore(s => s.activeGame?.partyPortrait ?? null);
+  /** Retratos indexados por posición en el party. portraitsJson tiene prioridad */
+  const portraitsMap = useGameStore(s => s.activeGame?.portraitsJson ?? null);
+  const activeFloor = useGameStore(s => s.activeGame?.floor ?? 1);
+  const activeCycle = useGameStore(s => s.activeGame?.cycle ?? 1);
+
+  const aliveParty = useMemo(() => partyData.filter(c => c.alive), [partyData]);
+
+  const getCharPortrait = useCallback(
+    (char: typeof partyData[0], index: number): string | null =>
+      portraitsMap?.[String(index)] ?? char.portrait ?? null,
+    [portraitsMap],
   );
-  const getCharPortrait = (char: typeof party[0], index: number): string | null =>
-    portraitsMap?.[String(index)] ?? char.portrait ?? null;
-  const aliveParty = useMemo(() => party.filter(c => c.alive), [party]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -28,12 +32,13 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
     return () => sub.remove();
   }, [navigation]);
 
-  const LOG_ENTRIES = [
+  // Se recalcula solo cuando cambia t (cambio de idioma), no en cada render
+  const LOG_ENTRIES = useMemo(() => [
     `INITIATIVE: PARTY (18) vs ENEMY (12)`,
     `d20(15) + STR(4) VS ${t('battle.ac')}(14) = ✓`,
     `DMG: 8 (PHYSICAL)`,
     `> ${t('battle.turn')}: SQUAD_VULCAN`,
-  ];
+  ], [t]);
 
   return (
     <View className="flex-1 bg-background">
@@ -47,14 +52,14 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
           {/* Floor / Cycle HUD overlaid on portrait */}
           <View style={S.portraitHud}>
             <Text style={S.hudText}>
-              FLOOR {activeGame?.floor ?? 1}  ·  CYCLE {activeGame?.cycle ?? 1}
+              FLOOR {activeFloor}  ·  CYCLE {activeCycle}
             </Text>
           </View>
         </View>
       ) : (
         <View style={S.noPortraitHud}>
           <Text style={S.hudText}>
-            FLOOR {activeGame?.floor ?? 1}  ·  CYCLE {activeGame?.cycle ?? 1}
+            FLOOR {activeFloor}  ·  CYCLE {activeCycle}
           </Text>
         </View>
       )}

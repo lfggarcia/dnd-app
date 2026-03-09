@@ -311,7 +311,7 @@ export async function getEnemySprite(enemy: EnemyType): Promise<EnemySprite> {
   const prompt = buildBasePrompt(enemy);
   const seed = Math.floor(Math.random() * 2 ** 32);
 
-  console.log('[Sprite] Generating base sprite for:', enemy);
+  __DEV__ && console.log('[Sprite] Generating base sprite for:', enemy);
   const { base64, filename, subfolder } = await runWorkflowAndFetch(buildTxt2ImgWorkflow(prompt, seed));
 
   spriteComfyMeta.set(enemy, { filename, subfolder });
@@ -332,14 +332,14 @@ export async function generateAnimationSet(enemy: EnemyType): Promise<SpriteSet>
   const meta = spriteComfyMeta.get(enemy);
   if (!meta) throw new Error(`[ComfyUI] No ComfyUI file metadata for ${enemy} — call getEnemySprite() first`);
   const uploadedFilename = await copyOutputToInput(meta.filename, meta.subfolder);
-  console.log('[Sprite] Base sprite copied to ComfyUI input:', uploadedFilename);
+  __DEV__ && console.log('[Sprite] Base sprite copied to ComfyUI input:', uploadedFilename);
 
   const animations: AnimationType[] = ['idle', 'run', 'attack', 'damage', 'death'];
   const result: Partial<SpriteSet> = {};
 
   // Run animations sequentially to avoid overloading the GPU
   for (const anim of animations) {
-    console.log('[Sprite] Generating animation:', anim, 'for', enemy);
+    __DEV__ && console.log('[Sprite] Generating animation:', anim, 'for', enemy);
     const prompt = buildAnimPrompt(enemy, anim);
     const seed = Math.floor(Math.random() * 2 ** 32);
     // idle: low denoise (stay close to base), combat anims: higher
@@ -372,7 +372,7 @@ export async function preloadFloorSprites(enemies: EnemyType[]): Promise<void> {
     try {
       await generateAnimationSet(e);
     } catch (err) {
-      console.warn('[Sprite] Animation set failed for', e, err);
+      __DEV__ && console.warn('[Sprite] Animation set failed for', e, err);
     }
   }
 }

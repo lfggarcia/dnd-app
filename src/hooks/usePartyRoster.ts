@@ -204,7 +204,7 @@ export function usePartyRoster(lang: Lang) {
       setCharPortraitRolls(prev => ({ ...prev, [activeSlot]: (prev[activeSlot] ?? 0) + 1 }));
       saveCharacterPortraits({ [String(activeSlot)]: uri });
     } catch (err) {
-      console.error('[Portrait] generation error:', err);
+      __DEV__ && console.error('[Portrait] generation error:', err);
       const msg = err instanceof Error ? err.message : String(err);
       setPortraitError(msg.length > 38 ? msg.substring(0, 38) + '...' : msg);
     } finally {

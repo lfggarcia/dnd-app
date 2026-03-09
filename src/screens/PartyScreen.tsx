@@ -219,6 +219,15 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
 
   const handlePortraitDetailClose = useCallback(() => setPortraitDetailUri(null), [setPortraitDetailUri]);
 
+  // Estabiliza la referencia para que React.memo en CharacterActionsPanel funcione
+  const handleChoiceSelect = useCallback(
+    (choiceKey: string, value: string | string[]) =>
+      updateCurrent({
+        featureChoices: { ...current.featureChoices, [choiceKey]: value },
+      }),
+    [updateCurrent, current?.featureChoices],
+  );
+
   const handleLaunch = useCallback(() => {
     if (launchStep !== null) return;
     const missingCount = roster.filter((_, i) => !charPortraits[i]).length;
@@ -729,11 +738,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
           subclass={current.subclass}
           lang={lang}
           featureChoices={current.featureChoices}
-          onChoiceSelect={(choiceKey, value) =>
-            updateCurrent({
-              featureChoices: { ...current.featureChoices, [choiceKey]: value },
-            })
-          }
+          onChoiceSelect={handleChoiceSelect}
         />
 
         {/* ── 8. Alignment ── */}

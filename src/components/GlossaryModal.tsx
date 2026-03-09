@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  FlatList,
   Pressable,
   SafeAreaView,
   Dimensions,
@@ -26,6 +27,9 @@ import {
   BookIcon,
   SearchIcon,
 } from './Icons';
+
+// Dimensiones calculadas una sola vez al importar el módulo
+const SCREEN_H = Dimensions.get('window').height;
 
 type GlossaryCategory =
   | 'stats'
@@ -159,6 +163,42 @@ function hasFullData(endpoint: ApiEndpoint): boolean {
   return keys.length > 3;
 }
 
+// ─── Fila individual del glosario — memoizada para que FlatList evite ────────
+// re-renderizar entradas que no cambiaron al hacer scroll
+const GlossaryEntryItem = React.memo(({ entry }: { entry: GlossaryEntry }) => (
+  <View
+    style={{
+      borderWidth: 1,
+      borderColor: 'rgba(0,255,65,0.2)',
+      padding: 12,
+      marginBottom: 8,
+      backgroundColor: 'rgba(26,46,26,0.1)',
+    }}
+  >
+    <Text
+      style={{
+        color: '#00FF41',
+        fontFamily: 'RobotoMono',
+        fontSize: 14,
+        fontWeight: 'bold',
+        marginBottom: 4,
+      }}
+    >
+      {entry.name}
+    </Text>
+    <Text
+      style={{
+        color: 'rgba(0,255,65,0.7)',
+        fontFamily: 'RobotoMono',
+        fontSize: 12,
+        lineHeight: 20,
+      }}
+    >
+      {entry.desc}
+    </Text>
+  </View>
+));
+
 // ─── Component ───────────────────────────────────────────────
 
 export const GlossaryModal = ({
@@ -265,8 +305,6 @@ export const GlossaryModal = ({
 
   if (!visible) return null;
 
-  const { height: screenHeight } = Dimensions.get('window');
-
   return (
     <View
       style={{
@@ -275,7 +313,7 @@ export const GlossaryModal = ({
         left: 0,
         right: 0,
         bottom: 0,
-        height: screenHeight,
+        height: SCREEN_H,
         backgroundColor: '#0A0E0A',
         zIndex: 999999,
         elevation: 999999,
@@ -397,70 +435,41 @@ export const GlossaryModal = ({
           })}
         </ScrollView>
 
-        {/* Entries */}
-        <ScrollView
-          style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {loading && (
-            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-              <ActivityIndicator color="#00FF41" size="small" />
-              <Text
-                style={{
-                  color: 'rgba(0,255,65,0.5)',
-                  fontFamily: 'RobotoMono',
-                  fontSize: 12,
-                  marginTop: 8,
-                }}
-              >
-                {t('glossary.loading')}
-              </Text>
-            </View>
-          )}
-          {!loading &&
-            entries.map((entry) => (
-            <View
-              key={entry.key}
+        {/* Entradas — FlatList virtualiza para no montar 300+ nodos a la vez */}
+        {loading ? (
+          <View style={{ flex: 1, alignItems: 'center', paddingVertical: 32 }}>
+            <ActivityIndicator color="#00FF41" size="small" />
+            <Text
               style={{
-                borderWidth: 1,
-                borderColor: 'rgba(0,255,65,0.2)',
-                padding: 12,
-                marginBottom: 8,
-                backgroundColor: 'rgba(26,46,26,0.1)',
+                color: 'rgba(0,255,65,0.5)',
+                fontFamily: 'RobotoMono',
+                fontSize: 12,
+                marginTop: 8,
               }}
             >
-              <Text
-                style={{
-                  color: '#00FF41',
-                  fontFamily: 'RobotoMono',
-                  fontSize: 14,
-                  fontWeight: 'bold',
-                  marginBottom: 4,
-                }}
-              >
-                {entry.name}
-              </Text>
-              <Text
-                style={{
-                  color: 'rgba(0,255,65,0.7)',
-                  fontFamily: 'RobotoMono',
-                  fontSize: 12,
-                  lineHeight: 20,
-                }}
-              >
-                {entry.desc}
-              </Text>
-            </View>
-          ))}
-          {!loading && entries.length === 0 && (
-            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-              <Text style={{ color: 'rgba(0,255,65,0.3)', fontFamily: 'RobotoMono', fontSize: 14 }}>
-                —
-              </Text>
-            </View>
-          )}
-          <View style={{ height: 32 }} />
-        </ScrollView>
+              {t('glossary.loading')}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={entries}
+            keyExtractor={item => item.key}
+            renderItem={({ item }) => <GlossaryEntryItem entry={item} />}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={15}
+            windowSize={5}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
+            ListEmptyComponent={
+              <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                <Text style={{ color: 'rgba(0,255,65,0.3)', fontFamily: 'RobotoMono', fontSize: 14 }}>
+                  —
+                </Text>
+              </View>
+            }
+            ListFooterComponent={<View style={{ height: 32 }} />}
+          />
+        )}
       </SafeAreaView>
     </View>
   );

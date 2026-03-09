@@ -315,10 +315,10 @@ export async function generateCharacterPortrait(char: CharacterPortraitInput): P
   const seed = Math.floor(Math.random() * 2 ** 32);
   const workflow = buildWorkflow(positive, negative, seed);
 
-  console.log('[ComfyUI] Queuing portrait for:', char.name, '| seed:', seed);
+  __DEV__ && console.log('[ComfyUI] Queuing portrait for:', char.name, '| seed:', seed);
 
   const promptId = await queuePrompt(workflow);
-  console.log('[ComfyUI] Prompt queued:', promptId);
+  __DEV__ && console.log('[ComfyUI] Prompt queued:', promptId);
 
   const entry = await pollHistory(promptId);
 
@@ -329,7 +329,7 @@ export async function generateCharacterPortrait(char: CharacterPortraitInput): P
   }
 
   const { filename, subfolder } = images[0];
-  console.log('[ComfyUI] Image ready:', filename);
+  __DEV__ && console.log('[ComfyUI] Image ready:', filename);
 
   return fetchImageAsBase64(filename, subfolder);
 }
@@ -362,7 +362,7 @@ async function uploadImageToComfy(base64DataUri: string): Promise<string> {
   }
 
   const json = (await response.json()) as ComfyUploadResponse;
-  console.log('[ComfyUI] Uploaded portrait as:', json.name);
+  __DEV__ && console.log('[ComfyUI] Uploaded portrait as:', json.name);
   return json.name;
 }
 
@@ -451,7 +451,7 @@ export async function generateCharacterExpressions(
   char: CharacterPortraitInput,
   portraitBase64: string,
 ): Promise<Record<string, string>> {
-  console.log('[ComfyUI] Starting expression batch for:', char.name);
+  __DEV__ && console.log('[ComfyUI] Starting expression batch for:', char.name);
 
   // Upload the base portrait once; all expression passes reference the same file
   const uploadedFilename = await uploadImageToComfy(portraitBase64);
@@ -459,7 +459,7 @@ export async function generateCharacterExpressions(
   const results: Record<string, string> = {};
 
   for (const [expressionKey, expressionTokens] of Object.entries(EXPRESSION_PRESETS)) {
-    console.log(`[ComfyUI] Generating expression: ${expressionKey}`);
+    __DEV__ && console.log(`[ComfyUI] Generating expression: ${expressionKey}`);
 
     const seed = Math.floor(Math.random() * 2 ** 32);
     const { positive, negative } = buildExpressionPrompt(char, expressionTokens);
@@ -470,15 +470,15 @@ export async function generateCharacterExpressions(
 
     const images = entry.outputs?.['12']?.images;
     if (!images || images.length === 0) {
-      console.warn(`[ComfyUI] No output for expression: ${expressionKey}, skipping`);
+      __DEV__ && console.warn(`[ComfyUI] No output for expression: ${expressionKey}, skipping`);
       continue;
     }
 
     const { filename, subfolder } = images[0];
     results[expressionKey] = await fetchImageAsBase64(filename, subfolder);
-    console.log(`[ComfyUI] Expression ready: ${expressionKey} → ${filename}`);
+    __DEV__ && console.log(`[ComfyUI] Expression ready: ${expressionKey} → ${filename}`);
   }
 
-  console.log('[ComfyUI] Expression batch complete for:', char.name, '| variants:', Object.keys(results).join(', '));
+  __DEV__ && console.log('[ComfyUI] Expression batch complete for:', char.name, '| variants:', Object.keys(results).join(', '));
   return results;
 }

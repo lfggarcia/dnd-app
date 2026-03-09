@@ -240,13 +240,15 @@ export function generateDungeonFloor(seedHash: string, floorIndex: number): Dung
   // Assign types
   const typePool = rng.shuffle(buildRoomTypePool(roomCount - secretCount));
   let typeIdx = 0;
+  // Convertir a Set para que la pertenencia sea O(1) en lugar de O(n)
+  const secretsSet = new Set<number>(secretIds);
   const typedRooms: DungeonRoom[] = rooms.map(r => {
     let type: RoomType;
     if (r.id === startId) {
       type = 'START';
     } else if (r.id === bossId) {
       type = 'BOSS';
-    } else if (secretIds.includes(r.id)) {
+    } else if (secretsSet.has(r.id)) {
       type = 'SECRET';
     } else {
       type = typePool[typeIdx++] ?? 'NORMAL';
@@ -327,12 +329,14 @@ export function serializeExplorationState(
   floor: DungeonFloor,
   currentRoomId: number,
 ): FloorExplorationState {
-  return {
-    floorIndex: floor.floorIndex,
-    visitedRoomIds: floor.rooms.filter(r => r.visited).map(r => r.id),
-    revealedRoomIds: floor.rooms.filter(r => r.revealed).map(r => r.id),
-    currentRoomId,
-  };
+  // Un solo recorrido para extraer visitadas y reveladas en lugar de cuatro pasadas
+  const visitedRoomIds: number[] = [];
+  const revealedRoomIds: number[] = [];
+  for (const r of floor.rooms) {
+    if (r.visited) visitedRoomIds.push(r.id);
+    if (r.revealed) revealedRoomIds.push(r.id);
+  }
+  return { floorIndex: floor.floorIndex, visitedRoomIds, revealedRoomIds, currentRoomId };
 }
 
 // ─── Stealth & Perception ─────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
@@ -77,21 +77,41 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
     [activeGame?.seedHash, maxFloor, cycle],
   );
 
-  const marketItems = useMemo(() => {
-    const resources = getResourcesByEndpoint('equipment');
-    const names = resources.map(r => r.name);
-    return deterministicPick(names, `${activeGame?.seedHash ?? '0'}_market_${cycle}`, 3);
-  }, [activeGame?.seedHash, cycle]);
+  // Cargamos los nombres de equipment y monstruos una sola vez al montar.
+  // Sacar las queries síncronas de SQLite del useMemo evita bloquear el hilo
+  // JS en cada re-render causado por cambios de seed/cycle/floor.
+  const [equipmentNames, setEquipmentNames] = useState<string[]>([]);
+  const [monsterPool, setMonsterPool] = useState<string[]>([]);
 
-  const knownThreats = useMemo(() => {
-    const resources = getResourcesByEndpoint('monsters');
-    // prefer single-word monster names for cleaner display
-    const names = resources
+  useEffect(() => {
+    const eq = getResourcesByEndpoint('equipment');
+    setEquipmentNames(eq.map(r => r.name));
+
+    const mo = getResourcesByEndpoint('monsters');
+    const singleWord = mo
       .filter(r => !r.name.includes(' '))
       .map(r => r.name.toUpperCase());
-    const pool = names.length >= 5 ? names : resources.map(r => r.name.toUpperCase());
-    return deterministicPick(pool, `${activeGame?.seedHash ?? '0'}_threats_${maxFloor}`, 3);
-  }, [activeGame?.seedHash, maxFloor]);
+    // Si hay pocos nombres de una sola palabra usamos todos
+    setMonsterPool(singleWord.length >= 5 ? singleWord : mo.map(r => r.name.toUpperCase()));
+  }, []); // solo al montar — los datos de la DB no cambian en runtime
+
+  const marketItems = useMemo(
+    () => deterministicPick(
+      equipmentNames,
+      `${activeGame?.seedHash ?? '0'}_market_${cycle}`,
+      3,
+    ),
+    [equipmentNames, activeGame?.seedHash, cycle],
+  );
+
+  const knownThreats = useMemo(
+    () => deterministicPick(
+      monsterPool,
+      `${activeGame?.seedHash ?? '0'}_threats_${maxFloor}`,
+      3,
+    ),
+    [monsterPool, activeGame?.seedHash, maxFloor],
+  );
 
   const allRivalsWaiting = rivals.every(r => r.status === 'waiting');
 

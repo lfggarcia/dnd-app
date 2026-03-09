@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { en } from './translations/en';
 import { es } from './translations/es';
 
@@ -37,8 +37,15 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
     [lang],
   );
 
+  // El objeto del contexto se memoiza para que los consumidores solo se
+  // re-rendericen cuando cambia el idioma, no en renders intermedios del provider
+  const contextValue = useMemo(
+    () => ({ t, lang, setLang }),
+    [t, lang, setLang],
+  );
+
   return (
-    <I18nContext.Provider value={{ t, lang, setLang }}>
+    <I18nContext.Provider value={contextValue}>
       {children}
     </I18nContext.Provider>
   );

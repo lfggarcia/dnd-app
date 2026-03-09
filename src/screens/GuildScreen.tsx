@@ -1,169 +1,123 @@
 import React, { useMemo, memo, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Image,
+  Dimensions,
+} from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
-import { EXPRESSION_PRESETS } from '../services/geminiImageService';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
-import type { CharacterSave, Stats } from '../database/gameRepository';
+import type { CharacterSave } from '../database/gameRepository';
 import type { ScreenProps } from '../navigation/types';
 
-// ─── Expression labels ────────────────────────────────────
+// ─── Dimensions ───────────────────────────────────────────
 
-const EXPRESSION_KEYS = Object.keys(EXPRESSION_PRESETS) as string[];
+const SCREEN_W = Dimensions.get('window').width;
+const CELL_W = (SCREEN_W - 2) / 2;   // 2 columns with 2px gap
+const CELL_H = Math.round(CELL_W * 1.4);
+const GAP = 2;
 
-const EXPR_LABEL: Record<string, { es: string; en: string }> = {
-  neutral:   { es: 'Neutral',   en: 'Neutral'   },
-  happy:     { es: 'Contento',  en: 'Happy'     },
-  angry:     { es: 'Ira',       en: 'Angry'     },
-  sad:       { es: 'Triste',    en: 'Sad'       },
-  surprised: { es: 'Sorpresa',  en: 'Surprised' },
-  wounded:   { es: 'Herido',    en: 'Wounded'   },
-};
+// ─── Party Collage Cell ───────────────────────────────────
 
-// ─── Stat modifier helper ─────────────────────────────────
-
-function statMod(val: number): string {
-  const mod = Math.floor((val - 10) / 2);
-  return mod >= 0 ? `+${mod}` : `${mod}`;
-}
-
-const STAT_KEYS: (keyof Stats)[] = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
-
-const STAT_LABELS_ES: Record<keyof Stats, string> = {
-  STR: 'FUE', DEX: 'DES', CON: 'CON', INT: 'INT', WIS: 'SAB', CHA: 'CAR',
-};
-
-// ─── Character Card ───────────────────────────────────────
-
-type CardProps = {
+type CellProps = {
   char: CharacterSave;
-  lang: string;
-  charIndex: number;
-  expressions: Record<string, string> | null;
-  selectedExpression: string;
-  onExpressionChange: (idx: number, key: string) => void;
-  onExpandPortrait: (uri: string) => void;
+  portraitUri: string | null;
+  onPress: () => void;
+  onLongPress: () => void;
 };
 
-const CharacterCard = memo(({
-  char, lang, charIndex, expressions, selectedExpression, onExpressionChange, onExpandPortrait,
-}: CardProps) => {
+const CollageCell = memo(({ char, portraitUri, onPress, onLongPress }: CellProps) => {
   const hpPct = char.maxHp > 0 ? char.hp / char.maxHp : 0;
   const hpColor = !char.alive
-    ? 'rgba(255,62,62,0.8)'
+    ? '#FF3E3E'
     : hpPct > 0.5
-      ? 'rgba(0,255,65,0.8)'
+      ? '#00FF41'
       : hpPct > 0.25
-        ? 'rgba(255,176,0,0.8)'
-        : 'rgba(255,62,62,0.8)';
-
-  const statusLabel = !char.alive
-    ? (lang === 'es' ? 'MUERTO' : 'DEAD')
-    : hpPct < 1
-      ? (lang === 'es' ? 'HERIDO' : 'WOUNDED')
-      : (lang === 'es' ? 'ACTIVO' : 'ACTIVE');
-
-  // Resolve active portrait: expression variant → base portrait → null
-  const activePortraitUri = (expressions?.[selectedExpression]) ?? char.portrait ?? null;
-  const hasExpressions = expressions !== null && Object.keys(expressions).length > 0;
+        ? '#FFB000'
+        : '#FF3E3E';
 
   return (
-    <View style={S.card}>
-      {/* Portrait + identity row */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
-        {/* Tappable portrait */}
-        <TouchableOpacity
-          onPress={() => { if (activePortraitUri) onExpandPortrait(activePortraitUri); }}
-          activeOpacity={activePortraitUri ? 0.8 : 1}
-        >
-          {activePortraitUri ? (
-            <View>
-              <Image source={{ uri: activePortraitUri }} style={S.charPortrait} resizeMode="cover" />
-              <View style={S.expandHint}>
-                <Text style={S.expandHintText}>⤢</Text>
-              </View>
-            </View>
-          ) : (
-            <View style={S.charPortraitPlaceholder}>
-              <Text style={S.charPortraitInit}>{char.name.charAt(0).toUpperCase()}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <View style={{ flex: 1, marginLeft: 8 }}>
-          {/* Header */}
-          <View style={S.cardHeader}>
-            <Text style={S.charName}>{char.name}</Text>
-            <Text style={[S.statusBadge, { color: hpColor, borderColor: hpColor }]}>
-              {statusLabel}
-            </Text>
-          </View>
-          {/* Class / Race / Background */}
-          <View style={S.infoRow}>
-            <Text style={S.infoLabel}>
-              {char.race} · {char.charClass}
-              {char.subclass ? ` (${char.subclass})` : ''}
-            </Text>
-          </View>
-          <Text style={S.bgLabel}>{char.background} · {char.alignment}</Text>
-
-          {/* HP Bar */}
-          <View style={S.hpContainer}>
-            <Text style={[S.hpText, { color: hpColor }]}>
-              HP: {char.hp}/{char.maxHp}
-            </Text>
-            <View style={S.hpBarBg}>
-              <View style={[S.hpBarFill, { width: `${Math.round(hpPct * 100)}%`, backgroundColor: hpColor }]} />
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* Expression selector — only shown when expressions exist */}
-      {hasExpressions && (
-        <View style={S.exprSection}>
-          <Text style={S.exprSectionLabel}>
-            {lang === 'es' ? 'EXPRESIONES' : 'EXPRESSIONS'}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={S.exprRow}>
-            {EXPRESSION_KEYS.map(key => {
-              const isActive = selectedExpression === key;
-              const hasVariant = !!expressions?.[key];
-              const label = EXPR_LABEL[key]?.[lang === 'es' ? 'es' : 'en'] ?? key;
-              return (
-                <TouchableOpacity
-                  key={key}
-                  onPress={() => onExpressionChange(charIndex, key)}
-                  style={[
-                    S.exprPill,
-                    isActive && S.exprPillActive,
-                    !hasVariant && S.exprPillDisabled,
-                  ]}
-                  disabled={!hasVariant}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[S.exprPillText, isActive && S.exprPillTextActive]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+    <TouchableOpacity
+      style={[S.cell, { width: CELL_W, height: CELL_H }]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.85}
+    >
+      {/* Portrait */}
+      {portraitUri ? (
+        <Image source={{ uri: portraitUri }} style={S.cellImage} resizeMode="cover" />
+      ) : (
+        <View style={S.cellPlaceholder}>
+          <Text style={S.cellPlaceholderText}>{char.name.charAt(0).toUpperCase()}</Text>
         </View>
       )}
 
-      {/* Stats Grid */}
-      <View style={S.statsGrid}>
-        {STAT_KEYS.map(key => (
-          <View key={key} style={S.statCell}>
-            <Text style={S.statLabel}>{lang === 'es' ? STAT_LABELS_ES[key] : key}</Text>
-            <Text style={S.statValue}>{char.baseStats[key]}</Text>
-            <Text style={S.statMod}>{statMod(char.baseStats[key])}</Text>
-          </View>
-        ))}
+      {/* Dead overlay */}
+      {!char.alive && <View style={S.deadOverlay} />}
+
+      {/* Bottom info band */}
+      <View style={S.cellInfoBand}>
+        <View style={S.cellInfoRow}>
+          <Text style={S.cellName} numberOfLines={1}>{char.name}</Text>
+          <View style={[S.statusDot, { backgroundColor: hpColor }]} />
+        </View>
+        <Text style={S.cellSub} numberOfLines={1}>
+          {char.race} · {char.charClass}
+        </Text>
+        {/* HP bar */}
+        <View style={S.cellHpBg}>
+          <View style={[S.cellHpFill, {
+            width: `${Math.round(hpPct * 100)}%`,
+            backgroundColor: hpColor,
+          }]} />
+        </View>
       </View>
+
+      {/* Tap cue */}
+      <View style={S.tapHint}>
+        <Text style={S.tapHintText}>[ → ]</Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+// ─── Party Collage Grid ───────────────────────────────────
+
+type CollageProps = {
+  party: CharacterSave[];
+  expressionsJson: Record<number, Record<string, string>>;
+  onCharPress: (idx: number) => void;
+  onCharLongPress: (uri: string) => void;
+};
+
+const PartyCollage = memo(({ party, expressionsJson, onCharPress, onCharLongPress }: CollageProps) => {
+  if (party.length === 0) return null;
+
+  return (
+    <View style={S.collageGrid}>
+      {party.map((char, i) => {
+        const expressions = expressionsJson[i] ?? null;
+        const portraitUri = expressions?.['neutral'] ?? char.portrait ?? null;
+        return (
+          <CollageCell
+            key={`${char.name}-${i}`}
+            char={char}
+            portraitUri={portraitUri}
+            onPress={() => onCharPress(i)}
+            onLongPress={() => { if (portraitUri) onCharLongPress(portraitUri); }}
+          />
+        );
+      })}
+      {/* Filler cell if odd number so grid stays even */}
+      {party.length % 2 !== 0 && (
+        <View style={[S.cell, S.cellFiller, { width: CELL_W, height: CELL_H }]} />
+      )}
     </View>
   );
 });
@@ -178,22 +132,17 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
   const aliveCount = useMemo(() => party.filter(c => c.alive).length, [party]);
   const expressionsJson = activeGame?.expressionsJson ?? {};
 
-  // Per-character selected expression (defaults to 'neutral')
-  const [selectedExpressions, setSelectedExpressions] = useState<Record<number, string>>({});
-  // Fullscreen portrait modal
   const [modalUri, setModalUri] = useState<string | null>(null);
 
-  const handleExpressionChange = useCallback((idx: number, key: string) => {
-    setSelectedExpressions(prev => ({ ...prev, [idx]: key }));
-  }, []);
+  const handleCharPress = useCallback((idx: number) => {
+    navigation.navigate('CharacterDetail', { charIndex: idx });
+  }, [navigation]);
 
-  const handleExpandPortrait = useCallback((uri: string) => {
+  const handleCharLongPress = useCallback((uri: string) => {
     setModalUri(uri);
   }, []);
 
-  const handlePortraitClose = useCallback(() => {
-    setModalUri(null);
-  }, []);
+  const handlePortraitClose = useCallback(() => setModalUri(null), []);
 
   return (
     <View className="flex-1 bg-background">
@@ -208,85 +157,104 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 80 }} showsVerticalScrollIndicator={false}>
-        {/* Guild description */}
-        <View style={S.descBox}>
-          <Text style={S.descText}>{t('guild.description')}</Text>
-        </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Party Collage ── */}
+        {party.length > 0 ? (
+          <View style={S.collageSection}>
+            {/* Section header row */}
+            <View style={S.collageTitleRow}>
+              <View>
+                <Text style={S.collageTitle}>{t('guild.partyRoster').toUpperCase()}</Text>
+                <Text style={S.collageSub}>
+                  {aliveCount}/{party.length} {t('common.active').toLowerCase()}
+                  {'  ·  '}{lang === 'es' ? 'Toca para ver ficha' : 'Tap for character sheet'}
+                </Text>
+              </View>
+              {/* Decorative bracket */}
+              <Text style={S.collageDecor}>[{aliveCount}]</Text>
+            </View>
 
-        {/* Party Overview */}
-        <View style={S.sectionHeader}>
-          <Text style={S.sectionTitle}>{t('guild.partyRoster')}</Text>
-          <Text style={S.memberCount}>
-            {aliveCount}/{party.length} {t('common.active').toLowerCase()}
-          </Text>
-        </View>
+            <PartyCollage
+              party={party}
+              expressionsJson={expressionsJson}
+              onCharPress={handleCharPress}
+              onCharLongPress={handleCharLongPress}
+            />
 
-        {party.length === 0 ? (
-          <View style={S.emptyBox}>
-            <Text style={S.emptyText}>{t('guild.noParty')}</Text>
+            {/* Party metadata strip */}
+            <View style={S.partyMetaStrip}>
+              <Text style={S.partyMetaText}>
+                {lang === 'es' ? 'GRUPO ACTIVO — CAMPAÑA EN CURSO' : 'ACTIVE PARTY — CAMPAIGN IN PROGRESS'}
+              </Text>
+            </View>
           </View>
         ) : (
-          party.map((char, i) => (
-            <CharacterCard
-              key={`${char.name}-${i}`}
-              char={char}
-              lang={lang}
-              charIndex={i}
-              expressions={expressionsJson[i] ?? null}
-              selectedExpression={selectedExpressions[i] ?? 'neutral'}
-              onExpressionChange={handleExpressionChange}
-              onExpandPortrait={handleExpandPortrait}
-            />
-          ))
+          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+            <View style={S.emptyBox}>
+              <Text style={S.emptyText}>{t('guild.noParty')}</Text>
+            </View>
+          </View>
         )}
 
-        {/* Guild Options */}
-        <Text style={[S.sectionTitle, { marginTop: 24, marginBottom: 12 }]}>
-          {t('guild.options')}
-        </Text>
-
-        <TouchableOpacity style={S.optionBtn} activeOpacity={0.7}>
-          <Text style={S.optionIcon}>📊</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={S.optionTitle}>{t('village.viewRankings')}</Text>
-            <Text style={S.optionDesc}>{t('guild.rankingsDesc')}</Text>
+        {/* ── Guild description ── */}
+        <View style={S.contentPad}>
+          <View style={S.descBox}>
+            <Text style={S.descText}>{t('guild.description')}</Text>
           </View>
-          <Text style={S.optionArrow}>{'>'}</Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity style={S.optionBtn} activeOpacity={0.7}>
-          <Text style={S.optionIcon}>📋</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={S.optionTitle}>{t('village.bountyBoard')}</Text>
-            <Text style={S.optionDesc}>{t('guild.bountyDesc')}</Text>
+          {/* ── Guild Options ── */}
+          <Text style={S.sectionTitle}>{t('guild.options')}</Text>
+
+          <TouchableOpacity style={S.optionBtn} activeOpacity={0.7}>
+            <View style={S.optionIconBox}>
+              <Text style={S.optionIconText}>RNK</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={S.optionTitle}>{t('village.viewRankings')}</Text>
+              <Text style={S.optionDesc}>{t('guild.rankingsDesc')}</Text>
+            </View>
+            <Text style={S.optionArrow}>&gt;</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={S.optionBtn} activeOpacity={0.7}>
+            <View style={S.optionIconBox}>
+              <Text style={S.optionIconText}>MIS</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={S.optionTitle}>{t('village.bountyBoard')}</Text>
+              <Text style={S.optionDesc}>{t('guild.bountyDesc')}</Text>
+            </View>
+            <Text style={S.optionArrow}>&gt;</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={S.optionBtn}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('WorldLog')}
+          >
+            <View style={S.optionIconBox}>
+              <Text style={S.optionIconText}>LOG</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={S.optionTitle}>{t('village.viewWorldLog')}</Text>
+              <Text style={S.optionDesc}>{t('guild.worldLogDesc')}</Text>
+            </View>
+            <Text style={S.optionArrow}>&gt;</Text>
+          </TouchableOpacity>
+
+          {/* Level-up notice */}
+          <View style={S.noticeBox}>
+            <Text style={S.noticeTitle}>[!] {t('guild.levelUpNotice')}</Text>
+            <Text style={S.noticeText}>{t('guild.levelUpDesc')}</Text>
           </View>
-          <Text style={S.optionArrow}>{'>'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={S.optionBtn}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('WorldLog')}
-        >
-          <Text style={S.optionIcon}>📜</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={S.optionTitle}>{t('village.viewWorldLog')}</Text>
-            <Text style={S.optionDesc}>{t('guild.worldLogDesc')}</Text>
-          </View>
-          <Text style={S.optionArrow}>{'>'}</Text>
-        </TouchableOpacity>
-
-        {/* Level-up notice */}
-        <View style={S.noticeBox}>
-          <Text style={S.noticeTitle}>⚠ {t('guild.levelUpNotice')}</Text>
-          <Text style={S.noticeText}>{t('guild.levelUpDesc')}</Text>
         </View>
       </ScrollView>
 
       <GlossaryButton />
-
-      {/* Fullscreen portrait modal */}
       <PortraitDetailModal uri={modalUri} onClose={handlePortraitClose} />
     </View>
   );
@@ -306,20 +274,167 @@ const S = StyleSheet.create({
   },
   backBtn: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 10,
+    fontSize: 11,
     color: 'rgba(0,255,65,0.6)',
   },
   title: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 13,
+    fontSize: 14,
     color: '#00FF41',
     textAlign: 'center',
   },
+
+  // ── Collage section ──
+  collageSection: {
+    marginBottom: 4,
+  },
+  collageTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  collageTitle: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 13,
+    color: '#00FF41',
+    letterSpacing: 1,
+  },
+  collageSub: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 9,
+    color: 'rgba(0,255,65,0.35)',
+    marginTop: 2,
+  },
+  collageDecor: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 28,
+    color: 'rgba(0,255,65,0.12)',
+    lineHeight: 32,
+  },
+  collageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: GAP,
+    paddingHorizontal: 0,
+  },
+
+  // Cell
+  cell: {
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,255,65,0.04)',
+  },
+  cellFiller: {
+    backgroundColor: 'transparent',
+  },
+  cellImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  cellPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,255,65,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.1)',
+  },
+  cellPlaceholderText: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 40,
+    color: 'rgba(0,255,65,0.15)',
+  },
+  deadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  cellInfoBand: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(6,12,6,0.88)',
+    paddingHorizontal: 8,
+    paddingTop: 7,
+    paddingBottom: 5,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,255,65,0.18)',
+  },
+  cellInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  cellName: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 11,
+    color: '#00FF41',
+    flex: 1,
+    marginRight: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  cellSub: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 9,
+    color: 'rgba(255,176,0,0.65)',
+    marginBottom: 5,
+  },
+  cellHpBg: {
+    height: 3,
+    backgroundColor: 'rgba(0,255,65,0.1)',
+  },
+  cellHpFill: {
+    height: 3,
+  },
+  tapHint: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  tapHintText: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 7,
+    color: 'rgba(0,255,65,0.45)',
+  },
+  partyMetaStrip: {
+    backgroundColor: 'rgba(0,255,65,0.05)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,255,65,0.12)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  partyMetaText: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 8,
+    color: 'rgba(0,255,65,0.25)',
+    letterSpacing: 2,
+  },
+
+  // Content padding wrapper
+  contentPad: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+
+  // Guild description
   descBox: {
     borderWidth: 1,
     borderColor: 'rgba(0,255,65,0.15)',
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 20,
     backgroundColor: 'rgba(0,255,65,0.03)',
   },
   descText: {
@@ -328,22 +443,16 @@ const S = StyleSheet.create({
     color: 'rgba(0,255,65,0.5)',
     lineHeight: 16,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
+
+  // Section title
   sectionTitle: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 11,
+    fontSize: 13,
     color: '#00FF41',
+    marginBottom: 12,
   },
-  memberCount: {
-    fontFamily: 'RobotoMono-Regular',
-    fontSize: 9,
-    color: 'rgba(0,229,255,0.7)',
-  },
+
+  // Empty state
   emptyBox: {
     borderWidth: 1,
     borderColor: 'rgba(255,62,62,0.3)',
@@ -352,167 +461,8 @@ const S = StyleSheet.create({
   },
   emptyText: {
     fontFamily: 'RobotoMono-Regular',
-    fontSize: 10,
-    color: 'rgba(255,62,62,0.6)',
-  },
-
-  // Character portrait
-  charPortrait: {
-    width: 72,
-    height: 96,
-    borderWidth: 1,
-    borderColor: 'rgba(0,255,65,0.3)',
-  },
-  charPortraitPlaceholder: {
-    width: 72,
-    height: 96,
-    backgroundColor: 'rgba(0,255,65,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,255,65,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  charPortraitInit: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 22,
-    color: 'rgba(0,255,65,0.25)',
-  },
-  expandHint: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 3,
-    paddingVertical: 1,
-  },
-  expandHintText: {
-    fontSize: 9,
-    color: 'rgba(0,255,65,0.7)',
-  },
-
-  // Character Card
-  card: {
-    borderWidth: 1,
-    borderColor: 'rgba(0,255,65,0.25)',
-    backgroundColor: 'rgba(26,31,26,0.8)',
-    padding: 12,
-    marginBottom: 8,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  charName: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 12,
-    color: '#00FF41',
-  },
-  statusBadge: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 8,
-    borderWidth: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  infoLabel: {
-    fontFamily: 'RobotoMono-Regular',
-    fontSize: 9,
-    color: 'rgba(255,176,0,0.8)',
-  },
-  bgLabel: {
-    fontFamily: 'RobotoMono-Regular',
-    fontSize: 8,
-    color: 'rgba(0,229,255,0.5)',
-    marginBottom: 8,
-  },
-  hpContainer: {
-    marginBottom: 8,
-  },
-  hpText: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 9,
-    marginBottom: 3,
-  },
-  hpBarBg: {
-    height: 4,
-    backgroundColor: 'rgba(0,255,65,0.1)',
-  },
-  hpBarFill: {
-    height: 4,
-  },
-  // Expression selector
-  exprSection: {
-    marginBottom: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,255,65,0.1)',
-  },
-  exprSectionLabel: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 7,
-    color: 'rgba(0,229,255,0.5)',
-    letterSpacing: 2,
-    marginBottom: 6,
-  },
-  exprRow: {
-    flexDirection: 'row',
-  },
-  exprPill: {
-    borderWidth: 1,
-    borderColor: 'rgba(0,255,65,0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginRight: 4,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  exprPillActive: {
-    borderColor: 'rgba(0,229,255,0.8)',
-    backgroundColor: 'rgba(0,229,255,0.1)',
-  },
-  exprPillDisabled: {
-    borderColor: 'rgba(0,255,65,0.08)',
-    opacity: 0.4,
-  },
-  exprPillText: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 8,
-    color: 'rgba(0,255,65,0.5)',
-  },
-  exprPillTextActive: {
-    color: 'rgba(0,229,255,0.9)',
-  },
-
-  // Stats Grid
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statCell: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statLabel: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 7,
-    color: 'rgba(0,255,65,0.4)',
-    marginBottom: 2,
-  },
-  statValue: {
-    fontFamily: 'RobotoMono-Bold',
     fontSize: 11,
-    color: 'rgba(0,255,65,0.9)',
-  },
-  statMod: {
-    fontFamily: 'RobotoMono-Regular',
-    fontSize: 8,
-    color: 'rgba(255,176,0,0.6)',
+    color: 'rgba(255,62,62,0.6)',
   },
 
   // Options
@@ -521,77 +471,63 @@ const S = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0,255,65,0.2)',
-    padding: 12,
-    marginBottom: 6,
+    padding: 14,
+    marginBottom: 8,
     backgroundColor: 'rgba(26,31,26,0.5)',
   },
-  optionIcon: {
-    fontSize: 16,
-    marginRight: 10,
+  optionIconBox: {
+    width: 36,
+    height: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.3)',
+    backgroundColor: 'rgba(0,255,65,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  optionIconText: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 9,
+    color: 'rgba(0,255,65,0.7)',
+    letterSpacing: 1,
   },
   optionTitle: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 10,
+    fontSize: 12,
     color: '#00FF41',
   },
   optionDesc: {
     fontFamily: 'RobotoMono-Regular',
-    fontSize: 8,
+    fontSize: 10,
     color: 'rgba(0,255,65,0.4)',
     marginTop: 2,
   },
   optionArrow: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 12,
+    fontSize: 13,
     color: 'rgba(0,255,65,0.3)',
     marginLeft: 8,
-  },
-
-  // Party Portrait
-  portraitContainer: {
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,255,65,0.3)',
-    overflow: 'hidden',
-  },
-  portraitImage: {
-    width: '100%',
-    height: 200,
-  },
-  portraitOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(10,14,10,0.7)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  portraitLabel: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 8,
-    color: 'rgba(0,255,65,0.8)',
-    letterSpacing: 2,
   },
 
   // Notice
   noticeBox: {
     borderWidth: 1,
     borderColor: 'rgba(255,176,0,0.3)',
+    borderLeftWidth: 3,
     backgroundColor: 'rgba(255,176,0,0.05)',
     padding: 12,
     marginTop: 16,
   },
   noticeTitle: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 10,
+    fontSize: 11,
     color: 'rgba(255,176,0,0.9)',
     marginBottom: 4,
   },
   noticeText: {
     fontFamily: 'RobotoMono-Regular',
-    fontSize: 9,
+    fontSize: 10,
     color: 'rgba(255,176,0,0.5)',
-    lineHeight: 14,
+    lineHeight: 16,
   },
 });

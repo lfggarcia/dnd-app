@@ -62,7 +62,6 @@ function makePRNG(seed: string) {
     next(min = 0, max = 1): number {
       s = (Math.imul(1664525, s) + 1013904223) >>> 0;
       const f = s / 0x100000000;
-      if (min === 0 && max === 1) return f;
       return Math.floor(min + f * (max - min + 1));
     },
   };
@@ -341,4 +340,481 @@ export function resolveCombat(
   }));
 
   return { outcome, roundsElapsed: round, partyAfter, enemiesDefeated: defeatedEnemies, totalXp, goldEarned, damageDone, log };
+}
+
+// ─── Interactive Combat — Types ───────────────────────────────────────────────
+
+export type ClassAbility = {
+  name: string;
+  description: string;
+  /** Who the player picks as the ability target */
+  targetType: 'enemy' | 'ally' | 'self' | 'none';
+};
+
+export const CLASS_ABILITIES: Record<string, ClassAbility> = {
+  barbarian: { name: 'FURIA',            description: '+4 DMG todo combate',  targetType: 'none'  },
+  fighter:   { name: 'SEGUNDO_ALIENTO',  description: 'Curar 1d10+2',         targetType: 'self'  },
+  paladin:   { name: 'GOLPE_DIVINO',     description: '+2d8 al enemigo',       targetType: 'enemy' },
+  ranger:    { name: 'MARCA_CAZADOR',    description: '+1d6 al enemigo',       targetType: 'enemy' },
+  rogue:     { name: 'ATAQUE_FURTIVO',   description: '+3d6 al enemigo',       targetType: 'enemy' },
+  wizard:    { name: 'MISIL_MAGICO',     description: '3x(1d4+1) sin falla',   targetType: 'enemy' },
+  cleric:    { name: 'PALABRA_CURATIVA', description: 'Curar 1d4+SAB aliado',  targetType: 'ally'  },
+  druid:     { name: 'ENREDAR',          description: 'Saltar turno enemigo',  targetType: 'enemy' },
+  monk:      { name: 'LLUVIA_GOLPES',    description: '2 golpes 1d4+FUE',      targetType: 'enemy' },
+  bard:      { name: 'INSPIRAR',         description: '+1d6 proximo ataque',   targetType: 'ally'  },
+  sorcerer:  { name: 'ORBE_CROMATICO',   description: '3d8 fuerza a enemigo',  targetType: 'enemy' },
+  warlock:   { name: 'EXPLOSION_OSCURA', description: '1d10 poder oscuro',     targetType: 'enemy' },
+};
+
+export type LivePartyMember = {
+  name: string;
+  charClass: string;
+  baseStats: CharacterSave['baseStats'];
+  maxHp: number;
+  hpBefore: number;
+  currentHp: number;
+  abilityUsed: boolean;
+  rageActive: boolean;
+  /** Bonus die sides for next attack roll (bard INSPIRE) */
+  inspiredBonus: number;
+};
+
+export type LiveEnemy = MonsterStats & {
+  instanceId: number;
+  currentHp: number;
+  defeated: boolean;
+  skipsNextTurn: boolean;
+};
+
+export type TurnActor =
+  | { type: 'party'; idx: number; initiative: number }
+  | { type: 'enemy'; idx: number; initiative: number };
+
+export type LiveCombatState = {
+  round: number;
+  turnOrder: TurnActor[];
+  currentTurnIdx: number;
+  partyState: LivePartyMember[];
+  enemyState: LiveEnemy[];
+  log: string[];
+  outcome: 'VICTORY' | 'DEFEAT' | null;
+  damageDone: Record<string, number>;
+};
+
+// ─── Interactive Combat — Engine ──────────────────────────────────────────────
+
+type RNG = ReturnType<typeof makePRNG>;
+
+export function createCombatRNG(seed: string): RNG {
+  return makePRNG(seed);
+}
+
+export function initCombat(
+  party: CharacterSave[],
+  enemies: MonsterStats[],
+  rng: RNG,
+): LiveCombatState {
+  const partyState: LivePartyMember[] = party
+    .filter(c => c.alive)
+    .map(c => ({
+      name: c.name,
+      charClass: c.charClass,
+      baseStats: c.baseStats,
+      maxHp: c.maxHp,
+      hpBefore: c.hp,
+      currentHp: c.hp,
+      abilityUsed: false,
+      rageActive: false,
+      inspiredBonus: 0,
+    }));
+
+  const enemyState: LiveEnemy[] = enemies.map((e, i) => ({
+    ...e,
+    instanceId: i,
+    currentHp: e.hp,
+    defeated: false,
+    skipsNextTurn: false,
+  }));
+
+  const log: string[] = ['INICIATIVA:'];
+  const turnOrder: TurnActor[] = [
+    ...partyState.map((c, i) => {
+      const roll = Math.floor((c.baseStats.DEX - 10) / 2) + rng.next(1, 20);
+      log.push(`  ${c.name.toUpperCase()} (${roll})`);
+      return { type: 'party' as const, idx: i, initiative: roll };
+    }),
+    ...enemyState.map((e, i) => {
+      const roll = rng.next(1, 20);
+      log.push(`  ${e.displayName.toUpperCase().replace(/ /g, '_')} (${roll})`);
+      return { type: 'enemy' as const, idx: i, initiative: roll };
+    }),
+  ];
+  turnOrder.sort((a, b) => b.initiative - a.initiative);
+
+  return {
+    round: 1,
+    turnOrder,
+    currentTurnIdx: 0,
+    partyState,
+    enemyState,
+    log,
+    outcome: null,
+    damageDone: {},
+  };
+}
+
+export function checkCombatOutcome(state: LiveCombatState): 'VICTORY' | 'DEFEAT' | null {
+  if (state.partyState.every(c => c.currentHp <= 0)) return 'DEFEAT';
+  if (state.enemyState.every(e => e.defeated)) return 'VICTORY';
+  return null;
+}
+
+/** Advance to the next alive actor in turn order. Increments round on wrap. */
+export function advanceTurnLive(state: LiveCombatState): LiveCombatState {
+  const len = state.turnOrder.length;
+  const log = [...state.log];
+  let newRound = state.round;
+  let wrappedOnce = false;
+
+  for (let i = 1; i <= len; i++) {
+    const raw = state.currentTurnIdx + i;
+    if (raw >= len && !wrappedOnce) {
+      wrappedOnce = true;
+      newRound += 1;
+      log.push(`\u2500\u2500 ROUND ${newRound} \u2500\u2500`);
+    }
+    const nextIdx = raw % len;
+    const actor = state.turnOrder[nextIdx];
+    const isAlive =
+      actor.type === 'party'
+        ? state.partyState[actor.idx].currentHp > 0
+        : !state.enemyState[actor.idx].defeated;
+    if (isAlive) {
+      return { ...state, currentTurnIdx: nextIdx, round: newRound, log };
+    }
+  }
+  return state;
+}
+
+/** Find the next UI phase without mutating state (pure). Skips dead/defeated actors. */
+export function findNextLiveTurn(
+  state: LiveCombatState,
+): { state: LiveCombatState; phase: 'PLAYER_ACTION' | 'ENEMY_AUTO' } {
+  let s = state;
+  for (let safety = 0; safety < s.turnOrder.length * 2 + 2; safety++) {
+    const actor = s.turnOrder[s.currentTurnIdx];
+    if (!actor) break;
+    if (actor.type === 'party') {
+      const member = s.partyState[actor.idx];
+      if (member.currentHp > 0) return { state: s, phase: 'PLAYER_ACTION' };
+    } else {
+      const enemy = s.enemyState[actor.idx];
+      if (!enemy.defeated) return { state: s, phase: 'ENEMY_AUTO' };
+    }
+    s = advanceTurnLive(s);
+  }
+  // Fallback — should not happen if outcome is checked first
+  return { state: s, phase: 'PLAYER_ACTION' };
+}
+
+export function resolvePlayerAttack(
+  state: LiveCombatState,
+  actorPartyIdx: number,
+  targetEnemyIdx: number,
+  rng: RNG,
+): LiveCombatState {
+  const attacker = state.partyState[actorPartyIdx];
+  if (!attacker || attacker.currentHp <= 0) return state;
+  const enemyState = state.enemyState.map(e => ({ ...e }));
+  const tgt = enemyState[targetEnemyIdx];
+  if (!tgt || tgt.defeated) return state;
+
+  // Determine attack stat by class
+  const atkStatKey = (() => {
+    const cl = attacker.charClass.toLowerCase();
+    if (['wizard', 'sorcerer', 'warlock', 'bard'].includes(cl)) return 'INT' as const;
+    if (['cleric', 'druid', 'ranger'].includes(cl)) return 'WIS' as const;
+    if (['rogue', 'monk'].includes(cl)) return 'DEX' as const;
+    return 'STR' as const;
+  })();
+  const atkMod = Math.floor((attacker.baseStats[atkStatKey] - 10) / 2);
+  const inspireBon = attacker.inspiredBonus > 0 ? rng.next(1, attacker.inspiredBonus) : 0;
+  const d20 = rng.next(1, 20);
+  const roll = d20 + atkMod + 2 /* PROF */ + inspireBon;
+  const isCrit = d20 === 20;
+  const isFumble = d20 === 1;
+  const targetLabel = tgt.displayName.toUpperCase().replace(/ /g, '_');
+  const log = [...state.log];
+  const damageDone = { ...state.damageDone };
+
+  const partyState = state.partyState.map((p, i) =>
+    i === actorPartyIdx ? { ...p, inspiredBonus: 0 } : p,
+  );
+
+  const CLASS_WEAPON_DICE_LOCAL: Record<string, string> = {
+    barbarian: '1d12', fighter: '1d8', paladin: '1d6', ranger: '1d8',
+    rogue: '1d6', wizard: '1d6', cleric: '1d6', druid: '1d4',
+    monk: '1d6', bard: '1d6', sorcerer: '1d8', warlock: '1d10',
+  };
+
+  function rollDiceLocal(notation: string): number {
+    const m = notation.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+    if (!m) return 1;
+    const count = parseInt(m[1], 10);
+    const sides = parseInt(m[2], 10);
+    const bonus = m[3] ? parseInt(m[3], 10) : 0;
+    let total = bonus;
+    for (let i = 0; i < count; i++) total += rng.next(1, sides);
+    return Math.max(1, total);
+  }
+
+  if (isFumble) {
+    log.push(`  ${attacker.name.toUpperCase()} \u25b6 ${targetLabel} \u2014 FALLO (nat 1)`);
+  } else if (isCrit || roll >= tgt.ac) {
+    const weaponDice = CLASS_WEAPON_DICE_LOCAL[attacker.charClass.toLowerCase()] ?? '1d6';
+    const baseDmg = rollDiceLocal(weaponDice);
+    const rageBon = attacker.rageActive ? 4 : 0;
+    const dmg = Math.max(1, baseDmg + atkMod + rageBon + (isCrit ? baseDmg : 0));
+    tgt.currentHp = Math.max(0, tgt.currentHp - dmg);
+    damageDone[attacker.name] = (damageDone[attacker.name] ?? 0) + dmg;
+    const hitTag = isCrit ? 'CRIT!' : 'HIT';
+    log.push(`  ${attacker.name.toUpperCase()} \u25b6 ${targetLabel} [${hitTag}] \u2212${dmg} HP`);
+    if (tgt.currentHp <= 0) {
+      tgt.defeated = true;
+      log.push(`  \u2713 ${targetLabel} DERROTADO`);
+    }
+  } else {
+    log.push(`  ${attacker.name.toUpperCase()} \u25b6 ${targetLabel} \u2014 FALLO (${roll} vs CA ${tgt.ac})`);
+  }
+
+  return { ...state, partyState, enemyState, log, damageDone };
+}
+
+export function resolvePlayerAbility(
+  state: LiveCombatState,
+  actorPartyIdx: number,
+  targetIdx: number,
+  rng: RNG,
+): LiveCombatState {
+  const partyState = state.partyState.map(p => ({ ...p }));
+  const enemyState = state.enemyState.map(e => ({ ...e }));
+  const attacker = partyState[actorPartyIdx];
+  if (!attacker || attacker.abilityUsed) return state;
+
+  const charClass = attacker.charClass.toLowerCase();
+  const log = [...state.log];
+  const damageDone = { ...state.damageDone };
+
+  attacker.abilityUsed = true;
+
+  function rollDiceLocal(notation: string): number {
+    const m = notation.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+    if (!m) return 1;
+    const count = parseInt(m[1], 10);
+    const sides = parseInt(m[2], 10);
+    const bonus = m[3] ? parseInt(m[3], 10) : 0;
+    let total = bonus;
+    for (let i = 0; i < count; i++) total += rng.next(1, sides);
+    return Math.max(1, total);
+  }
+
+  function dealDmgToEnemy(dice: string, label: string, idx: number) {
+    const tgt = enemyState[idx];
+    if (!tgt || tgt.defeated) return;
+    const dmg = rollDiceLocal(dice);
+    tgt.currentHp = Math.max(0, tgt.currentHp - dmg);
+    damageDone[attacker.name] = (damageDone[attacker.name] ?? 0) + dmg;
+    log.push(`  ${attacker.name.toUpperCase()} ${label} \u25b6 ${tgt.displayName.toUpperCase().replace(/ /g, '_')} \u2212${dmg} HP`);
+    if (tgt.currentHp <= 0) { tgt.defeated = true; log.push(`  \u2713 ${tgt.displayName.toUpperCase().replace(/ /g, '_')} DERROTADO`); }
+  }
+
+  switch (charClass) {
+    case 'barbarian':
+      attacker.rageActive = true;
+      log.push(`  ${attacker.name.toUpperCase()} ENTRA EN FURIA (+4 DMG)`);
+      break;
+    case 'fighter': {
+      const heal = rollDiceLocal('1d10') + 2;
+      attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + heal);
+      log.push(`  ${attacker.name.toUpperCase()} SEGUNDO_ALIENTO +${heal} HP`);
+      break;
+    }
+    case 'paladin':
+      dealDmgToEnemy('2d8', 'GOLPE_DIVINO', targetIdx);
+      break;
+    case 'ranger':
+      dealDmgToEnemy('1d6', 'MARCA_CAZADOR', targetIdx);
+      break;
+    case 'rogue':
+      dealDmgToEnemy('3d6', 'ATAQUE_FURTIVO', targetIdx);
+      break;
+    case 'wizard': {
+      const d1 = rollDiceLocal('1d4') + 1;
+      const d2 = rollDiceLocal('1d4') + 1;
+      const d3 = rollDiceLocal('1d4') + 1;
+      const totalDmg = d1 + d2 + d3;
+      const tgt = enemyState[targetIdx];
+      if (tgt && !tgt.defeated) {
+        tgt.currentHp = Math.max(0, tgt.currentHp - totalDmg);
+        damageDone[attacker.name] = (damageDone[attacker.name] ?? 0) + totalDmg;
+        log.push(`  ${attacker.name.toUpperCase()} MISIL_MAGICO \u25b6 ${tgt.displayName.toUpperCase().replace(/ /g, '_')} \u2212${totalDmg} HP (sin falla)`);
+        if (tgt.currentHp <= 0) { tgt.defeated = true; log.push(`  \u2713 ${tgt.displayName.toUpperCase().replace(/ /g, '_')} DERROTADO`); }
+      }
+      break;
+    }
+    case 'cleric': {
+      const ally = partyState[targetIdx] ?? attacker;
+      const wisMod = Math.floor((attacker.baseStats.WIS - 10) / 2);
+      const heal = rollDiceLocal('1d4') + Math.max(0, wisMod);
+      ally.currentHp = Math.min(ally.maxHp, ally.currentHp + heal);
+      log.push(`  ${attacker.name.toUpperCase()} PALABRA_CURATIVA \u25b6 ${ally.name.toUpperCase()} +${heal} HP`);
+      break;
+    }
+    case 'druid': {
+      const tgt = enemyState[targetIdx];
+      if (tgt && !tgt.defeated) {
+        tgt.skipsNextTurn = true;
+        log.push(`  ${attacker.name.toUpperCase()} ENREDAR \u25b6 ${tgt.displayName.toUpperCase().replace(/ /g, '_')} INMOVILIZADO`);
+      }
+      break;
+    }
+    case 'monk': {
+      const tgt = enemyState[targetIdx];
+      if (tgt && !tgt.defeated) {
+        let total = 0;
+        const strMod = Math.floor((attacker.baseStats.STR - 10) / 2);
+        for (let k = 0; k < 2; k++) {
+          const dmg = Math.max(1, rollDiceLocal('1d4') + strMod);
+          total += dmg;
+          tgt.currentHp = Math.max(0, tgt.currentHp - dmg);
+        }
+        damageDone[attacker.name] = (damageDone[attacker.name] ?? 0) + total;
+        log.push(`  ${attacker.name.toUpperCase()} LLUVIA_DE_GOLPES \u25b6 ${tgt.displayName.toUpperCase().replace(/ /g, '_')} \u2212${total} HP`);
+        if (tgt.currentHp <= 0) { tgt.defeated = true; log.push(`  \u2713 ${tgt.displayName.toUpperCase().replace(/ /g, '_')} DERROTADO`); }
+      }
+      break;
+    }
+    case 'bard': {
+      const ally = partyState[targetIdx] ?? attacker;
+      ally.inspiredBonus = 6;
+      log.push(`  ${attacker.name.toUpperCase()} INSPIRAR \u25b6 ${ally.name.toUpperCase()} +1d6 proximo atq`);
+      break;
+    }
+    case 'sorcerer':
+      dealDmgToEnemy('3d8', 'ORBE_CROMATICO', targetIdx);
+      break;
+    case 'warlock':
+      dealDmgToEnemy('1d10', 'EXPLOSION_OSCURA', targetIdx);
+      break;
+    default:
+      break;
+  }
+
+  return { ...state, partyState, enemyState, log, damageDone };
+}
+
+export function resolveEnemyTurn(
+  state: LiveCombatState,
+  actorEnemyIdx: number,
+  rng: RNG,
+): LiveCombatState {
+  const attacker = state.enemyState[actorEnemyIdx];
+  if (!attacker || attacker.defeated) return state;
+
+  const partyState = state.partyState.map(p => ({ ...p }));
+  const enemyState = state.enemyState.map(e => ({ ...e }));
+  const log = [...state.log];
+  const atkLabel = attacker.displayName.toUpperCase().replace(/ /g, '_');
+
+  // Handle stun (druid ENTANGLE)
+  if (enemyState[actorEnemyIdx].skipsNextTurn) {
+    enemyState[actorEnemyIdx].skipsNextTurn = false;
+    log.push(`  ${atkLabel} INMOVILIZADO \u2014 pierde turno`);
+    return { ...state, partyState, enemyState, log };
+  }
+
+  const aliveTargets = partyState.filter(c => c.currentHp > 0);
+  if (aliveTargets.length === 0) return state;
+
+  const targetMember = aliveTargets[rng.next(0, aliveTargets.length - 1)];
+  const targetInParty = partyState.findIndex(p => p.name === targetMember.name);
+  const target = partyState[targetInParty];
+
+  function rollDiceLocal(notation: string): number {
+    const m = notation.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+    if (!m) return 1;
+    const count = parseInt(m[1], 10);
+    const sides = parseInt(m[2], 10);
+    const bonus = m[3] ? parseInt(m[3], 10) : 0;
+    let total = bonus;
+    for (let i = 0; i < count; i++) total += rng.next(1, sides);
+    return Math.max(1, total);
+  }
+
+  const targetAC = 10 + Math.floor((target.baseStats.DEX - 10) / 2);
+  const d20 = rng.next(1, 20);
+  const roll = d20 + attacker.attackBonus;
+  const isCrit = d20 === 20;
+  const isFumble = d20 === 1;
+
+  if (isFumble) {
+    log.push(`  ${atkLabel} \u25b6 ${target.name.toUpperCase()} \u2014 FALLO (nat 1)`);
+  } else if (isCrit || roll >= targetAC) {
+    const baseDmg = rollDiceLocal(attacker.damage);
+    const dmg = Math.max(1, isCrit ? baseDmg * 2 : baseDmg);
+    target.currentHp = Math.max(0, target.currentHp - dmg);
+    const hitTag = isCrit ? 'CRIT!' : 'HIT';
+    log.push(`  ${atkLabel} \u25b6 ${target.name.toUpperCase()} [${hitTag}] \u2212${dmg} HP`);
+    if (target.currentHp <= 0) {
+      log.push(`  \u2717 ${target.name.toUpperCase()} CA\u00cdDO`);
+    }
+  } else {
+    log.push(`  ${atkLabel} \u25b6 ${target.name.toUpperCase()} \u2014 FALLO (${roll} vs CA ${targetAC})`);
+  }
+
+  return { ...state, partyState, enemyState, log };
+}
+
+export function buildCombatResultFromLive(
+  state: LiveCombatState,
+  killRecords: KillRecord[],
+  rng: RNG,
+): CombatResult {
+  const LOOT: string[] = [
+    'GOLD_COINS x5', 'IRON_DAGGER', 'HEALTH_POTION',
+    'SHADOW_ESSENCE x2', 'TORCH x3', 'OLD_MAP',
+    'BONE_FRAGMENT', 'TATTERED_SCROLL',
+  ];
+
+  const defeatedEnemies: CombatEnemy[] = state.enemyState
+    .filter(e => e.defeated)
+    .map(e => {
+      const prevKills = killRecords.find(k => k.monsterType === e.name)?.killCount ?? 0;
+      const xpEarned = calculateXP(e, prevKills);
+      const lootRoll = rng.next(0, 2);
+      const loot = lootRoll > 0 ? LOOT[rng.next(0, LOOT.length - 1)] : null;
+      return { name: e.displayName.toUpperCase().replace(/ /g, '_'), xpEarned, loot };
+    });
+
+  const totalXp = defeatedEnemies.reduce((s, e) => s + e.xpEarned, 0);
+  const goldEarned = Math.round(totalXp * 0.15) + rng.next(5, 25);
+
+  const partyAfter: CombatPartyMember[] = state.partyState.map(c => ({
+    name: c.name,
+    charClass: c.charClass,
+    hpBefore: c.hpBefore,
+    hpAfter: Math.max(0, c.currentHp),
+    alive: c.currentHp > 0,
+  }));
+
+  return {
+    outcome: state.outcome ?? 'DEFEAT',
+    roundsElapsed: state.round,
+    partyAfter,
+    enemiesDefeated: defeatedEnemies,
+    totalXp,
+    goldEarned,
+    damageDone: state.damageDone,
+    log: state.log,
+  };
 }

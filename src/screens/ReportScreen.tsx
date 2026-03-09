@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { TypewriterText } from '../components/TypewriterText';
@@ -15,27 +15,29 @@ export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
   const activeFloor    = useGameStore(s => s.activeGame?.floor ?? 1);
   const activeCycle    = useGameStore(s => s.activeGame?.cycle ?? 1);
 
+  const outcome = combatResult?.outcome ?? (roomWasCleared ? 'VICTORY' : 'DEFEAT');
+
+  const handleContinue = useCallback(() => {
+    if (outcome === 'DEFEAT') {
+      navigation.navigate('Extraction', { fromDefeat: true });
+    } else {
+      navigation.navigate('Map');
+    }
+  }, [outcome, navigation]);
+
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      navigation.navigate('Map');
+      handleContinue();
       return true;
     });
     return () => sub.remove();
-  }, [navigation]);
+  }, [handleContinue]);
 
   const headerText = `─── ${t('report.title')} · ${t('common.floor')} ${String(activeFloor).padStart(2, '0')} · ${t('common.cycle')} ${String(activeCycle).padStart(2, '0')} ───`;
 
-  // ── Outcome ───────────────────────────────────────────────────────────────
-  const outcome       = combatResult?.outcome ?? (roomWasCleared ? 'VICTORY' : 'DEFEAT');
   const roundsElapsed = combatResult?.roundsElapsed ?? 0;
-
-  // ── Enemies ───────────────────────────────────────────────────────────────
   const enemiesDefeated = combatResult?.enemiesDefeated ?? [];
-
-  // ── Party ─────────────────────────────────────────────────────────────────
   const partyAfter = combatResult?.partyAfter ?? [];
-
-  // ── XP / Gold ─────────────────────────────────────────────────────────────
   const totalXp    = combatResult?.totalXp    ?? 0;
   const goldEarned = combatResult?.goldEarned ?? 0;
 
@@ -166,7 +168,7 @@ export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
       {/* Continue Button */}
       <View className="p-4 border-t border-primary/30 bg-background">
         <TouchableOpacity
-          onPress={() => navigation.navigate('Map')}
+          onPress={handleContinue}
           className="bg-primary p-3 items-center"
         >
           <Text className="text-background font-bold font-robotomono">{t('common.continue')}</Text>

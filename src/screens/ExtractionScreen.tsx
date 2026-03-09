@@ -23,29 +23,29 @@ const RARITY_COLORS: Record<string, string> = {
   LEGENDARY: 'text-destructive',
 };
 
-export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
+export const ExtractionScreen = ({ navigation, route }: ScreenProps<'Extraction'>) => {
   const { t } = useI18n();
   const cycle = useGameStore(s => s.activeGame?.cycle ?? 0);
   const updateProgress = useGameStore(s => s.updateProgress);
 
+  const fromDefeat = route.params?.fromDefeat ?? false;
+
   const [gold, setGold] = useState(0);
   const [phase, setPhase] = useState<'counting' | 'done'>('counting');
 
-  const canReturnToVillage = cycle >= 60;
-
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      navigation.navigate('Map');
+      if (!fromDefeat) navigation.navigate('Map');
       return true;
     });
     return () => sub.remove();
-  }, [navigation]);
+  }, [navigation, fromDefeat]);
   const targetGold = 120;
 
   const handleReturnToVillage = useCallback(() => {
-    updateProgress({ location: 'village' });
+    updateProgress({ cycle: cycle + 1, location: 'village' });
     navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
-  }, [updateProgress, navigation]);
+  }, [updateProgress, navigation, cycle]);
 
   useEffect(() => {
     let current = 0;
@@ -133,26 +133,22 @@ export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
 
       {/* Action Buttons */}
       <View className="p-4 border-t border-primary/30 bg-background">
+        {!fromDefeat && (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Map')}
+            className="bg-primary p-3 items-center mb-2"
+          >
+            <Text className="text-background font-bold font-robotomono text-base">{t('extraction.continueExploring')}</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
-          onPress={() => navigation.navigate('Map')}
-          className="bg-primary p-3 items-center mb-2"
+          onPress={handleReturnToVillage}
+          className={`p-3 items-center border ${fromDefeat ? 'bg-primary' : 'border-accent'}`}
+          style={fromDefeat ? {} : {}}
         >
-          <Text className="text-background font-bold font-robotomono text-base">{t('extraction.continueExploring')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={canReturnToVillage ? handleReturnToVillage : undefined}
-          disabled={!canReturnToVillage}
-          className={`p-3 items-center ${canReturnToVillage ? 'border border-accent' : 'border border-primary/20'}`}
-          style={canReturnToVillage ? {} : { opacity: 0.35 }}
-        >
-          <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 12, color: canReturnToVillage ? '#00E5FF' : '#00FF41' }}>
+          <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 12, color: fromDefeat ? '#0A0E0A' : '#00E5FF' }}>
             {t('extraction.returnVillage')}
           </Text>
-          {!canReturnToVillage && (
-            <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)', marginTop: 3 }}>
-              {t('extraction.lockedNotice')}
-            </Text>
-          )}
         </TouchableOpacity>
       </View>
 

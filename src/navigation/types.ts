@@ -7,10 +7,11 @@ export type RootStackParamList = {
   Party: { seed: string; seedHash: string };
   Village: undefined;
   Guild: undefined;
+  CharacterDetail: { charIndex: number };
   Map: undefined;
   Battle: { roomId: string; roomType: RoomType };
   Report: { roomId: string; roomWasCleared: boolean };
-  Extraction: undefined;
+  Extraction: { fromDefeat?: boolean } | undefined;
   WorldLog: undefined;
   CycleTransition: { from: 'DAY' | 'NIGHT'; to: 'DAY' | 'NIGHT'; cycle: number };
 };

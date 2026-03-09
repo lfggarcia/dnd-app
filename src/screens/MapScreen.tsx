@@ -30,18 +30,18 @@ import {
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const CANVAS_W = Math.max(SCREEN_W, 460);   // ensure enough horizontal room
 const CANVAS_H = Math.max(SCREEN_H - 160, 800); // dynamic: leave space for bars
-const NODE_SIZE = 64;
+const NODE_SIZE = 76;
 const NODE_HALF = NODE_SIZE / 2;
 
 // ─── Room visual styles ───────────────────────────────────────────────────────
-const ROOM_STYLES: Record<RoomType, { borderColor: string; bgColor: string; icon: string; textColor: string }> = {
-  START:    { borderColor: '#00FF41', bgColor: 'rgba(0,255,65,0.16)',   icon: '▼', textColor: '#00FF41' },
-  NORMAL:   { borderColor: '#FF3B30', bgColor: 'rgba(255,59,48,0.15)',  icon: '⚔', textColor: '#FF6B63' },
-  ELITE:    { borderColor: '#FF9F0A', bgColor: 'rgba(255,159,10,0.16)', icon: '⚡', textColor: '#FFBC45' },
-  EVENT:    { borderColor: '#00E5FF', bgColor: 'rgba(0,229,255,0.13)',  icon: '?',  textColor: '#40EEFF' },
-  TREASURE: { borderColor: '#FFD60A', bgColor: 'rgba(255,214,10,0.14)', icon: '◆', textColor: '#FFD60A' },
-  BOSS:     { borderColor: '#FF453A', bgColor: 'rgba(255,69,58,0.24)',  icon: '☠', textColor: '#FF7070' },
-  SECRET:   { borderColor: '#BF5AF2', bgColor: 'rgba(191,90,242,0.15)', icon: '✦', textColor: '#CF7AFF' },
+const ROOM_STYLES: Record<RoomType, { borderColor: string; bgColor: string; code: string; textColor: string }> = {
+  START:    { borderColor: '#00FF41', bgColor: 'rgba(0,255,65,0.16)',   code: 'INIT', textColor: '#00FF41' },
+  NORMAL:   { borderColor: '#FF3B30', bgColor: 'rgba(255,59,48,0.15)',  code: 'CMB',  textColor: '#FF6B63' },
+  ELITE:    { borderColor: '#FF9F0A', bgColor: 'rgba(255,159,10,0.16)', code: 'ELT',  textColor: '#FFBC45' },
+  EVENT:    { borderColor: '#00E5FF', bgColor: 'rgba(0,229,255,0.13)',  code: 'EVT',  textColor: '#40EEFF' },
+  TREASURE: { borderColor: '#FFD60A', bgColor: 'rgba(255,214,10,0.14)', code: 'REW',  textColor: '#FFD60A' },
+  BOSS:     { borderColor: '#FF453A', bgColor: 'rgba(255,69,58,0.24)',  code: 'BOSS', textColor: '#FF7070' },
+  SECRET:   { borderColor: '#BF5AF2', bgColor: 'rgba(191,90,242,0.15)', code: 'SEC',  textColor: '#CF7AFF' },
 };
 
 // ─── Room action description helper ─────────────────────────────────────────
@@ -49,7 +49,7 @@ function getRoomActionDesc(type: RoomType): string {
   switch (type) {
     case 'NORMAL':   return 'Sala de combate · Los enemigos aguardan';
     case 'ELITE':    return 'Combate élite · Enemigos poderosos';
-    case 'BOSS':     return '⚠ Jefe del piso · El guardián te espera';
+    case 'BOSS':     return '[!] BOSS · El guardián te espera';
     case 'TREASURE': return 'Sala de tesoro · Aquí descansan riquezas';
     case 'SECRET':   return 'Sala secreta · Algo oculto aguarda';
     case 'EVENT':    return 'Evento · Lo desconocido te aguarda';
@@ -244,6 +244,17 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     }, [roomMap, currentRoomId, floor, updateProgress]),
   );
 
+  // ─── Auto-extract when entire party is dead ──────────────────────────────────
+  useFocusEffect(
+    useCallback(() => {
+      const party = activeGame?.partyData ?? [];
+      if (party.length > 0 && party.every(c => !c.alive || c.hp <= 0)) {
+        navigation.navigate('Extraction', { fromDefeat: true });
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeGame?.partyData, navigation]),
+  );
+
   const pulse = useSharedValue(0.3);
   useEffect(() => {
     pulse.value = withRepeat(withTiming(1, { duration: 1500 }), -1, true);
@@ -280,6 +291,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
 
   // ─── Room press — only selects the node, action happens in panel ────────────
   const handleRoomPress = useCallback((room: DungeonRoom) => {
+    if ((activeGame?.partyData ?? []).every(c => !c.alive || c.hp <= 0)) return;
     if (room.id === currentRoomId || !accessibleIds.has(room.id)) return;
     // Tap the already-selected room → deselect
     if (selectedRoom?.id === room.id) { setSelectedRoom(null); return; }
@@ -294,11 +306,15 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     // Unvisited reachable room: select and show action panel
     setSelectedRoom(room);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentRoomId, accessibleIds, selectedRoom, floor, updateProgress]);
+  }, [activeGame, currentRoomId, accessibleIds, selectedRoom, floor, updateProgress]);
 
   // ─── Enter selected room ─────────────────────────────────────────────────────
   const handleEnterRoom = useCallback(() => {
     if (!selectedRoom) return;
+    if ((activeGame?.partyData ?? []).every(c => !c.alive || c.hp <= 0)) {
+      navigation.navigate('Extraction', { fromDefeat: true });
+      return;
+    }
     const room = selectedRoom;
     const afterVisit: DungeonFloor = {
       ...floor,
@@ -322,7 +338,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     const savedState = serializeExplorationState(afterReveal, room.id);
     updateProgress({ location: 'map', mapState: JSON.stringify(savedState) });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [floor, selectedRoom, navigation, updateProgress]);
+  }, [activeGame, floor, selectedRoom, navigation, updateProgress]);
 
   const handleNextFloor = useCallback(() => {
     setIsDescending(true);
@@ -371,7 +387,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       {/* Top Bar */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => setSaveExitVisible(true)} style={styles.exitBtn}>
-          <Text style={styles.exitText}>✕ {t('map.exit')}</Text>
+          <Text style={styles.exitText}>ESC  {t('map.exit')}</Text>
         </TouchableOpacity>
         <View style={{ alignItems: 'center' }}>
           <Text style={styles.titleText}>
@@ -379,7 +395,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
           </Text>
           {currentRoom && (
             <Text style={styles.currentRoomHint}>
-              {ROOM_STYLES[currentRoom.type].icon} {currentRoom.label}
+              [{ROOM_STYLES[currentRoom.type].code}] {currentRoom.label}
             </Text>
           )}
         </View>
@@ -388,7 +404,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
 
       {/* Day/Night bar */}
       <View style={styles.metaBar}>
-        <Text style={styles.metaText}>☀ {t('common.dayPhase')}</Text>
+        <Text style={styles.metaText}>{t('common.dayPhase')}</Text>
         <Text style={styles.separator}>|</Text>
         <Text style={styles.metaText}>{t('map.enemies')}: UNDEAD · ABERRATION</Text>
         <Text style={styles.separator}>|</Text>
@@ -508,7 +524,12 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
                   backgroundColor: rs.borderColor,
                   opacity: 0.30,
                 }} />
-                <Text style={{ fontSize: room.type === 'BOSS' ? 22 : 20, color: rs.textColor }}>{rs.icon}</Text>
+                <Text style={{
+                  fontFamily: 'RobotoMono-Bold',
+                  fontSize: room.type === 'BOSS' ? 11 : 10,
+                  color: rs.textColor,
+                  letterSpacing: 1,
+                }}>{rs.code}</Text>
                 <Text style={[styles.roomLabel, { color: rs.textColor }]}>
                   {room.label.split('_')[0]}
                 </Text>
@@ -552,10 +573,10 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       {/* Boss cleared — advance floor (takes priority over room panel) */}
       {isBossCleared && (
         <View style={styles.bossPanel}>
-          <Text style={styles.bossPanelTitle}>☠  PISO {floorIndex} CONQUISTADO</Text>
+          <Text style={styles.bossPanelTitle}>[!] PISO {floorIndex} CONQUISTADO</Text>
           <Text style={styles.bossPanelDesc}>El guardián del piso ha caído. El próximo descenso aguarda.</Text>
           <TouchableOpacity onPress={handleNextFloor} style={styles.nextFloorBtn}>
-            <Text style={styles.nextFloorBtnText}>▶  DESCENDER AL PISO {floorIndex + 1}</Text>
+            <Text style={styles.nextFloorBtnText}>{'>>'} DESCENDER AL PISO {floorIndex + 1}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -564,9 +585,9 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       {selectedRoom && (
         <View style={[styles.roomPanel, { borderTopColor: ROOM_STYLES[selectedRoom.type].borderColor + '66' }]}>
           <Text style={[styles.roomPanelTitle, { color: ROOM_STYLES[selectedRoom.type].textColor }]}>
-            {ROOM_STYLES[selectedRoom.type].icon}{'  '}{selectedRoom.label}
-            {selectedRoom.mutated ? '  [MUTADO]' : ''}
-            {selectedRoom.visited ? '  ✓' : ''}
+            [{ROOM_STYLES[selectedRoom.type].code}] {selectedRoom.label}
+            {selectedRoom.mutated ? '  [M]' : ''}
+            {selectedRoom.visited ? '  [OK]' : ''}
           </Text>
           <Text style={styles.roomPanelDesc}>
             {selectedRoom.visited
@@ -580,7 +601,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
                 style={[styles.enterBtn, { borderColor: ROOM_STYLES[selectedRoom.type].borderColor }]}
               >
                 <Text style={[styles.enterBtnText, { color: ROOM_STYLES[selectedRoom.type].textColor }]}>
-                  ▶ ENTRAR
+                  {'>> ENTRAR'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -646,46 +667,46 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container:      { flex: 1, backgroundColor: '#000' },
-  topBar:         { backgroundColor: 'rgba(0,255,65,0.08)', paddingHorizontal: 16, paddingVertical: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.2)' },
-  exitBtn:        { width: 60 },
-  exitText:       { fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)' },
-  titleText:      { fontFamily: 'RobotoMono-Bold', fontSize: 11, color: '#00FF41' },
-  currentRoomHint:{ fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.55)', marginTop: 1 },
-  cycleText:      { fontFamily: 'RobotoMono-Regular', fontSize: 9, color: '#FF9F0A' },
-  metaBar:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.02)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.06)' },
-  metaText:       { fontFamily: 'RobotoMono-Regular', fontSize: 7, color: 'rgba(0,255,65,0.5)' },
-  separator:      { fontFamily: 'RobotoMono-Regular', fontSize: 7, color: 'rgba(0,255,65,0.2)', marginHorizontal: 6 },
+  topBar:         { backgroundColor: 'rgba(0,255,65,0.08)', paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.2)' },
+  exitBtn:        { width: 70 },
+  exitText:       { fontFamily: 'RobotoMono-Regular', fontSize: 10, color: 'rgba(0,255,65,0.6)' },
+  titleText:      { fontFamily: 'RobotoMono-Bold', fontSize: 12, color: '#00FF41' },
+  currentRoomHint:{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.55)', marginTop: 2 },
+  cycleText:      { fontFamily: 'RobotoMono-Regular', fontSize: 10, color: '#FF9F0A' },
+  metaBar:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 5, backgroundColor: 'rgba(255,255,255,0.02)', borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.06)' },
+  metaText:       { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.5)' },
+  separator:      { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.2)', marginHorizontal: 8 },
   mapScroll:      { flex: 1 },
   nodeBracketTL:  { position: 'absolute', top: -7, left: -7, width: 13, height: 13, borderTopWidth: 1.5, borderLeftWidth: 1.5 },
   nodeBracketTR:  { position: 'absolute', top: -7, right: -7, width: 13, height: 13, borderTopWidth: 1.5, borderRightWidth: 1.5 },
   nodeBracketBL:  { position: 'absolute', bottom: -7, left: -7, width: 13, height: 13, borderBottomWidth: 1.5, borderLeftWidth: 1.5 },
   nodeBracketBR:  { position: 'absolute', bottom: -7, right: -7, width: 13, height: 13, borderBottomWidth: 1.5, borderRightWidth: 1.5 },
   nodeWrapper:    { position: 'absolute', width: NODE_SIZE, height: NODE_SIZE, alignItems: 'center', justifyContent: 'center' },
-  roomLabel:      { fontSize: 8, fontFamily: 'RobotoMono-Regular', marginTop: 2 },
+  roomLabel:      { fontSize: 9, fontFamily: 'RobotoMono-Regular', marginTop: 2 },
   mutationDot:    { position: 'absolute', top: -4, right: -4, width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF453A' },
-  roomPanel:      { borderTopWidth: 1, borderTopColor: 'rgba(0,255,65,0.4)', padding: 12, backgroundColor: 'rgba(0,255,65,0.04)' },
-  roomPanelTitle: { fontFamily: 'RobotoMono-Bold', fontSize: 9, color: '#00FF41', marginBottom: 4 },
-  roomPanelDesc:  { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.6)', marginBottom: 8 },
-  bossPanel:      { borderTopWidth: 1, borderTopColor: '#FF453A', padding: 14, backgroundColor: 'rgba(255,69,58,0.08)' },
-  bossPanelTitle: { fontFamily: 'RobotoMono-Bold', fontSize: 11, color: '#FF453A', marginBottom: 4 },
-  bossPanelDesc:  { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(255,69,58,0.7)', marginBottom: 10 },
-  nextFloorBtn:   { borderWidth: 1, borderColor: '#FF453A', paddingVertical: 10, alignItems: 'center' },
-  nextFloorBtnText: { fontFamily: 'RobotoMono-Bold', fontSize: 13, color: '#FF453A' },
+  roomPanel:      { borderTopWidth: 1, borderTopColor: 'rgba(0,255,65,0.4)', padding: 14, backgroundColor: 'rgba(0,255,65,0.04)' },
+  roomPanelTitle: { fontFamily: 'RobotoMono-Bold', fontSize: 11, color: '#00FF41', marginBottom: 5 },
+  roomPanelDesc:  { fontFamily: 'RobotoMono-Regular', fontSize: 10, color: 'rgba(0,255,65,0.6)', marginBottom: 10 },
+  bossPanel:      { borderTopWidth: 2, borderTopColor: '#FF453A', padding: 16, backgroundColor: 'rgba(255,69,58,0.08)' },
+  bossPanelTitle: { fontFamily: 'RobotoMono-Bold', fontSize: 13, color: '#FF453A', marginBottom: 5 },
+  bossPanelDesc:  { fontFamily: 'RobotoMono-Regular', fontSize: 10, color: 'rgba(255,69,58,0.7)', marginBottom: 12 },
+  nextFloorBtn:   { borderWidth: 1, borderColor: '#FF453A', paddingVertical: 12, alignItems: 'center' },
+  nextFloorBtnText: { fontFamily: 'RobotoMono-Bold', fontSize: 14, color: '#FF453A' },
   backDot:        { position: 'absolute', top: -4, left: -4, width: 7, height: 7, borderRadius: 3.5, backgroundColor: 'rgba(0,229,255,0.8)' },
-  returnBtn:      { flex: 1, borderWidth: 1, borderColor: '#00E5FF', padding: 8, alignItems: 'center', marginRight: 8 },
-  returnBtnText:  { fontFamily: 'RobotoMono-Regular', fontSize: 11, color: '#00E5FF' },
-  cancelBtn:      { borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', padding: 8, alignItems: 'center', width: 80 },
-  cancelBtnText:  { fontFamily: 'RobotoMono-Regular', fontSize: 11, color: 'rgba(0,255,65,0.5)' },
+  returnBtn:      { flex: 1, borderWidth: 1, borderColor: '#00E5FF', padding: 10, alignItems: 'center', marginRight: 8 },
+  returnBtnText:  { fontFamily: 'RobotoMono-Regular', fontSize: 12, color: '#00E5FF' },
+  cancelBtn:      { borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', padding: 10, alignItems: 'center', width: 90 },
+  cancelBtnText:  { fontFamily: 'RobotoMono-Regular', fontSize: 12, color: 'rgba(0,255,65,0.5)' },
   bottomBar:      { borderTopWidth: 1, borderTopColor: 'rgba(0,255,65,0.2)', padding: 10, backgroundColor: 'rgba(0,0,0,0.4)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  scannerLabel:   { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: '#00FF41' },
-  scannerValues:  { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.6)' },
-  legendLabel:    { fontSize: 6, color: 'rgba(0,255,65,0.5)', fontFamily: 'RobotoMono-Regular' },
+  scannerLabel:   { fontFamily: 'RobotoMono-Regular', fontSize: 9, color: '#00FF41' },
+  scannerValues:  { fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.6)' },
+  legendLabel:    { fontSize: 8, color: 'rgba(0,255,65,0.6)', fontFamily: 'RobotoMono-Regular' },
   fogNodeInner:   { width: NODE_SIZE, height: NODE_SIZE, borderWidth: 1, borderColor: 'rgba(0,255,65,0.25)', backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
-  fogNodeText:    { fontSize: 13, color: 'rgba(0,255,65,0.40)', fontFamily: 'RobotoMono-Regular' },
-  enterBtn:       { flex: 1, borderWidth: 1, padding: 8, alignItems: 'center', marginRight: 8 },
-  enterBtnText:   { fontFamily: 'RobotoMono-Bold', fontSize: 11 },
+  fogNodeText:    { fontSize: 14, color: 'rgba(0,255,65,0.40)', fontFamily: 'RobotoMono-Regular' },
+  enterBtn:       { flex: 1, borderWidth: 1, padding: 10, alignItems: 'center', marginRight: 8 },
+  enterBtnText:   { fontFamily: 'RobotoMono-Bold', fontSize: 12 },
   descendOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.94)', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
   descendTitle:   { fontFamily: 'RobotoMono-Bold', fontSize: 10, color: 'rgba(0,255,65,0.5)', letterSpacing: 4, marginBottom: 8 },
   descendFloor:   { fontFamily: 'RobotoMono-Bold', fontSize: 32, color: '#00FF41', letterSpacing: 6 },
-  descendSub:     { fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,255,65,0.4)', marginTop: 12, letterSpacing: 2 },
+  descendSub:     { fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.4)', marginTop: 12, letterSpacing: 2 },
 });

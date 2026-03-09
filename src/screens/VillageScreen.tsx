@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler, Modal } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -49,12 +49,14 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const { t } = useI18n();
   const clearActive = useGameStore(s => s.clearActive);
   const updateProgress = useGameStore(s => s.updateProgress);
+  const partyData = useGameStore(s => s.activeGame?.partyData ?? []);
   const gold = useGameStore(s => s.activeGame?.gold ?? 0);
   const cycle = useGameStore(s => s.activeGame?.cycle ?? 1);
   const maxFloor = useGameStore(s => s.activeGame?.floor ?? 1);
   const phase = useGameStore(s => s.activeGame?.phase ?? 'DAY');
   const seedHash = useGameStore(s => s.activeGame?.seedHash ?? '0');
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showChurch, setShowChurch] = useState(false);
 
   // Mark location as village on mount
   useEffect(() => {
@@ -114,7 +116,16 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
 
   const allRivalsWaiting = rivals.every(r => r.status === 'waiting');
 
+  const reviveCharacter = useCallback((name: string) => {
+    const updatedParty = partyData.map(c => {
+      if (c.name !== name) return c;
+      return { ...c, hp: Math.floor(c.maxHp / 2), alive: true };
+    });
+    updateProgress({ partyData: updatedParty });
+  }, [partyData, updateProgress]);
+
   const handleBuildingPress = useCallback((key: string) => {
+    if (key === 'church') { setShowChurch(true); return; }
     const screen = BUILDING_NAV[key];
     if (screen) navigation.navigate(screen as any);
   }, [navigation]);
@@ -282,6 +293,62 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
         }}
         onCancel={() => setShowExitModal(false)}
       />
+
+      {/* Church Revival Modal */}
+      <Modal
+        visible={showChurch}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowChurch(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ borderWidth: 1, borderColor: '#00FF41', backgroundColor: '#0A0E0A', padding: 16 }}>
+            <Text style={{ fontFamily: 'RobotoMono-Bold', fontSize: 13, color: '#00FF41', marginBottom: 4, letterSpacing: 1 }}>
+              ✝ IGLESIA — RESURRECCIÓN
+            </Text>
+            <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.5)', marginBottom: 14 }}>
+              GRATIS (temporal) · Restaura al 50% de HP máximo
+            </Text>
+
+            {partyData.filter(c => !c.alive || c.hp <= 0).length === 0 ? (
+              <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 10, color: 'rgba(0,255,65,0.4)', textAlign: 'center', paddingVertical: 12 }}>
+                TODOS LOS MIEMBROS ESTÁN VIVOS
+              </Text>
+            ) : (
+              partyData
+                .filter(c => !c.alive || c.hp <= 0)
+                .map(c => (
+                  <View
+                    key={c.name}
+                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.1)' }}
+                  >
+                    <View>
+                      <Text style={{ fontFamily: 'RobotoMono-Bold', fontSize: 11, color: '#FF3E3E' }}>
+                        {c.name.toUpperCase()}
+                      </Text>
+                      <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(255,62,62,0.6)' }}>
+                        {c.charClass.toUpperCase()} · HP {c.hp}/{c.maxHp}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => reviveCharacter(c.name)}
+                      style={{ borderWidth: 1, borderColor: '#00FF41', paddingHorizontal: 12, paddingVertical: 5 }}
+                    >
+                      <Text style={{ fontFamily: 'RobotoMono-Bold', fontSize: 10, color: '#00FF41' }}>REVIVIR</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+            )}
+
+            <TouchableOpacity
+              onPress={() => setShowChurch(false)}
+              style={{ marginTop: 16, borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', padding: 10, alignItems: 'center' }}
+            >
+              <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 10, color: 'rgba(0,255,65,0.6)' }}>CERRAR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

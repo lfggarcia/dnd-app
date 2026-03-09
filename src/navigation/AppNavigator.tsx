@@ -9,6 +9,7 @@ import { VillageScreen } from '../screens/VillageScreen';
 import { ReportScreen } from '../screens/ReportScreen';
 import { ExtractionScreen } from '../screens/ExtractionScreen';
 import { GuildScreen } from '../screens/GuildScreen';
+import { CharacterDetailScreen } from '../screens/CharacterDetailScreen';
 
 // Pantallas pesadas — cargadas bajo demanda para no inflar el bundle inicial
 const MapScreen = lazy(() =>
@@ -47,6 +48,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="Party" component={PartyScreen} />
         <Stack.Screen name="Village" component={VillageScreen} />
         <Stack.Screen name="Guild" component={GuildScreen} />
+        <Stack.Screen name="CharacterDetail" component={CharacterDetailScreen} />
         <Stack.Screen name="Map" component={MapScreen as React.ComponentType<object>} />
         <Stack.Screen name="Battle" component={BattleScreen as React.ComponentType<object>} />
         <Stack.Screen name="Report" component={ReportScreen} />

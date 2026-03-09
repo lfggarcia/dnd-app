@@ -6,6 +6,7 @@ import {
   getActiveSavedGame,
   getAllSavedGames,
   deleteSavedGame,
+  migrateStripPartyPortraits,
   type SavedGame,
   type CharacterSave,
 } from '../database/gameRepository';
@@ -59,6 +60,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   hydrate: () => {
     set({ loading: true });
+    migrateStripPartyPortraits();
     const savedGames = getAllSavedGames();
     const activeGame = getActiveSavedGame();
     set({ savedGames, activeGame, loading: false });

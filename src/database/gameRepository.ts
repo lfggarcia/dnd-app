@@ -69,6 +69,11 @@ export type CharacterSave = {
 
 // ─── Helpers ──────────────────────────────────────────────
 
+/** Strip the inline `portrait` field before persisting — portraits live in portraits_json */
+function leanParty(chars: CharacterSave[]): Omit<CharacterSave, 'portrait'>[] {
+  return chars.map(({ portrait: _p, ...rest }) => rest);
+}
+
 function rowToSavedGame(row: SavedGameRow): SavedGame {
   let portraitsJson: Record<string, string> | null = null;
   if (row.portraits_json) {
@@ -104,6 +109,43 @@ function generateId(): string {
   return `${ts}-${rand}`;
 }
 
+/**
+ * One-time migration: strip embedded `portrait` fields from `party_data` rows.
+ * Older code (Sprint 4B) wrote base64 portraits into `party_data`, bloating rows
+ * to ~1 MB and causing SQLITE_NOMEM on any subsequent UPDATE via journaling.
+ * We temporarily disable the journal for this targeted UPDATE so SQLite can
+ * write the lean value without needing to copy the large page into the journal.
+ */
+export function migrateStripPartyPortraits(): void {
+  const db = getDB();
+  const result = db.executeSync('SELECT id, party_data FROM saved_games');
+  const rows = (result.rows ?? []) as { id: string; party_data: string }[];
+
+  const dirty = rows.filter(row => {
+    try {
+      const party = JSON.parse(row.party_data) as CharacterSave[];
+      return party.some(c => 'portrait' in c && (c as CharacterSave).portrait);
+    } catch { return false; }
+  });
+
+  if (dirty.length === 0) return;
+
+  db.executeSync('PRAGMA journal_mode=OFF');
+  try {
+    for (const row of dirty) {
+      try {
+        const party = JSON.parse(row.party_data) as CharacterSave[];
+        db.executeSync(
+          'UPDATE saved_games SET party_data = ?, updated_at = ? WHERE id = ?',
+          [JSON.stringify(leanParty(party)), new Date().toISOString(), row.id],
+        );
+      } catch { /* skip row on failure */ }
+    }
+  } finally {
+    db.executeSync('PRAGMA journal_mode=DELETE');
+  }
+}
+
 // ─── CRUD ─────────────────────────────────────────────────
 
 export function createSavedGame(
@@ -118,7 +160,7 @@ export function createSavedGame(
   db.executeSync(
     `INSERT INTO saved_games (id, seed, seed_hash, party_data, floor, cycle, phase, gold, status, location, map_state, created_at, updated_at)
      VALUES (?, ?, ?, ?, 1, 1, 'DAY', 0, 'active', 'village', NULL, ?, ?)`,
-    [id, seed, seedHash, JSON.stringify(partyData), now, now],
+    [id, seed, seedHash, JSON.stringify(leanParty(partyData)), now, now],
   );
 
   return {
@@ -139,7 +181,7 @@ export function updateSavedGame(
 
   if (updates.partyData !== undefined) {
     sets.push('party_data = ?');
-    values.push(JSON.stringify(updates.partyData));
+    values.push(JSON.stringify(leanParty(updates.partyData)));
   }
   if (updates.floor !== undefined) {
     sets.push('floor = ?');

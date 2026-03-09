@@ -19,20 +19,24 @@ import type { ScreenProps } from '../navigation/types';
 // ─── Dimensions ───────────────────────────────────────────
 
 const SCREEN_W = Dimensions.get('window').width;
-const CELL_W = (SCREEN_W - 2) / 2;   // 2 columns with 2px gap
-const CELL_H = Math.round(CELL_W * 1.4);
+const SCREEN_H = Dimensions.get('window').height;
 const GAP = 2;
+const STRIP_H = Math.min(Math.round(SCREEN_H * 0.62), 520);
+// One accent color per roster slot — gives each character a distinct identity
+const STRIP_ACCENTS = ['#00FF41', '#FFB000', '#FF3E3E', '#4DBBFF'] as const;
 
-// ─── Party Collage Cell ───────────────────────────────────
+// ─── Party Strip Cell ─────────────────────────────────────
 
-type CellProps = {
+type StripProps = {
   char: CharacterSave;
   portraitUri: string | null;
+  accentColor: string;
+  stripW: number;
   onPress: () => void;
   onLongPress: () => void;
 };
 
-const CollageCell = memo(({ char, portraitUri, onPress, onLongPress }: CellProps) => {
+const StripCell = memo(({ char, portraitUri, accentColor, stripW, onPress, onLongPress }: StripProps) => {
   const hpPct = char.maxHp > 0 ? char.hp / char.maxHp : 0;
   const hpColor = !char.alive
     ? '#FF3E3E'
@@ -44,50 +48,49 @@ const CollageCell = memo(({ char, portraitUri, onPress, onLongPress }: CellProps
 
   return (
     <TouchableOpacity
-      style={[S.cell, { width: CELL_W, height: CELL_H }]}
+      style={[S.strip, { width: stripW }]}
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.85}
     >
       {/* Portrait */}
       {portraitUri ? (
-        <Image source={{ uri: portraitUri }} style={S.cellImage} resizeMode="cover" />
+        <Image source={{ uri: portraitUri }} style={S.stripImage} resizeMode="cover" />
       ) : (
-        <View style={S.cellPlaceholder}>
-          <Text style={S.cellPlaceholderText}>{char.name.charAt(0).toUpperCase()}</Text>
+        <View style={[S.stripPlaceholder, { borderColor: `${accentColor}22` }]}>
+          <Text style={[S.stripInitial, { color: `${accentColor}33` }]}>
+            {char.name.charAt(0).toUpperCase()}
+          </Text>
         </View>
       )}
 
       {/* Dead overlay */}
       {!char.alive && <View style={S.deadOverlay} />}
 
-      {/* Bottom info band */}
-      <View style={S.cellInfoBand}>
-        <View style={S.cellInfoRow}>
-          <Text style={S.cellName} numberOfLines={1}>{char.name}</Text>
-          <View style={[S.statusDot, { backgroundColor: hpColor }]} />
-        </View>
-        <Text style={S.cellSub} numberOfLines={1}>
-          {char.race} · {char.charClass}
-        </Text>
+      {/* Top accent bar */}
+      <View style={[S.accentTopBar, { backgroundColor: accentColor }]} />
+
+      {/* Bottom name band */}
+      <View style={[S.stripBand, { borderTopColor: `${accentColor}55` }]}>
         {/* HP bar */}
-        <View style={S.cellHpBg}>
-          <View style={[S.cellHpFill, {
-            width: `${Math.round(hpPct * 100)}%`,
+        <View style={S.stripHpBg}>
+          <View style={[S.stripHpFill, {
+            width: `${Math.round(hpPct * 100)}%` as any,
             backgroundColor: hpColor,
           }]} />
         </View>
-      </View>
-
-      {/* Tap cue */}
-      <View style={S.tapHint}>
-        <Text style={S.tapHintText}>[ → ]</Text>
+        <Text style={[S.stripName, { color: accentColor }]} numberOfLines={1}>
+          {char.name.toUpperCase()}
+        </Text>
+        <Text style={S.stripClass} numberOfLines={1}>
+          {char.charClass}
+        </Text>
       </View>
     </TouchableOpacity>
   );
 });
 
-// ─── Party Collage Grid ───────────────────────────────────
+// ─── Party Strip Row ──────────────────────────────────────
 
 type CollageProps = {
   party: CharacterSave[];
@@ -99,25 +102,26 @@ type CollageProps = {
 const PartyCollage = memo(({ party, expressionsJson, onCharPress, onCharLongPress }: CollageProps) => {
   if (party.length === 0) return null;
 
+  const n = party.length;
+  const stripW = Math.floor((SCREEN_W - GAP * (n - 1)) / n);
+
   return (
-    <View style={S.collageGrid}>
+    <View style={S.stripRow}>
       {party.map((char, i) => {
         const expressions = expressionsJson[i] ?? null;
         const portraitUri = expressions?.['neutral'] ?? char.portrait ?? null;
         return (
-          <CollageCell
+          <StripCell
             key={`${char.name}-${i}`}
             char={char}
             portraitUri={portraitUri}
+            accentColor={STRIP_ACCENTS[i % STRIP_ACCENTS.length]}
+            stripW={stripW}
             onPress={() => onCharPress(i)}
             onLongPress={() => { if (portraitUri) onCharLongPress(portraitUri); }}
           />
         );
       })}
-      {/* Filler cell if odd number so grid stays even */}
-      {party.length % 2 !== 0 && (
-        <View style={[S.cell, S.cellFiller, { width: CELL_W, height: CELL_H }]} />
-      )}
     </View>
   );
 });
@@ -314,100 +318,72 @@ const S = StyleSheet.create({
     color: 'rgba(0,255,65,0.12)',
     lineHeight: 32,
   },
-  collageGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GAP,
-    paddingHorizontal: 0,
-  },
 
-  // Cell
-  cell: {
+  // Strip row (horizontal poster layout)
+  stripRow: {
+    flexDirection: 'row',
+    gap: GAP,
+  },
+  strip: {
+    height: STRIP_H,
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: 'rgba(0,255,65,0.04)',
+    backgroundColor: 'rgba(0,255,65,0.03)',
   },
-  cellFiller: {
-    backgroundColor: 'transparent',
+  stripImage: {
+    ...StyleSheet.absoluteFillObject,
   },
-  cellImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  cellPlaceholder: {
-    width: '100%',
-    height: '100%',
+  stripPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,255,65,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(0,255,65,0.1)',
   },
-  cellPlaceholderText: {
+  stripInitial: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 40,
-    color: 'rgba(0,255,65,0.15)',
+    fontSize: 32,
   },
   deadOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  cellInfoBand: {
+  accentTopBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+  },
+  stripBand: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(6,12,6,0.88)',
-    paddingHorizontal: 8,
-    paddingTop: 7,
-    paddingBottom: 5,
+    backgroundColor: 'rgba(4,8,4,0.93)',
+    paddingHorizontal: 6,
+    paddingTop: 6,
+    paddingBottom: 7,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,255,65,0.18)',
   },
-  cellInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  cellName: {
-    fontFamily: 'RobotoMono-Bold',
-    fontSize: 11,
-    color: '#00FF41',
-    flex: 1,
-    marginRight: 4,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  cellSub: {
-    fontFamily: 'RobotoMono-Regular',
-    fontSize: 9,
-    color: 'rgba(255,176,0,0.65)',
+  stripHpBg: {
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     marginBottom: 5,
   },
-  cellHpBg: {
-    height: 3,
-    backgroundColor: 'rgba(0,255,65,0.1)',
+  stripHpFill: {
+    height: 2,
   },
-  cellHpFill: {
-    height: 3,
-  },
-  tapHint: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  tapHintText: {
+  stripName: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 7,
-    color: 'rgba(0,255,65,0.45)',
+    fontSize: 10,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  stripClass: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 8,
+    color: 'rgba(255,176,0,0.5)',
+    letterSpacing: 0.5,
   },
   partyMetaStrip: {
     backgroundColor: 'rgba(0,255,65,0.05)',

@@ -90,6 +90,8 @@ export const es = {
     removeMember: 'Quitar',
     startExpedition: 'Iniciar expedición',
     portrait: 'Retrato',
+    sharePortrait: 'Guardar imagen',
+    tapToClose: 'Toca fuera para cerrar',
     namePlaceholder: 'Nombre del personaje',
     chaotic: 'Caótico',
     neutral: 'Neutral',

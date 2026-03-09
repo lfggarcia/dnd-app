@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -297,11 +298,33 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
           style={{ width: SCREEN_W, height: PORTRAIT_H, backgroundColor: '#010a01' }}
         >
           {activePortraitUri ? (
-            <Animated.Image
-              source={{ uri: activePortraitUri }}
-              style={[{ width: '100%', height: '100%' }, portraitAnimStyle]}
-              resizeMode="cover"
-            />
+            <>
+              <Animated.Image
+                source={{ uri: activePortraitUri }}
+                style={[{ width: '100%', height: '100%' }, portraitAnimStyle]}
+                resizeMode="cover"
+              />
+              {/* Radial vignette: fades portrait edges into bg — simulates BG removal.
+                  Fullscreen modal uses the raw URI without this overlay. */}
+              <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+                <Svg width={SCREEN_W} height={PORTRAIT_H}>
+                  <Defs>
+                    <RadialGradient
+                      id="portraitVig"
+                      cx={SCREEN_W * 0.5}
+                      cy={PORTRAIT_H * 0.4}
+                      r={Math.max(SCREEN_W, PORTRAIT_H) * 0.6}
+                      gradientUnits="userSpaceOnUse"
+                    >
+                      <Stop offset="0" stopColor="#010a01" stopOpacity="0" />
+                      <Stop offset="0.52" stopColor="#010a01" stopOpacity="0" />
+                      <Stop offset="1" stopColor="#010a01" stopOpacity="1" />
+                    </RadialGradient>
+                  </Defs>
+                  <Rect x="0" y="0" width={SCREEN_W} height={PORTRAIT_H} fill="url(#portraitVig)" />
+                </Svg>
+              </View>
+            </>
           ) : (
             <View style={S.portraitPlaceholder}>
               <Text style={S.portraitInit}>{char.name.charAt(0).toUpperCase()}</Text>

@@ -90,6 +90,8 @@ export const en = {
     removeMember: 'Remove',
     startExpedition: 'Start expedition',
     portrait: 'Portrait',
+    sharePortrait: 'Save image',
+    tapToClose: 'Tap outside to close',
     namePlaceholder: 'Character name',
     chaotic: 'Chaotic',
     neutral: 'Neutral',

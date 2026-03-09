@@ -9,6 +9,7 @@ import {
   type SavedGame,
   type CharacterSave,
 } from '../database/gameRepository';
+import type { CombatResult } from '../services/combatEngine';
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -19,6 +20,8 @@ type GameState = {
   savedGames: SavedGame[];
   // Loading flag
   loading: boolean;
+  /** Last combat result — in-memory only, not persisted */
+  lastCombatResult: CombatResult | null;
 };
 
 type GameActions = {
@@ -42,6 +45,8 @@ type GameActions = {
   removeGame: (id: string) => void;
   /** Clear the active game from memory (for going back to menu) */
   clearActive: () => void;
+  /** Store the result of the last combat for ReportScreen to consume */
+  setCombatResult: (result: CombatResult) => void;
 };
 
 // ─── Store ────────────────────────────────────────────────
@@ -50,6 +55,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   activeGame: null,
   savedGames: [],
   loading: false,
+  lastCombatResult: null,
 
   hydrate: () => {
     set({ loading: true });
@@ -141,4 +147,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   clearActive: () => set({ activeGame: null }),
+
+  setCombatResult: (result) => set({ lastCombatResult: result }),
 }));

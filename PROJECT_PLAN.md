@@ -3,8 +3,8 @@
 > Documento vivo. Actualizar al final de cada sprint o sesión de trabajo.
 > Fuente de verdad para planificación: `PROJECT_STATUS.md` (estado técnico detallado) · `SYSTEMS.MD` (diseño fundacional) · `GAME_CONTEXT.md` (visión del juego)
 
-**Última actualización:** 2026-03-08
-**Sprint activo:** 4A — Cerrar el Game Loop
+**Última actualización:** 2026-03-09
+**Sprint activo:** 5 — Motor de Simulación (Mundo Vivo)
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Estado | Valor |
 |--------|-------|
-| Sprint actual | **4A — Cerrar el Game Loop** |
+| Sprint actual | **5 — Motor de Simulación** |
 | Pantallas total | 11 |
 | DB schema | v6 |
 | Stack | RN 0.84 + NativeWind v4 + Zustand + op-sqlite v15 |
@@ -47,39 +47,30 @@ Portraits de personaje vía Google Gemini, variantes de expresión facial vía C
 
 ---
 
-### Sprint 4A — Cerrar el Game Loop 🔴 ACTIVO
+### Sprint 4A — Cerrar el Game Loop ✅ COMPLETADO
 > **Objetivo:** el dungeon se puede completar. Rooms se marcan, boss se limpia, pisos se avanzan.
 
-**Prioridad máxima — desbloquea todo lo demás.**
-
-#### Tareas
-
-- [x] `MapScreen.tsx` — node select + bottom action panel (`▶ ENTRAR`); overlay de descenso de piso (`isDescending`)
-- [x] `MapScreen.tsx` — visual overhaul: corner brackets, SVG grid bg, glow rings, enhanced current-room indicator, top color strips, fog nodes eliminados
-- [x] `dungeonGraphService.ts` — fix node overlap: main rooms `y ∈ [0.05, 0.82]`, secret rooms `y ≥ 0.93`
-- [x] `MapScreen.tsx` — fix premature reveal: `useFocusEffect` revela adyacentes al volver de combate
-- [ ] `src/navigation/types.ts` — añadir params: `Battle: { roomId: string; roomType: RoomType }` y `Report: { roomId: string; roomWasCleared: boolean }`
-- [ ] `BattleScreen.tsx` — leer params de ruta; al terminar combate (victoria mock) navegar a Report con `{ roomId, roomWasCleared: true }`
-- [ ] `ReportScreen.tsx` — recibir params; al "Continuar" navegar de vuelta a MapScreen (no a Extraction)
-- [ ] Verificar que `isBossCleared` activa correctamente el panel de avance de piso
-- [ ] Test manual: entrar a room → batalla → reporte → mapa → sala marcada visitada → boss limpio → avanzar piso
+- [x] `MapScreen.tsx` — node select + bottom action panel; visual overhaul; fix overlap + premature reveal
+- [x] `src/navigation/types.ts` — params: `Battle: { roomId, roomType }` y `Report: { roomId, roomWasCleared }`
+- [x] `BattleScreen.tsx` — lee params; navega a Report con `{ roomId, roomWasCleared: true }`
+- [x] `ReportScreen.tsx` — navega de vuelta a MapScreen (no Extraction); `roomId`/`roomWasCleared` recibidos
 
 ---
 
-### Sprint 4B — Motor de Combate DnD 5e
+### Sprint 4B — Motor de Combate DnD 5e ✅ COMPLETADO
 > **Objetivo:** el combate es real. BattleScreen usa tiradas, HP, AC, turnos.
 
 #### Tareas
 
-- [ ] Motor de iniciativa: `DEX_mod + d20_seeded` para todos los actores
-- [ ] Hit roll: `(AttackMod + ProfBonus) vs EnemyAC`, clamped 5–95%
-- [ ] Daño: `WeaponBase + StatMod + Bonus - Resistances`, ×2 en crítico
-- [ ] HP dinámico: personajes y enemigos con HP real; pantalla de muerte de personaje
-- [ ] Turnos: Action · Bonus Action · Reaction (simplified MVP)
-- [ ] Log de combate con TypewriterText secuencial
-- [ ] Enemigos generados por `monsterEvolutionService` según `roomType` + ciclo/piso
-- [ ] Post-combate: XP reward con decay, gold drop calculado
-- [ ] `ReportScreen` conectada a resultados reales (no mock)
+- [x] Motor de iniciativa: `DEX_mod + d20_seeded` para todos los actores
+- [x] Hit roll: `(AttackMod + ProfBonus) vs EnemyAC`, nat-1 miss, nat-20 crit
+- [x] Daño: `WeaponBase + StatMod`, ×2 dados en crítico; `damageDone` tracked por actor
+- [x] HP dinámico: HP real persiste post-combate via `updateProgress({ partyData })`
+- [x] Turnos: auto-resolve por orden de iniciativa (simplified MVP)
+- [x] Log animado línea por línea en BattleScreen (70ms por línea)
+- [x] Enemigos via `generateEnemiesForRoom(roomType, roomId, cycle, floor)` — determinístico
+- [x] XP decay via `calculateXP`, gold = 15% XP + random
+- [x] `ReportScreen` lee `lastCombatResult` del store (no mock)
 
 #### Archivos clave
 - `src/screens/BattleScreen.tsx` — UI principal de combate
@@ -215,14 +206,14 @@ WorldLogScreen (desde GuildScreen)
 
 ## 🎯 Próxima Acción Inmediata
 
-**Sprint 4A — siguiente tarea:**
+**Sprint 5 — siguiente tarea:**
 ```
-Editar src/navigation/types.ts:
-  Battle: { roomId: string; roomType: RoomType }
-  Report: { roomId: string; roomWasCleared: boolean }
+Crear src/services/worldSimulator.ts:
+  simulateWorld(cycle): procesa parties IA hasta el ciclo actual en batch
+  Conectar a CycleTransitionScreen + WorldLogScreen con eventos reales
 ```
-Luego conectar BattleScreen (leer params, navegar a Report) y ReportScreen (navegar de vuelta al Mapa, no a Extraction).
-Una vez conectado: sala se marca visited → boss se puede limpiar → avanzar piso funciona end-to-end.
+El game loop completo ya funciona (Map → Battle → Report → Map).
+El motor de combate DnD 5e está implementado. Siguiente: Mundo Vivo.
 
 ---
 

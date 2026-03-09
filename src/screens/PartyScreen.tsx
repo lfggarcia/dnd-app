@@ -284,6 +284,24 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
           }
         }
 
+        // Generate expressions for characters that already had a portrait
+        for (let i = 0; i < party.length; i++) {
+          if (party[i].portrait) {
+            setLaunchStep(
+              lang === 'es'
+                ? `Generando expresiones para ${party[i].name}`
+                : `Generating expressions for ${party[i].name}`,
+            );
+            setLaunchSubStep(null);
+            try {
+              const expressions = await generateCharacterExpressions(party[i], party[i].portrait!);
+              useGameStore.getState().saveCharacterExpressions({ [String(i)]: expressions });
+            } catch {
+              // Expression generation is non-blocking
+            }
+          }
+        }
+
         if (Object.keys(newPortraits).length > 0) {
           setLaunchStep(lang === 'es' ? 'Guardando ilustraciones...' : 'Saving portraits...');
           setLaunchSubStep(null);

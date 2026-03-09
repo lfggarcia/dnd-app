@@ -196,6 +196,206 @@ añadiendo overhead de serialización y contaminando la consola.
 
 ---
 
+---
+
+## SEGUNDA RONDA — ALTA PRIORIDAD
+
+### R2-ALTA-1 — SeedScreen: 12 intervalos paralelos saturando el hilo JS
+**Archivo:** `src/screens/SeedScreen.tsx`
+**Problema:** `DataColumn` se monta 12 veces, cada una con su propio `setInterval` de 100-430ms.
+En el peor caso hay ~120 re-renders por segundo sumando todas las columnas.
+
+**Subtareas:**
+- `[ ]` ST-1: Consolidar las 12 columnas en un único `setInterval` en `SeedScreen` con estado matricial
+- `[ ]` ST-2: Aumentar el intervalo base a 150ms sin impacto visual notable
+- `[ ]` ST-3: Reducir columnas visibles a 6-8 si aplica
+
+---
+
+### R2-ALTA-2 — AppNavigator: todas las pantallas en eager load
+**Archivo:** `src/navigation/AppNavigator.tsx`
+**Problema:** Los 11 screens (incluyendo `MapScreen`, `BattleScreen` con sus servicios pesados)
+se importan sincrónicamente al cargar el navegador, inflando el bundle inicial.
+
+**Subtareas:**
+- `[ ]` ST-1: Aplicar `React.lazy()` a `MapScreen`, `BattleScreen`, `CycleTransitionScreen`, `WorldLogScreen`
+- `[ ]` ST-2: Envolver el navigator en `<Suspense fallback={...}>`
+
+---
+
+### R2-ALTA-3 — MapScreen: bloque SVG de conexiones no memoizado
+**Archivo:** `src/screens/MapScreen.tsx`
+**Problema:** El `flatMap` que calcula líneas SVG (con `Math.sqrt` por conexión) se re-ejecuta
+en cada tap del usuario porque `selectedRoom` cambia, aunque las conexiones no dependan de él.
+
+**Subtareas:**
+- `[ ]` ST-1: Extraer a componente `ConnectionLines` con `React.memo`
+- `[ ]` ST-2: Props: solo `floor`, `roomMap`, `currentRoomId`, `accessibleIds`, `reverseIds`
+
+---
+
+### R2-ALTA-4 — WorldLogScreen: cálculos sin memoizar + array inline
+**Archivo:** `src/screens/WorldLogScreen.tsx`
+**Problema:** `filtered`, `groupedByCycle` y `cycles` se recalculan en cada render.
+`filters` es un array literal nuevo en cada render.
+
+**Subtareas:**
+- `[ ]` ST-1: Mover `FILTERS` a constante de módulo
+- `[ ]` ST-2: Memoizar `filtered` con `useMemo([filter])`
+- `[ ]` ST-3: Memoizar `groupedByCycle` con `useMemo([filtered])`
+- `[ ]` ST-4: Memoizar `cycles` con `useMemo([groupedByCycle])`
+
+---
+
+## SEGUNDA RONDA — MEDIA PRIORIDAD
+
+### R2-MEDIA-1 — VillageScreen: inline onPress en map de buildings
+**Archivo:** `src/screens/VillageScreen.tsx`
+**Problema:** El handler `onPress={() => { const screen = BUILDING_NAV[key]; ... }}` se crea
+como arrow function nueva en cada render del map.
+
+**Subtareas:**
+- `[ ]` ST-1: Extraer a `handleBuildingPress` con `useCallback([navigation])`
+
+---
+
+### R2-MEDIA-2 — GuildScreen: inline onClose destruye memo de PortraitDetailModal
+**Archivo:** `src/screens/GuildScreen.tsx`
+**Problema:** `onClose={() => setModalUri(null)}` es una nueva función en cada render,
+anulando el `memo` del modal.
+
+**Subtareas:**
+- `[ ]` ST-1: Extraer a `handlePortraitClose` con `useCallback([])`
+
+---
+
+### R2-MEDIA-3 — CycleTransitionScreen: phases sin memoizar + deps incompletos
+**Archivo:** `src/screens/CycleTransitionScreen.tsx`
+**Problema:** Array `phases` nuevo en cada render. `navigation` ausente en deps del `useEffect`
+que llama `navigate('Village')`.
+
+**Subtareas:**
+- `[ ]` ST-1: Memoizar `phases` con `useMemo([t])`
+- `[ ]` ST-2: Añadir `navigation` y `phases.length` al dep array del effect
+
+---
+
+### R2-MEDIA-4 — ExtractionScreen: useCallback faltante + cálculos inline
+**Archivo:** `src/screens/ExtractionScreen.tsx`
+**Problema:** `handleReturnToVillage` sin `useCallback`. Sumas de `LOOT_ITEMS` calculadas
+inline en el JSX en cada render siendo `LOOT_ITEMS` un array estático.
+
+**Subtareas:**
+- `[ ]` ST-1: Envolver `handleReturnToVillage` en `useCallback([updateProgress, navigation])`
+- `[ ]` ST-2: Mover los totales de `LOOT_ITEMS` a constantes de módulo
+
+---
+
+### R2-MEDIA-5 — Zustand: selectores por objeto completo en 3 pantallas
+**Archivos:** `src/screens/ExtractionScreen.tsx`, `src/screens/VillageScreen.tsx`, `src/screens/MainScreen.tsx`
+**Problema:** `useGameStore(s => s.activeGame)` suscribe al objeto completo.
+Cualquier cambio en el store re-renderiza toda la pantalla aunque no afecte a esos campos.
+
+**Subtareas:**
+- `[ ]` ST-1: ExtractionScreen — selector solo `cycle`
+- `[ ]` ST-2: VillageScreen — selectores para `gold`, `cycle`, `floor`, `phase`, `seedHash`
+- `[ ]` ST-3: MainScreen — revisar qué campos realmente usa y acotar
+
+---
+
+### R2-MEDIA-6 — ReportScreen: array de datos inline en JSX
+**Archivo:** `src/screens/ReportScreen.tsx`
+**Problema:** Array de datos del gráfico declarado como literal dentro del `return`.
+
+**Subtareas:**
+- `[ ]` ST-1: Mover a constante de módulo `DAMAGE_DATA`
+
+---
+
+### R2-MEDIA-7 — CharacterActionsPanel: inline onPress anula memo de ChoiceOption
+**Archivo:** `src/components/CharacterActionsPanel.tsx`
+**Problema:** `onPress={() => handleChoicePress(c.id)}` es nueva referencia en cada render,
+`ChoiceOption` (memo) se re-renderiza igual.
+
+**Subtareas:**
+- `[ ]` ST-1: Crear componente wrapper `ChoiceOptionItem` que construya el handler con `useCallback`
+  o pasar `choiceId` como prop y manejar el press dentro de `ChoiceOption`
+
+---
+
+### R2-MEDIA-8 — CRTOverlay: 100 View nodes estáticos por pantalla
+**Archivo:** `src/components/CRTOverlay.tsx`
+**Problema:** `ScanlineOverlay` monta 100 `View` nodes que nunca cambian pero se montan
+en el árbol de cada pantalla que usa el overlay.
+
+**Subtareas:**
+- `[ ]` ST-1: Reemplazar con `LinearGradient` repetido o un SVG pattern
+- `[ ]` ST-2: Alternativa mínima: una `View` con `ImageBackground` o patrón CSS
+
+---
+
+## SEGUNDA RONDA — BAJA PRIORIDAD
+
+### R2-BAJA-1 — WorldLogScreen: filter estático en footer
+**Archivo:** `src/screens/WorldLogScreen.tsx`
+**Problema:** `LOG_ENTRIES.filter(e => e.type === 'COMBAT').length` corre en cada render
+siendo `LOG_ENTRIES` un array estático.
+
+**Subtareas:**
+- `[ ]` ST-1: Extraer a `const COMBAT_COUNT = LOG_ENTRIES.filter(...).length` a nivel de módulo
+
+---
+
+### R2-BAJA-2 — DatabaseGate: effect con dependencia inestable
+**Archivo:** `src/components/DatabaseGate.tsx`
+**Problema:** `syncNow` cambia referencia cuando cambia `status` → el effect se re-dispara
+innecesariamente (no genera loop pero es trabajo extra).
+
+**Subtareas:**
+- `[ ]` ST-1: Cambiar deps del effect a solo `[status]` eliminando `syncNow`, o usar `useRef` para ref estable
+
+---
+
+### R2-BAJA-3 — GlossaryModal: hasFullData carga todos los rows para inspeccionar uno
+**Archivo:** `src/components/GlossaryModal.tsx`
+**Problema:** `hasFullData()` llama `getResourcesByEndpoint(endpoint)` completo y solo mira
+el primer registro. Con 300+ monstruos carga todo para checar si tiene >3 keys.
+
+**Subtareas:**
+- `[ ]` ST-1: Limitar la query a 1 row, o guardar el flag en `sync_meta` al sincronizar
+
+---
+
+### R2-BAJA-4 — ConfirmModal: falta React.memo
+**Archivo:** `src/components/ConfirmModal.tsx`
+**Problema:** Componente puramente presentacional sin `React.memo`. Se re-renderiza junto
+con padres que actualizan frecuentemente (`VillageScreen`, `MapScreen`, `PartyScreen`).
+
+**Subtareas:**
+- `[ ]` ST-1: Envolver el export en `React.memo`
+
+---
+
+### R2-BAJA-5 — MainScreen: StyleSheet vacío — dead code
+**Archivo:** `src/screens/MainScreen.tsx`
+**Problema:** `const S = StyleSheet.create({})` — declaración sin uso.
+
+**Subtareas:**
+- `[ ]` ST-1: Eliminar la declaración
+
+---
+
+### R2-BAJA-6 — PartyScreen: handleChoiceSelect con dep inestable
+**Archivo:** `src/screens/PartyScreen.tsx`
+**Problema:** `current?.featureChoices` es un objeto que se recrea en cada update del roster,
+forzando que `handleChoiceSelect` (y por tanto `CharacterActionsPanel`) se invalide innecesariamente.
+
+**Subtareas:**
+- `[ ]` ST-1: Usar patrón de functional update para no necesitar `featureChoices` en las deps
+  (requiere que `updateCurrent` acepte un callback)
+
+---
+
 ## Registro de cambios
 
 | Fecha | Tarea | Descripción del cambio |

@@ -179,13 +179,13 @@ function buildCharacterPrompt(char: CharacterPortraitInput): { positive: string;
 
 // ── ComfyUI URL ──────────────────────────────────────────
 // Android emulator → 10.0.2.2 (NAT loopback to host Mac);
-//   requires: socat TCP4-LISTEN:8089,fork,reuseaddr TCP4:192.168.0.21:8089
+//   requires: socat TCP4-LISTEN:8089,fork,reuseaddr TCP4:192.168.0.17:8089
 // iOS Simulator → localhost (direct loopback to host Mac)
 // Physical device (same WiFi) → 192.168.0.20
 const COMFY_HOST = Platform.select({
   android: '10.0.2.2',    // Android emulator NAT loopback → host Mac
-  ios: '192.168.0.21',    // iOS: direct LAN IP (simulator + physical device)
-  default: '192.168.0.21',
+  ios: '192.168.0.17',    // iOS: direct LAN IP (simulator + physical device)
+  default: '192.168.0.17',
 });
 const COMFY_BASE_URL = `http://${COMFY_HOST}:8089`;
 const COMFY_CLIENT_ID = 'dnd3-portrait-gen';

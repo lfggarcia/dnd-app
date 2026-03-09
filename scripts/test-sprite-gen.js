@@ -13,7 +13,7 @@
 const fs   = require('fs');
 const path = require('path');
 
-const COMFY_URL     = 'http://192.168.0.21:8089';
+const COMFY_URL     = 'http://192.168.0.17:8089';
 const POLL_INTERVAL = 2_000;
 const POLL_MAX      = 150;
 const OUT_DIR       = path.join(__dirname, '..', 'assets', 'sprites', '_test');

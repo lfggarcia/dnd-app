@@ -16,7 +16,7 @@ import {
   computeFinalStats,
   pickRaceName,
 } from '../services/characterStats';
-import { generateCharacterPortrait } from '../services/geminiImageService';
+import { generateCharacterPortrait, generateCharacterExpressions } from '../services/geminiImageService';
 import { useGameStore } from '../stores/gameStore';
 import { calcLvl1HP } from '../constants/dnd5eLevel1';
 import type { Stats, CharacterSave } from '../database/gameRepository';
@@ -203,6 +203,13 @@ export function usePartyRoster(lang: Lang) {
       setCharPortraits(prev => ({ ...prev, [activeSlot]: uri }));
       setCharPortraitRolls(prev => ({ ...prev, [activeSlot]: (prev[activeSlot] ?? 0) + 1 }));
       saveCharacterPortraits({ [String(activeSlot)]: uri });
+      // Generate emotion variants (non-blocking)
+      try {
+        const expressions = await generateCharacterExpressions(char, uri);
+        useGameStore.getState().saveCharacterExpressions({ [String(activeSlot)]: expressions });
+      } catch {
+        // Expression generation failure is non-blocking
+      }
     } catch (err) {
       __DEV__ && console.error('[Portrait] generation error:', err);
       const msg = err instanceof Error ? err.message : String(err);

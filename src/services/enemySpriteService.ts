@@ -68,8 +68,8 @@ import { Platform } from 'react-native';
 
 const COMFY_HOST = Platform.select({
   android: '10.0.2.2',    // Android emulator NAT loopback → host Mac
-  ios: '192.168.0.20',    // iOS: direct LAN IP (simulator uses localhost but LAN IP also works)
-  default: '192.168.0.20',
+  ios: '192.168.0.17',    // iOS: direct LAN IP (simulator uses localhost but LAN IP also works)
+  default: '192.168.0.17',
 });
 const COMFY_BASE_URL = `http://${COMFY_HOST}:8089`;
 const COMFY_CLIENT_ID = 'dnd3-sprite-gen';

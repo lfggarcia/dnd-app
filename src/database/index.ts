@@ -5,6 +5,7 @@ export {
   upsertResourceBatch,
   getResource,
   getResourcesByEndpoint,
+  getFirstResourceByEndpoint,
   getResourceCount,
   searchResources,
   upsertTranslation,

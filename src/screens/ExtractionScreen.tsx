@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
@@ -13,6 +13,9 @@ const LOOT_ITEMS = [
   { name: 'WIGHT_DUST', rarity: 'UNCOMMON', type: 'MATERIAL', qty: 1 },
 ];
 
+const LOOT_TOTAL_QTY = LOOT_ITEMS.reduce((acc, i) => acc + i.qty, 0);
+const LOOT_MATERIAL_QTY = LOOT_ITEMS.filter(i => i.type === 'MATERIAL').reduce((acc, i) => acc + i.qty, 0);
+
 const RARITY_COLORS: Record<string, string> = {
   COMMON: 'text-primary/60',
   UNCOMMON: 'text-accent',
@@ -22,13 +25,13 @@ const RARITY_COLORS: Record<string, string> = {
 
 export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
   const { t } = useI18n();
-  const activeGame = useGameStore(s => s.activeGame);
+  const cycle = useGameStore(s => s.activeGame?.cycle ?? 0);
   const updateProgress = useGameStore(s => s.updateProgress);
 
   const [gold, setGold] = useState(0);
   const [phase, setPhase] = useState<'counting' | 'done'>('counting');
 
-  const canReturnToVillage = (activeGame?.cycle ?? 0) >= 60;
+  const canReturnToVillage = cycle >= 60;
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -39,10 +42,10 @@ export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
   }, [navigation]);
   const targetGold = 120;
 
-  const handleReturnToVillage = () => {
+  const handleReturnToVillage = useCallback(() => {
     updateProgress({ location: 'village' });
     navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
-  };
+  }, [updateProgress, navigation]);
 
   useEffect(() => {
     let current = 0;
@@ -111,13 +114,13 @@ export const ExtractionScreen = ({ navigation }: ScreenProps<'Extraction'>) => {
           <View className="flex-1 mr-2 border border-primary/20 p-3 bg-primary/5 items-center">
             <Text className="text-primary/40 font-robotomono text-[8px]">{t('extraction.items')}</Text>
             <Text className="text-primary font-robotomono text-lg font-bold">
-              {LOOT_ITEMS.reduce((acc, i) => acc + i.qty, 0)}
+              {LOOT_TOTAL_QTY}
             </Text>
           </View>
           <View className="flex-1 mx-1 border border-primary/20 p-3 bg-primary/5 items-center">
             <Text className="text-primary/40 font-robotomono text-[8px]">{t('extraction.materials')}</Text>
             <Text className="text-primary font-robotomono text-lg font-bold">
-              {LOOT_ITEMS.filter(i => i.type === 'MATERIAL').reduce((acc, i) => acc + i.qty, 0)}
+              {LOOT_MATERIAL_QTY}
             </Text>
           </View>
           <View className="flex-1 ml-2 border border-secondary/20 p-3 bg-secondary/5 items-center">

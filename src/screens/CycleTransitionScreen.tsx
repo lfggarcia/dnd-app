@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { useI18n } from '../i18n';
@@ -13,13 +13,13 @@ export const CycleTransitionScreen = ({ navigation }: ScreenProps<'CycleTransiti
   const nextCycle = 4;
   const previousFloor = 5;
 
-  const phases = [
+  const phases = useMemo(() => [
     t('cycleTransition.extracting'),
     t('cycleTransition.processing'),
-    `${t('cycleTransition.cycle')} ${nextCycle - 1} → ${t('cycleTransition.cycle')} ${nextCycle}`,
+    `${t('cycleTransition.cycle')} ${nextCycle - 1} \u2192 ${t('cycleTransition.cycle')} ${nextCycle}`,
     t('cycleTransition.worldShifts'),
     t('cycleTransition.ready'),
-  ];
+  ], [t]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -52,7 +52,7 @@ export const CycleTransitionScreen = ({ navigation }: ScreenProps<'CycleTransiti
       const timer = setTimeout(() => navigation.navigate('Village'), 2000);
       return () => clearTimeout(timer);
     }
-  }, [phase]);
+  }, [phase, phases.length, navigation]);
 
   const progress = ((phase + 1) / phases.length) * 100;
 

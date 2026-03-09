@@ -12,27 +12,19 @@ import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 
-const DataColumn = ({ index }: { index: number }) => {
-  const [chars, setChars] = useState('');
+// ─── Matrix rain — un solo intervalo en lugar de 12 ──────────────────────────
+const CHAR_LIST = '0123456789ABCDEF#!@$%&*';
+const NUM_COLUMNS = 12;
+const NUM_ROWS = 20;
+const MATRIX_INTERVAL_MS = 150;
 
-  useEffect(() => {
-    const charsList = '0123456789ABCDEF#!@$%&*';
-    const interval = setInterval(() => {
-      let result = '';
-      for (let i = 0; i < 20; i++) {
-        result += charsList.charAt(Math.floor(Math.random() * charsList.length)) + '\n';
-      }
-      setChars(result);
-    }, 100 + index * 30);
-    return () => clearInterval(interval);
-  }, [index]);
-
-  return (
-    <View className="mx-[2px]">
-      <Text className="text-[8px] text-secondary/30 font-robotomono">{chars}</Text>
-    </View>
+function buildMatrixCols(): string[] {
+  return Array.from({ length: NUM_COLUMNS }, () =>
+    Array.from({ length: NUM_ROWS }, () =>
+      CHAR_LIST.charAt(Math.floor(Math.random() * CHAR_LIST.length))
+    ).join('\n')
   );
-};
+}
 
 export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
   const { t } = useI18n();
@@ -40,6 +32,13 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
   const [seed, setSeed] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const processingAnim = useSharedValue(0);
+
+  // Único intervalo para todas las columnas — antes eran 12 intervalos paralelos
+  const [matrixCols, setMatrixCols] = useState<string[]>(buildMatrixCols);
+  useEffect(() => {
+    const id = setInterval(() => setMatrixCols(buildMatrixCols()), MATRIX_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
 
   // Reset overlay when returning to this screen
   useFocusEffect(
@@ -77,8 +76,10 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
 
       {/* Matrix background */}
       <View className="absolute inset-0 flex-row justify-center opacity-15" pointerEvents="none">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <DataColumn key={i} index={i} />
+        {matrixCols.map((chars, i) => (
+          <View key={i} className="mx-[2px]">
+            <Text className="text-[8px] text-secondary/30 font-robotomono">{chars}</Text>
+          </View>
         ))}
       </View>
 

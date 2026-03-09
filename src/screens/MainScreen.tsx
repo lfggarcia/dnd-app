@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { TypewriterText } from '../components/TypewriterText';
 import { CRTOverlay } from '../components/CRTOverlay';
@@ -316,4 +316,3 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
   );
 };
 
-const S = StyleSheet.create({});

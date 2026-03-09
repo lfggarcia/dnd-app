@@ -77,6 +77,15 @@ export function getResourcesByEndpoint(endpoint: string): Resource[] {
   return (result.rows as Resource[]) ?? [];
 }
 
+export function getFirstResourceByEndpoint(endpoint: string): Resource | null {
+  const db = getDB();
+  const result = db.executeSync(
+    'SELECT * FROM resources WHERE endpoint = ? ORDER BY name LIMIT 1',
+    [endpoint],
+  );
+  return (result.rows?.[0] as Resource) ?? null;
+}
+
 export function getResourceCount(endpoint: string): number {
   const db = getDB();
   const result = db.executeSync(

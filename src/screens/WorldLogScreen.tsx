@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
@@ -25,6 +25,10 @@ const LOG_ENTRIES: LogEntry[] = [
   { cycle: 1, type: 'SYSTEM', message_en: 'Party created. Seed: DARK_KEEP_7741', message_es: 'Grupo creado. Semilla: DARK_KEEP_7741' },
 ];
 
+const COMBAT_COUNT = LOG_ENTRIES.filter(e => e.type === 'COMBAT').length;
+
+const FILTERS: LogFilter[] = ['ALL', 'COMBAT', 'LORE', 'SYSTEM'];
+
 const FILTER_COLORS: Record<LogFilter, string> = {
   ALL: 'border-primary text-primary',
   COMBAT: 'border-destructive text-destructive',
@@ -43,16 +47,24 @@ export const WorldLogScreen = ({ navigation }: ScreenProps<'WorldLog'>) => {
 
   const [filter, setFilter] = useState<LogFilter>('ALL');
 
-  const filters: LogFilter[] = ['ALL', 'COMBAT', 'LORE', 'SYSTEM'];
-  const filtered = filter === 'ALL' ? LOG_ENTRIES : LOG_ENTRIES.filter(e => e.type === filter);
+  const filtered = useMemo(
+    () => filter === 'ALL' ? LOG_ENTRIES : LOG_ENTRIES.filter(e => e.type === filter),
+    [filter],
+  );
 
-  const groupedByCycle = filtered.reduce<Record<number, LogEntry[]>>((acc, entry) => {
-    if (!acc[entry.cycle]) acc[entry.cycle] = [];
-    acc[entry.cycle].push(entry);
-    return acc;
-  }, {});
+  const groupedByCycle = useMemo(
+    () => filtered.reduce<Record<number, LogEntry[]>>((acc, entry) => {
+      if (!acc[entry.cycle]) acc[entry.cycle] = [];
+      acc[entry.cycle].push(entry);
+      return acc;
+    }, {}),
+    [filtered],
+  );
 
-  const cycles = Object.keys(groupedByCycle).map(Number).sort((a, b) => b - a);
+  const cycles = useMemo(
+    () => Object.keys(groupedByCycle).map(Number).sort((a, b) => b - a),
+    [groupedByCycle],
+  );
 
   return (
     <View className="flex-1 bg-background">
@@ -71,7 +83,7 @@ export const WorldLogScreen = ({ navigation }: ScreenProps<'WorldLog'>) => {
 
       {/* Filter Tabs */}
       <View className="flex-row p-3 border-b border-primary/20">
-        {filters.map(f => {
+        {FILTERS.map(f => {
           const isActive = filter === f;
           const colorClass = FILTER_COLORS[f];
           return (
@@ -137,7 +149,7 @@ export const WorldLogScreen = ({ navigation }: ScreenProps<'WorldLog'>) => {
         <View className="flex-1 items-center">
           <Text className="text-destructive/40 font-robotomono text-[8px]">{t('worldLog.combats')}</Text>
           <Text className="text-destructive font-robotomono text-sm font-bold">
-            {LOG_ENTRIES.filter(e => e.type === 'COMBAT').length}
+            {COMBAT_COUNT}
           </Text>
         </View>
       </View>

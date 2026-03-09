@@ -191,6 +191,10 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
     setModalUri(uri);
   }, []);
 
+  const handlePortraitClose = useCallback(() => {
+    setModalUri(null);
+  }, []);
+
   return (
     <View className="flex-1 bg-background">
       <CRTOverlay />
@@ -283,7 +287,7 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
       <GlossaryButton />
 
       {/* Fullscreen portrait modal */}
-      <PortraitDetailModal uri={modalUri} onClose={() => setModalUri(null)} />
+      <PortraitDetailModal uri={modalUri} onClose={handlePortraitClose} />
     </View>
   );
 };

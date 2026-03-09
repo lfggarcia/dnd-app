@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
@@ -47,9 +47,13 @@ const BUILDING_NAV: Partial<Record<string, keyof import('../navigation/types').R
 
 export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const { t } = useI18n();
-  const activeGame = useGameStore(s => s.activeGame);
   const clearActive = useGameStore(s => s.clearActive);
   const updateProgress = useGameStore(s => s.updateProgress);
+  const gold = useGameStore(s => s.activeGame?.gold ?? 0);
+  const cycle = useGameStore(s => s.activeGame?.cycle ?? 1);
+  const maxFloor = useGameStore(s => s.activeGame?.floor ?? 1);
+  const phase = useGameStore(s => s.activeGame?.phase ?? 'DAY');
+  const seedHash = useGameStore(s => s.activeGame?.seedHash ?? '0');
   const [showExitModal, setShowExitModal] = useState(false);
 
   // Mark location as village on mount
@@ -67,14 +71,9 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   }, []);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
 
-  const gold = activeGame?.gold ?? 0;
-  const cycle = activeGame?.cycle ?? 1;
-  const maxFloor = activeGame?.floor ?? 1;
-  const phase = activeGame?.phase ?? 'DAY';
-
   const rivals = useMemo(
-    () => generateRivals(activeGame?.seedHash ?? '0', maxFloor, cycle),
-    [activeGame?.seedHash, maxFloor, cycle],
+    () => generateRivals(seedHash, maxFloor, cycle),
+    [seedHash, maxFloor, cycle],
   );
 
   // Cargamos los nombres de equipment y monstruos una sola vez al montar.
@@ -98,22 +97,27 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const marketItems = useMemo(
     () => deterministicPick(
       equipmentNames,
-      `${activeGame?.seedHash ?? '0'}_market_${cycle}`,
+      `${seedHash}_market_${cycle}`,
       3,
     ),
-    [equipmentNames, activeGame?.seedHash, cycle],
+    [equipmentNames, seedHash, cycle],
   );
 
   const knownThreats = useMemo(
     () => deterministicPick(
       monsterPool,
-      `${activeGame?.seedHash ?? '0'}_threats_${maxFloor}`,
+      `${seedHash}_threats_${maxFloor}`,
       3,
     ),
-    [monsterPool, activeGame?.seedHash, maxFloor],
+    [monsterPool, seedHash, maxFloor],
   );
 
   const allRivalsWaiting = rivals.every(r => r.status === 'waiting');
+
+  const handleBuildingPress = useCallback((key: string) => {
+    const screen = BUILDING_NAV[key];
+    if (screen) navigation.navigate(screen as any);
+  }, [navigation]);
 
   return (
     <View className="flex-1 bg-background">
@@ -155,10 +159,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
           <TouchableOpacity
             key={key}
             className="border border-primary/30 p-3 bg-muted/10 mb-2 flex-row items-center"
-            onPress={() => {
-              const screen = BUILDING_NAV[key];
-              if (screen) navigation.navigate(screen as any);
-            }}
+            onPress={() => handleBuildingPress(key)}
           >
             <View className="mr-3">
               {React.createElement(BUILDING_ICON_COMPONENTS[key], { size: 20 })}

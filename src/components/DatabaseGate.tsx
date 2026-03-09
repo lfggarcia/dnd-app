@@ -18,7 +18,7 @@ export function DatabaseGate({ children }: Props) {
     if (status === 'ready' && syncStatus && syncStatus.missing.length > 0) {
       syncNow();
     }
-  }, [status, syncStatus, syncNow]);
+  }, [status, syncStatus]);
 
   if (status === 'initializing') {
     return (

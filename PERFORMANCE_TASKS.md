@@ -206,9 +206,9 @@ añadiendo overhead de serialización y contaminando la consola.
 En el peor caso hay ~120 re-renders por segundo sumando todas las columnas.
 
 **Subtareas:**
-- `[ ]` ST-1: Consolidar las 12 columnas en un único `setInterval` en `SeedScreen` con estado matricial
-- `[ ]` ST-2: Aumentar el intervalo base a 150ms sin impacto visual notable
-- `[ ]` ST-3: Reducir columnas visibles a 6-8 si aplica
+- `[x]` ST-1: Consolidar las 12 columnas en un único `setInterval` en `SeedScreen` con estado matricial
+- `[x]` ST-2: Aumentar el intervalo base a 150ms sin impacto visual notable
+- `[x]` ST-3: Reducir columnas visibles a 6-8 si aplica (evaluado: 12 cols con único interval ya es óptimo)
 
 ---
 
@@ -218,8 +218,8 @@ En el peor caso hay ~120 re-renders por segundo sumando todas las columnas.
 se importan sincrónicamente al cargar el navegador, inflando el bundle inicial.
 
 **Subtareas:**
-- `[ ]` ST-1: Aplicar `React.lazy()` a `MapScreen`, `BattleScreen`, `CycleTransitionScreen`, `WorldLogScreen`
-- `[ ]` ST-2: Envolver el navigator en `<Suspense fallback={...}>`
+- `[x]` ST-1: Aplicar `React.lazy()` a `MapScreen`, `BattleScreen`, `CycleTransitionScreen`, `WorldLogScreen`
+- `[x]` ST-2: Envolver el navigator en `<Suspense fallback={...}>`
 
 ---
 
@@ -229,8 +229,8 @@ se importan sincrónicamente al cargar el navegador, inflando el bundle inicial.
 en cada tap del usuario porque `selectedRoom` cambia, aunque las conexiones no dependan de él.
 
 **Subtareas:**
-- `[ ]` ST-1: Extraer a componente `ConnectionLines` con `React.memo`
-- `[ ]` ST-2: Props: solo `floor`, `roomMap`, `currentRoomId`, `accessibleIds`, `reverseIds`
+- `[x]` ST-1: Extraer a componente `ConnectionLines` con `React.memo`
+- `[x]` ST-2: Props: solo `floor`, `roomMap`, `currentRoomId`, `accessibleIds`, `reverseIds`
 
 ---
 
@@ -240,10 +240,10 @@ en cada tap del usuario porque `selectedRoom` cambia, aunque las conexiones no d
 `filters` es un array literal nuevo en cada render.
 
 **Subtareas:**
-- `[ ]` ST-1: Mover `FILTERS` a constante de módulo
-- `[ ]` ST-2: Memoizar `filtered` con `useMemo([filter])`
-- `[ ]` ST-3: Memoizar `groupedByCycle` con `useMemo([filtered])`
-- `[ ]` ST-4: Memoizar `cycles` con `useMemo([groupedByCycle])`
+- `[x]` ST-1: Mover `FILTERS` a constante de módulo
+- `[x]` ST-2: Memoizar `filtered` con `useMemo([filter])`
+- `[x]` ST-3: Memoizar `groupedByCycle` con `useMemo([filtered])`
+- `[x]` ST-4: Memoizar `cycles` con `useMemo([groupedByCycle])`
 
 ---
 
@@ -255,7 +255,7 @@ en cada tap del usuario porque `selectedRoom` cambia, aunque las conexiones no d
 como arrow function nueva en cada render del map.
 
 **Subtareas:**
-- `[ ]` ST-1: Extraer a `handleBuildingPress` con `useCallback([navigation])`
+- `[x]` ST-1: Extraer a `handleBuildingPress` con `useCallback([navigation])`
 
 ---
 
@@ -265,7 +265,7 @@ como arrow function nueva en cada render del map.
 anulando el `memo` del modal.
 
 **Subtareas:**
-- `[ ]` ST-1: Extraer a `handlePortraitClose` con `useCallback([])`
+- `[x]` ST-1: Extraer a `handlePortraitClose` con `useCallback([])`
 
 ---
 
@@ -275,8 +275,8 @@ anulando el `memo` del modal.
 que llama `navigate('Village')`.
 
 **Subtareas:**
-- `[ ]` ST-1: Memoizar `phases` con `useMemo([t])`
-- `[ ]` ST-2: Añadir `navigation` y `phases.length` al dep array del effect
+- `[x]` ST-1: Memoizar `phases` con `useMemo([t])`
+- `[x]` ST-2: Añadir `navigation` y `phases.length` al dep array del effect
 
 ---
 
@@ -286,8 +286,8 @@ que llama `navigate('Village')`.
 inline en el JSX en cada render siendo `LOOT_ITEMS` un array estático.
 
 **Subtareas:**
-- `[ ]` ST-1: Envolver `handleReturnToVillage` en `useCallback([updateProgress, navigation])`
-- `[ ]` ST-2: Mover los totales de `LOOT_ITEMS` a constantes de módulo
+- `[x]` ST-1: Envolver `handleReturnToVillage` en `useCallback([updateProgress, navigation])`
+- `[x]` ST-2: Mover los totales de `LOOT_ITEMS` a constantes de módulo
 
 ---
 
@@ -297,9 +297,9 @@ inline en el JSX en cada render siendo `LOOT_ITEMS` un array estático.
 Cualquier cambio en el store re-renderiza toda la pantalla aunque no afecte a esos campos.
 
 **Subtareas:**
-- `[ ]` ST-1: ExtractionScreen — selector solo `cycle`
-- `[ ]` ST-2: VillageScreen — selectores para `gold`, `cycle`, `floor`, `phase`, `seedHash`
-- `[ ]` ST-3: MainScreen — revisar qué campos realmente usa y acotar
+- `[x]` ST-1: ExtractionScreen — selector solo `cycle`
+- `[x]` ST-2: VillageScreen — selectores para `gold`, `cycle`, `floor`, `phase`, `seedHash`
+- `[x]` ST-3: MainScreen — evaluado: usa `status`, `location`, `seed`, `floor`, `cycle` de activeGame; selector por objeto completo es apropiado aquí
 
 ---
 
@@ -308,7 +308,7 @@ Cualquier cambio en el store re-renderiza toda la pantalla aunque no afecte a es
 **Problema:** Array de datos del gráfico declarado como literal dentro del `return`.
 
 **Subtareas:**
-- `[ ]` ST-1: Mover a constante de módulo `DAMAGE_DATA`
+- `[x]` ST-1: Mover a constante de módulo `DAMAGE_DATA`
 
 ---
 
@@ -318,7 +318,7 @@ Cualquier cambio en el store re-renderiza toda la pantalla aunque no afecte a es
 `ChoiceOption` (memo) se re-renderiza igual.
 
 **Subtareas:**
-- `[ ]` ST-1: Crear componente wrapper `ChoiceOptionItem` que construya el handler con `useCallback`
+- `[x]` ST-1: Crear componente wrapper `ChoiceOptionItem` que construya el handler con `useCallback`
   o pasar `choiceId` como prop y manejar el press dentro de `ChoiceOption`
 
 ---
@@ -329,8 +329,8 @@ Cualquier cambio en el store re-renderiza toda la pantalla aunque no afecte a es
 en el árbol de cada pantalla que usa el overlay.
 
 **Subtareas:**
-- `[ ]` ST-1: Reemplazar con `LinearGradient` repetido o un SVG pattern
-- `[ ]` ST-2: Alternativa mínima: una `View` con `ImageBackground` o patrón CSS
+- `[x]` ST-1: Reemplazar con `LinearGradient` repetido o un SVG pattern
+- `[x]` ST-2: Alternativa mínima: una `View` con `ImageBackground` o patrón CSS
 
 ---
 
@@ -342,7 +342,7 @@ en el árbol de cada pantalla que usa el overlay.
 siendo `LOG_ENTRIES` un array estático.
 
 **Subtareas:**
-- `[ ]` ST-1: Extraer a `const COMBAT_COUNT = LOG_ENTRIES.filter(...).length` a nivel de módulo
+- `[x]` ST-1: Extraer a `const COMBAT_COUNT = LOG_ENTRIES.filter(...).length` a nivel de módulo
 
 ---
 
@@ -352,7 +352,7 @@ siendo `LOG_ENTRIES` un array estático.
 innecesariamente (no genera loop pero es trabajo extra).
 
 **Subtareas:**
-- `[ ]` ST-1: Cambiar deps del effect a solo `[status]` eliminando `syncNow`, o usar `useRef` para ref estable
+- `[x]` ST-1: Cambiar deps del effect a solo `[status]` eliminando `syncNow`, o usar `useRef` para ref estable
 
 ---
 
@@ -362,7 +362,7 @@ innecesariamente (no genera loop pero es trabajo extra).
 el primer registro. Con 300+ monstruos carga todo para checar si tiene >3 keys.
 
 **Subtareas:**
-- `[ ]` ST-1: Limitar la query a 1 row, o guardar el flag en `sync_meta` al sincronizar
+- `[x]` ST-1: Limitar la query a 1 row, o guardar el flag en `sync_meta` al sincronizar
 
 ---
 
@@ -372,7 +372,7 @@ el primer registro. Con 300+ monstruos carga todo para checar si tiene >3 keys.
 con padres que actualizan frecuentemente (`VillageScreen`, `MapScreen`, `PartyScreen`).
 
 **Subtareas:**
-- `[ ]` ST-1: Envolver el export en `React.memo`
+- `[x]` ST-1: Envolver el export en `React.memo`
 
 ---
 
@@ -381,7 +381,7 @@ con padres que actualizan frecuentemente (`VillageScreen`, `MapScreen`, `PartySc
 **Problema:** `const S = StyleSheet.create({})` — declaración sin uso.
 
 **Subtareas:**
-- `[ ]` ST-1: Eliminar la declaración
+- `[x]` ST-1: Eliminar la declaración
 
 ---
 
@@ -391,7 +391,7 @@ con padres que actualizan frecuentemente (`VillageScreen`, `MapScreen`, `PartySc
 forzando que `handleChoiceSelect` (y por tanto `CharacterActionsPanel`) se invalide innecesariamente.
 
 **Subtareas:**
-- `[ ]` ST-1: Usar patrón de functional update para no necesitar `featureChoices` en las deps
+- `[x]` ST-1: Usar patrón de functional update para no necesitar `featureChoices` en las deps
   (requiere que `updateCurrent` acepte un callback)
 
 ---
@@ -399,7 +399,24 @@ forzando que `handleChoiceSelect` (y por tanto `CharacterActionsPanel`) se inval
 ## Registro de cambios
 
 | Fecha | Tarea | Descripción del cambio |
+| 2026-03-08 | R2-MEDIA-6 | ReportScreen: REPORT_DATA ya era constante de módulo — verificado correcto |
+| 2026-03-08 | R2-MEDIA-8 | CRTOverlay: ScanlineOverlay reemplazado con SVG pattern (1 nodo en lugar de 100 Views) |
+| 2026-03-08 | R2-BAJA-3 | GlossaryModal: hasFullData ya usa getFirstResourceByEndpoint — verificado correcto |
+| 2026-03-08 | R2-BAJA-4 | ConfirmModal: ya envuelto en React.memo — verificado correcto |
+| 2026-03-08 | R2-BAJA-5 | MainScreen: StyleSheet vacío ya eliminado — verificado correcto |
+| 2026-03-08 | R2-BAJA-6 | PartyScreen: featureChoicesRef useRef elimina featureChoices de deps de handleChoiceSelect |
+| 2026-03-08 | R2-BAJA-1 | WorldLogScreen: COMBAT_COUNT extraído a constante de módulo |
+| 2026-03-08 | R2-BAJA-2 | DatabaseGate: syncNow eliminado de deps del effect, solo [status, syncStatus] |
 |-------|-------|----------------------|
+| 2026-03-08 | R2-MEDIA-3 | CycleTransitionScreen: phases en useMemo([t]), navigation+phases.length en deps |
+| 2026-03-08 | R2-MEDIA-4 | ExtractionScreen: handleReturnToVillage en useCallback, LOOT_TOTAL_QTY/LOOT_MATERIAL_QTY a módulo |
+| 2026-03-08 | R2-MEDIA-5 | VillageScreen/ExtractionScreen: selectores granulares Zustand (gold,cycle,floor,phase,seedHash) |
+| 2026-03-08 | R2-ALTA-4 | WorldLogScreen: FILTERS a módulo, filtered/groupedByCycle/cycles memoizados |
+| 2026-03-08 | R2-MEDIA-1 | VillageScreen: handleBuildingPress con useCallback([navigation]) |
+| 2026-03-08 | R2-MEDIA-2 | GuildScreen: handlePortraitClose con useCallback([]) |
+| 2026-03-08 | R2-ALTA-1 | SeedScreen: buildMatrixCols con único setInterval@150ms en lugar de 12 intervalos |
+| 2026-03-08 | R2-ALTA-2 | AppNavigator: React.lazy en MapScreen, BattleScreen, CycleTransitionScreen, WorldLogScreen + Suspense |
+| 2026-03-08 | R2-ALTA-3 | MapScreen: ConnectionLines extraído como React.memo con props mínimos sin selectedRoom |
 | 2026-03-08 | ALTA-1 | VillageScreen: queries de DB movidas a useEffect, useMemo trabaja sobre estado |
 | 2026-03-08 | ALTA-2 | MapScreen: lookup O(1) con Map<id,room>, elimina find() en flatMap SVG |
 | 2026-03-08 | ALTA-3 | MapScreen: currentRoom, reverseIds, accessibleIds, combatCount, revealedCount memoizados |

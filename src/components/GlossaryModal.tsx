@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useI18n } from '../i18n';
 import type { Lang } from '../i18n';
-import { getResourcesByEndpoint, getResourceCount } from '../database';
+import { getResourcesByEndpoint, getResourceCount, getFirstResourceByEndpoint } from '../database';
 import { getTranslatedName, getTranslatedField } from '../services/translationBridge';
 import { syncEndpoint } from '../services/syncService';
 import type { ApiEndpoint } from '../services/api5e';
@@ -155,11 +155,9 @@ const DESC_BUILDERS: Record<string, DescBuilder> = {
 // ─── Detect if a resource has full detail data ───────────────
 
 function hasFullData(endpoint: ApiEndpoint): boolean {
-  const resources = getResourcesByEndpoint(endpoint);
-  if (resources.length === 0) return false;
-  const first = JSON.parse(resources[0].data) as Record<string, unknown>;
-  // list-only data has only {index, name, url}
-  const keys = Object.keys(first);
+  const first = getFirstResourceByEndpoint(endpoint);
+  if (!first) return false;
+  const keys = Object.keys(JSON.parse(first.data) as Record<string, unknown>);
   return keys.length > 3;
 }
 

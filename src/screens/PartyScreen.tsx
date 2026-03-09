@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, memo, useCallback, type ReactNode } from 'react';
+import React, { useEffect, useMemo, memo, useCallback, useRef, type ReactNode } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   ActivityIndicator, StyleSheet,
@@ -219,13 +219,17 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
 
   const handlePortraitDetailClose = useCallback(() => setPortraitDetailUri(null), [setPortraitDetailUri]);
 
+  // Ref estable para featureChoices — evita que handleChoiceSelect se invalide en cada update del roster
+  const featureChoicesRef = useRef(current?.featureChoices);
+  useEffect(() => { featureChoicesRef.current = current?.featureChoices; }, [current?.featureChoices]);
+
   // Estabiliza la referencia para que React.memo en CharacterActionsPanel funcione
   const handleChoiceSelect = useCallback(
     (choiceKey: string, value: string | string[]) =>
       updateCurrent({
-        featureChoices: { ...current.featureChoices, [choiceKey]: value },
+        featureChoices: { ...featureChoicesRef.current, [choiceKey]: value },
       }),
-    [updateCurrent, current?.featureChoices],
+    [updateCurrent],
   );
 
   const handleLaunch = useCallback(() => {

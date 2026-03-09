@@ -1,5 +1,6 @@
 import React, { memo, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import Svg, { Defs, Pattern, Rect, Line } from 'react-native-svg';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -8,24 +9,22 @@ import Animated, {
   withSequence 
 } from 'react-native-reanimated';
 
-const styles = StyleSheet.create({
-  scanline: {
-    height: 1,
-    backgroundColor: 'rgba(0, 255, 65, 0.05)',
-  }
+// Single SVG node replaces 100 View nodes — pattern tile repeats infinitely
+export const ScanlineOverlay = memo(() => {
+  const { width, height } = useWindowDimensions();
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      <Svg width={width} height={height}>
+        <Defs>
+          <Pattern id="scanlines" x="0" y="0" width="1" height="2" patternUnits="userSpaceOnUse">
+            <Line x1="0" y1="1" x2="1" y2="1" stroke="rgba(0,255,65,0.05)" strokeWidth="1" />
+          </Pattern>
+        </Defs>
+        <Rect x="0" y="0" width={width} height={height} fill="url(#scanlines)" />
+      </Svg>
+    </View>
+  );
 });
-
-// Hoisted so React can diff a stable reference — avoids re-creating 100 items
-const SCANLINE_INDICES = Array.from({ length: 100 }, (_, i) => i);
-
-// Memoized: re-renders only if its own props change (it has none)
-export const ScanlineOverlay = memo(() => (
-  <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-    {SCANLINE_INDICES.map(i => (
-      <View key={i} style={styles.scanline} />
-    ))}
-  </View>
-));
 
 export const CRTOverlay = memo(() => {
   const flicker = useSharedValue(1);

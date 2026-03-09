@@ -67,15 +67,15 @@ const S = StyleSheet.create({
 
 // ─── Choice Option ────────────────────────────────────────
 
-const ChoiceOption = memo(({ choice, selected, lang, multi, onPress }: {
+const ChoiceOption = memo(({ choice, selected, lang, multi, onChoicePress }: {
   choice: ActionChoice;
   selected: boolean;
   lang: Lang;
   multi: boolean;
-  onPress: () => void;
+  onChoicePress: (id: string) => void;
 }) => (
   <TouchableOpacity
-    onPress={onPress}
+    onPress={() => onChoicePress(choice.id)}
     style={[
       choiceStyles.option,
       selected && choiceStyles.optionSelected,
@@ -222,7 +222,7 @@ const ActionItem = memo(({ action, lang, featureChoices, onChoiceSelect }: {
               selected={isSelected(c.id)}
               lang={lang}
               multi={isMulti}
-              onPress={() => handleChoicePress(c.id)}
+              onChoicePress={handleChoicePress}
             />
           ))}
         </View>

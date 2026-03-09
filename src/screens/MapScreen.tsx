@@ -76,6 +76,68 @@ const MapBackground = React.memo(() => {
   );
 });
 
+// ─── Connection lines SVG — memoizado para no recalcular en cada tap ─────────
+// Solo se re-renderiza si cambia floor, roomMap, currentRoomId, accessibleIds
+// o reverseIds. selectedRoom no es prop, por lo que los taps no lo invalidan.
+type ConnectionLinesProps = {
+  floor: DungeonFloor;
+  roomMap: Map<number, DungeonRoom>;
+  currentRoomId: number;
+  accessibleIds: Set<number>;
+  reverseIds: Set<number>;
+};
+const ConnectionLines = React.memo(({ floor, roomMap, currentRoomId, accessibleIds, reverseIds }: ConnectionLinesProps) => (
+  <Svg
+    style={StyleSheet.absoluteFill}
+    width={CANVAS_W}
+    height={CANVAS_H}
+    pointerEvents="none"
+  >
+    {floor.rooms.flatMap(room =>
+      room.connections.map(targetId => {
+        const target = roomMap.get(targetId);
+        if (!target || !room.revealed) return null;
+        const cx1 = room.pos.x * CANVAS_W;
+        const cy1 = room.pos.y * CANVAS_H;
+        const cx2 = target.pos.x * CANVAS_W;
+        const cy2 = target.pos.y * CANVAS_H;
+        const dx = cx2 - cx1, dy = cy2 - cy1;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 1) return null;
+        const ux = dx / dist, uy = dy / dist;
+        const gap = NODE_HALF + 3;
+        const x1 = cx1 + ux * gap, y1 = cy1 + uy * gap;
+        const x2 = cx2 - ux * gap, y2 = cy2 - uy * gap;
+        if (!target.revealed) {
+          return (
+            <SvgLine key={`fog-conn-${room.id}-${targetId}`}
+              x1={x1} y1={y1} x2={x2} y2={y2}
+              stroke="rgba(0,255,65,0.18)" strokeWidth={1}
+              strokeDasharray="3 7"
+            />
+          );
+        }
+        const isActivePath =
+          (room.id === currentRoomId && accessibleIds.has(targetId)) ||
+          (targetId === currentRoomId && reverseIds.has(room.id));
+        const lineColor = isActivePath ? 'rgba(0,255,65,0.95)' : 'rgba(0,255,65,0.45)';
+        const glowColor = isActivePath ? 'rgba(0,255,65,0.30)' : 'rgba(0,255,65,0.10)';
+        const strokeW = isActivePath ? 2 : 1;
+        return (
+          <SvgG key={`conn-${room.id}-${targetId}`}>
+            <SvgLine x1={x1} y1={y1} x2={x2} y2={y2}
+              stroke={glowColor} strokeWidth={strokeW + 8} />
+            <SvgLine x1={x1} y1={y1} x2={x2} y2={y2}
+              stroke={lineColor} strokeWidth={strokeW} />
+            <SvgCircle cx={x1} cy={y1} r={2.5} fill={lineColor} opacity={0.9} />
+            <SvgCircle cx={x2} cy={y2} r={2.5} fill={lineColor} opacity={0.9} />
+          </SvgG>
+        );
+      })
+    )}
+  </Svg>
+));
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function isExplorationState(parsed: unknown): parsed is FloorExplorationState {
   return (
@@ -351,57 +413,13 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
         <MapBackground />
 
         {/* Connection lines — SVG for smooth anti-aliased rendering */}
-        <Svg
-          style={StyleSheet.absoluteFill}
-          width={CANVAS_W}
-          height={CANVAS_H}
-          pointerEvents="none"
-        >
-          {floor.rooms.flatMap(room =>
-            room.connections.map(targetId => {
-              const target = roomMap.get(targetId);
-              // Skip if source not revealed or target doesn't exist in graph.
-              if (!target || !room.revealed) return null;
-              const cx1 = room.pos.x * CANVAS_W;
-              const cy1 = room.pos.y * CANVAS_H;
-              const cx2 = target.pos.x * CANVAS_W;
-              const cy2 = target.pos.y * CANVAS_H;
-              const dx = cx2 - cx1, dy = cy2 - cy1;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              if (dist < 1) return null;
-              const ux = dx / dist, uy = dy / dist;
-              const gap = NODE_HALF + 3;
-              const x1 = cx1 + ux * gap, y1 = cy1 + uy * gap;
-              const x2 = cx2 - ux * gap, y2 = cy2 - uy * gap;
-              // Connection into the fog — dashed dim line, no glow or endpoint dots.
-              if (!target.revealed) {
-                return (
-                  <SvgLine key={`fog-conn-${room.id}-${targetId}`}
-                    x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke="rgba(0,255,65,0.18)" strokeWidth={1}
-                    strokeDasharray="3 7"
-                  />
-                );
-              }
-              const isActivePath =
-                (room.id === currentRoomId && accessibleIds.has(targetId)) ||
-                (targetId === currentRoomId && reverseIds.has(room.id));
-              const lineColor = isActivePath ? 'rgba(0,255,65,0.95)' : 'rgba(0,255,65,0.45)';
-              const glowColor = isActivePath ? 'rgba(0,255,65,0.30)' : 'rgba(0,255,65,0.10)';
-              const strokeW = isActivePath ? 2 : 1;
-              return (
-                <SvgG key={`conn-${room.id}-${targetId}`}>
-                  <SvgLine x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke={glowColor} strokeWidth={strokeW + 8} />
-                  <SvgLine x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke={lineColor} strokeWidth={strokeW} />
-                  <SvgCircle cx={x1} cy={y1} r={2.5} fill={lineColor} opacity={0.9} />
-                  <SvgCircle cx={x2} cy={y2} r={2.5} fill={lineColor} opacity={0.9} />
-                </SvgG>
-              );
-            })
-          )}
-        </Svg>
+        <ConnectionLines
+          floor={floor}
+          roomMap={roomMap}
+          currentRoomId={currentRoomId}
+          accessibleIds={accessibleIds}
+          reverseIds={reverseIds}
+        />
 
         {/* Fog nodes — rendered underneath revealed nodes (lower z-order) */}
         {floor.rooms

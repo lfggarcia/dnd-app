@@ -12,7 +12,7 @@ type Props = {
   destructive?: boolean;
 };
 
-export const ConfirmModal = ({
+export const ConfirmModal = React.memo(({
   visible,
   title,
   message,
@@ -45,7 +45,7 @@ export const ConfirmModal = ({
       </View>
     </View>
   </Modal>
-);
+));
 
 const S = StyleSheet.create({
   backdrop: {

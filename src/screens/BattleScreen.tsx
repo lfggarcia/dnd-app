@@ -6,7 +6,8 @@ import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { ScreenProps } from '../navigation/types';
 
-export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
+export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
+  const { roomId } = route.params;
   const { t } = useI18n();
   // Selectores granulares — evita re-renders cuando cambian campos ajenos a esta pantalla
   const partyData = useGameStore(s => s.activeGame?.partyData ?? []);
@@ -26,11 +27,11 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      navigation.navigate('Report');
+      navigation.navigate('Report', { roomId, roomWasCleared: true });
       return true;
     });
     return () => sub.remove();
-  }, [navigation]);
+  }, [navigation, roomId]);
 
   // Se recalcula solo cuando cambia t (cambio de idioma), no en cada render
   const LOG_ENTRIES = useMemo(() => [
@@ -154,7 +155,7 @@ export const BattleScreen = ({ navigation }: ScreenProps<'Battle'>) => {
 
       {/* Force end button */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('Report')}
+        onPress={() => navigation.navigate('Report', { roomId, roomWasCleared: true })}
         className="absolute top-4 right-4 p-2"
         style={{ backgroundColor: '#FFB000' }}
       >

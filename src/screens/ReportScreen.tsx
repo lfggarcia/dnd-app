@@ -24,12 +24,13 @@ const REPORT_DATA = {
   roundsElapsed: 4,
 };
 
-export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
+export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
+  const { roomId, roomWasCleared } = route.params;
   const { t } = useI18n();
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      navigation.navigate('Extraction');
+      navigation.navigate('Map');
       return true;
     });
     return () => sub.remove();
@@ -158,7 +159,7 @@ export const ReportScreen = ({ navigation }: ScreenProps<'Report'>) => {
       {/* Continue Button */}
       <View className="p-4 border-t border-primary/30 bg-background">
         <TouchableOpacity
-          onPress={() => navigation.navigate('Extraction')}
+          onPress={() => navigation.navigate('Map')}
           className="bg-primary p-3 items-center"
         >
           <Text className="text-background font-bold font-robotomono">{t('common.continue')}</Text>

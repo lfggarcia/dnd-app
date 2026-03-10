@@ -121,18 +121,24 @@ const CharacterCard = memo(({ char, uri, accent, idx, onPress, onLongPress }: Ca
 type GridProps = {
   party: CharacterSave[];
   expressionsJson: Record<number, Record<string, string>>;
+  portraitsJson: Record<string, string> | null;
   onCharPress: (idx: number) => void;
   onCharLongPress: (uri: string) => void;
 };
 
-const PartyGrid = memo(({ party, expressionsJson, onCharPress, onCharLongPress }: GridProps) => {
+const PartyGrid = memo(({ party, expressionsJson, portraitsJson, onCharPress, onCharLongPress }: GridProps) => {
   if (party.length === 0) return null;
 
   return (
     <View style={S.grid}>
       {party.map((char, i) => {
         const expressions = expressionsJson[i] ?? null;
-        const uri = expressions?.['neutral'] ?? char.portrait ?? null;
+        const uri =
+          expressions?.['aggressive'] ??
+          expressions?.['angry'] ??
+          expressions?.['neutral'] ??
+          portraitsJson?.[String(i)] ??
+          null;
         return (
           <CharacterCard
             key={`${char.name}-${i}`}
@@ -155,9 +161,10 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
   const { t, lang } = useI18n();
   const activeGame = useGameStore(s => s.activeGame);
 
-  const party        = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
-  const aliveCount   = useMemo(() => party.filter(c => c.alive).length, [party]);
+  const party           = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
+  const aliveCount      = useMemo(() => party.filter(c => c.alive).length, [party]);
   const expressionsJson = activeGame?.expressionsJson ?? {};
+  const portraitsJson   = activeGame?.portraitsJson ?? null;
 
   const [modalUri, setModalUri] = useState<string | null>(null);
 
@@ -208,6 +215,7 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
             <PartyGrid
               party={party}
               expressionsJson={expressionsJson}
+              portraitsJson={portraitsJson}
               onCharPress={handleCharPress}
               onCharLongPress={handleCharLongPress}
             />

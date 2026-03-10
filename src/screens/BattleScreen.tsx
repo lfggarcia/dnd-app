@@ -1,13 +1,15 @@
 import React, {
   useEffect, useCallback, useState, useRef, useMemo, memo,
 } from 'react';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, withSpring,
+} from 'react-native-reanimated';
 import {
   View, Text, TouchableOpacity, ScrollView, BackHandler,
   Image, StyleSheet, Dimensions, Platform,
   type ImageSourcePropType,
 } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
-import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import {
@@ -47,13 +49,12 @@ const SCREEN_W        = Dimensions.get('window').width;
 const SCREEN_H        = Dimensions.get('window').height;
 const HUD_H           = 30;
 const TIMELINE_H      = 74;   // 50px circles + padding
-const LOG_STRIP_H     = 44;   // dedicated log row below enemies
-const PARTY_STRIP_H   = 56;   // horizontal party portrait row
+const LOG_STRIP_H     = 82;   // dedicated log row below enemies
+const PARTY_STRIP_H   = 150;  // horizontal party portrait card row
 const ACTION_H        = 72;
 const APPROX_STATUS_H = Platform.OS === 'ios' ? 50 : 24;
 
-const TOKEN_DIAM   = 50;                                         // timeline circles
-const PARTY_CHIP_D = 38;                                         // portrait chip diameter
+const TOKEN_DIAM = 50;        // timeline circles
 
 // Enemy width: full screen divided equally (max 4 visible per row)
 const ENEMY_MAX_W = Math.min(Math.floor((SCREEN_W - 20) / 4), 160);
@@ -88,7 +89,7 @@ const TurnToken = memo(({ actor, index, currentTurnIdx, portraitSource, isDead }
         {portraitSource != null && (
           <Image
             source={portraitSource}
-            style={StyleSheet.absoluteFillObject}
+            style={S.tokenImg}
             resizeMode="cover"
           />
         )}
@@ -179,7 +180,7 @@ const EnemyCard = memo(({
           <Image
             source={illus}
             style={S.enemyIllusImg}
-            resizeMode="contain"
+            resizeMode="cover"
           />
         ) : (
           <Text style={S.enemyPlaceholder}>?</Text>
@@ -230,9 +231,9 @@ const EnemyCard = memo(({
   );
 });
 
-// ── Party Chip (horizontal bottom strip) ──────────────────────────────────────
+// ── Party Card (horizontal bottom strip, mirroring enemy card style) ──────────
 
-type PartyChipProps = {
+type PartyCardProps = {
   char: LivePartyMember;
   portrait: string | null;
   isCurrentTurn: boolean;
@@ -241,52 +242,68 @@ type PartyChipProps = {
   onAllyTarget: (idx: number) => void;
 };
 
-const PartyChip = memo(({
+const PartyCard = memo(({
   char, portrait, isCurrentTurn, isTargetable, partyIdx, onAllyTarget,
-}: PartyChipProps) => {
-  const hpPct     = char.maxHp > 0 ? char.currentHp / char.maxHp : 0;
-  const hpColor   = char.currentHp <= 0
+}: PartyCardProps) => {
+  const hpPct   = char.maxHp > 0 ? char.currentHp / char.maxHp : 0;
+  const hpColor = char.currentHp <= 0
     ? '#FF3E3E'
     : hpPct > 0.5 ? '#00FF41' : hpPct > 0.25 ? '#FFB000' : '#FF3E3E';
-  const ringColor = isCurrentTurn ? '#00FF41' : isTargetable ? '#4DBBFF' : `${hpColor}60`;
-  const ringWidth = isCurrentTurn ? 2.5 : 1.5;
+  const borderColor = isCurrentTurn
+    ? '#00FF41'
+    : isTargetable
+    ? '#4DBBFF'
+    : char.currentHp <= 0
+    ? 'rgba(255,62,62,0.15)'
+    : `${hpColor}40`;
 
   const handlePress = useCallback(() => onAllyTarget(partyIdx), [onAllyTarget, partyIdx]);
 
-  const chip = (
-    <View style={[S.partyChipWrap, { opacity: char.currentHp <= 0 ? 0.3 : 1 }]}>
-      <View style={[S.partyChipCircle, {
-        borderColor: ringColor,
-        borderWidth: ringWidth,
-        backgroundColor: isCurrentTurn ? `${hpColor}18` : 'rgba(10,15,10,0.95)',
-      }]}>
-        {portrait != null && (
+  const inner = (
+    <View style={[S.partyCard, { borderColor, opacity: char.currentHp <= 0 ? 0.35 : 1 }]}>
+      {/* Portrait fills entire card */}
+      <View style={S.partyIllus}>
+        {portrait != null ? (
           <Image
             source={{ uri: portrait }}
-            style={StyleSheet.absoluteFillObject}
+            style={S.partyIllusImg}
             resizeMode="cover"
           />
+        ) : (
+          <Text style={S.partyPlaceholder}>{char.name.charAt(0).toUpperCase()}</Text>
         )}
+        {/* Bottom vignette for text legibility */}
+        <View style={S.partyVignette} />
         {isCurrentTurn && (
-          <View style={[StyleSheet.absoluteFillObject, S.chipActivePulse]} />
+          <View style={[StyleSheet.absoluteFillObject, S.partyActivePulse]} />
         )}
+        {isTargetable && <View style={S.partyTargetRing} />}
+        {/* Name + HP pinned at bottom inside portrait */}
+        <View style={S.partyInfoPin}>
+          <Text style={[S.partyName, { color: char.currentHp <= 0 ? 'rgba(255,62,62,0.5)' : '#d0f0c0' }]} numberOfLines={1}>
+            {char.name.substring(0, 9).toUpperCase()}
+          </Text>
+          {char.currentHp > 0 ? (
+            <>
+              <View style={S.partyHpTrack}>
+                <View style={[S.partyHpFill, { width: `${Math.round(hpPct * 100)}%`, backgroundColor: hpColor }]} />
+              </View>
+              <Text style={[S.partyHpLabel, { color: `${hpColor}bb` }]}>
+                {char.currentHp}/{char.maxHp}
+              </Text>
+            </>
+          ) : (
+            <Text style={S.partyDeadText}>KO</Text>
+          )}
+        </View>
       </View>
-      <View style={[S.chipHpTrack, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
-        <View style={[S.chipHpFill, {
-          width: `${Math.round(hpPct * 100)}%`,
-          backgroundColor: hpColor,
-        }]} />
-      </View>
-      <Text style={[S.chipName, { color: hpColor }]} numberOfLines={1}>
-        {char.name.substring(0, 5).toUpperCase()}
-      </Text>
     </View>
   );
 
-  if (!isTargetable || char.currentHp <= 0) return chip;
+  if (!isTargetable || char.currentHp <= 0) return inner;
   return (
-    <TouchableOpacity onPress={handlePress} activeOpacity={0.72} style={S.partyChipTouch}>
-      {chip}
+    <TouchableOpacity onPress={handlePress} activeOpacity={0.72} style={S.partyCardTouch}>
+      {inner}
     </TouchableOpacity>
   );
 });
@@ -311,18 +328,55 @@ const getLogColor = (e: string): string => {
 const LogStrip = memo(({ log }: { log: string[] }) => {
   const last = log[log.length - 1] ?? '';
   const prev = log[log.length - 2] ?? '';
+  const prev2 = log[log.length - 3] ?? '';
   return (
     <View style={S.logStrip}>
+      {prev2 !== '' && (
+        <Text style={[S.logEntry, { color: getLogColor(prev2), opacity: 0.35 }]} numberOfLines={1}>
+          {'> '}{prev2}
+        </Text>
+      )}
       {prev !== '' && (
-        <Text style={[S.logEntry, { color: getLogColor(prev), opacity: 0.38 }]} numberOfLines={1}>
+        <Text style={[S.logEntry, { color: getLogColor(prev), opacity: 0.55 }]} numberOfLines={1}>
           {'> '}{prev}
         </Text>
       )}
       {last !== '' && (
-        <Text style={[S.logEntry, { color: getLogColor(last), opacity: 0.88 }]} numberOfLines={1}>
+        <Text style={[S.logEntry, { color: getLogColor(last), opacity: 0.92 }]} numberOfLines={1}>
           {'> '}{last}
         </Text>
       )}
+    </View>
+  );
+});
+
+// ── Defeat Animation (Reanimated) ───────────────────────────────────────────────
+
+const DefeatAnimation = memo(({ source }: { source: ImageSourcePropType }) => {
+  const scale  = useSharedValue(0.4);
+  const rotate = useSharedValue(-8);
+  const opacity = useSharedValue(0);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 280 });
+    scale.value   = withSpring(2.0, { damping: 10, stiffness: 55 });
+    rotate.value  = withTiming(5, { duration: 1100 });
+  }, []);
+
+  const aStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { scale: scale.value },
+      { rotate: `${rotate.value}deg` },
+    ],
+  }));
+
+  return (
+    <View style={S.defeatOverlay}>
+      <Animated.View style={[S.defeatCard, aStyle]}>
+        <Image source={source} style={S.defeatCardImg} resizeMode="cover" />
+      </Animated.View>
     </View>
   );
 });
@@ -453,6 +507,18 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   const isAllyTargetable =
     uiPhase === 'PLAYER_TARGET_ABILITY' && currentAbility?.targetType === 'ally';
 
+  // Pick the enemy illustration for the defeat animation (stable once outcome is set)
+  const defeatIllus = useMemo<ImageSourcePropType | null>(() => {
+    if (cs.outcome !== 'DEFEAT') return null;
+    const alive = cs.enemyState.filter(e => !e.defeated);
+    const pool  = alive.length > 0 ? alive : cs.enemyState;
+    const pick  = pool.length === 1
+      ? pool[0]
+      : pool[Math.floor(Math.random() * pool.length)];
+    return pick ? (MONSTER_ILLUSTRATIONS[pick.name] ?? null) : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cs.outcome]);
+
   const getPartyPortrait = useCallback((idx: number): string | null => {
     const exprs = expressionsJson[idx];
     return exprs?.['aggressive'] ?? exprs?.['angry'] ?? exprs?.['neutral']
@@ -485,7 +551,6 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   return (
     <View style={S.root}>
       <CRTOverlay />
-
       {/* ── HUD strip ── */}
       <View style={S.hudStrip}>
         <Text style={S.hudLeft}>F{activeFloor} · C{activeCycle}</Text>
@@ -516,12 +581,16 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
           ))}
         </View>
         <LogStrip log={cs.log} />
+        {/* Defeat overlay — covers only this area, action panel stays visible */}
+        {uiPhase === 'ENDED' && cs.outcome === 'DEFEAT' && defeatIllus != null && (
+          <DefeatAnimation source={defeatIllus} />
+        )}
       </View>
 
       {/* ── Party strip ── */}
       <View style={S.partyStrip}>
         {cs.partyState.slice(0, 5).map((char, i) => (
-          <PartyChip
+          <PartyCard
             key={`${char.name}-${i}`}
             char={char}
             portrait={getPartyPortrait(i)}
@@ -564,7 +633,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
         )}
 
         {(uiPhase === 'PLAYER_TARGET_ATTACK' || uiPhase === 'PLAYER_TARGET_ABILITY') && (
-          <View style={S.phaseRow}>
+          <View style={[S.phaseRow, { gap: 5 }]}>
             <Text style={S.targetPrompt}>
               {uiPhase === 'PLAYER_TARGET_ATTACK'
                 ? '^ TOCA UN ENEMIGO PARA ATACAR'
@@ -572,6 +641,9 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
                 ? '^ TOCA UN ALIADO COMO OBJETIVO'
                 : '^ TOCA UN ENEMIGO COMO OBJETIVO'}
             </Text>
+            <TouchableOpacity onPress={() => setUiPhase('PLAYER_ACTION')} style={S.cancelBtn}>
+              <Text style={S.cancelBtnText}>✕ CANCELAR</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -593,8 +665,6 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
           </View>
         )}
       </View>
-
-      <GlossaryButton />
     </View>
   );
 };
@@ -619,20 +689,20 @@ const S = StyleSheet.create({
   },
   hudLeft: {
     fontFamily: 'RobotoMono-Regular',
-    fontSize: 9,
-    color: 'rgba(0,255,65,0.4)',
+    fontSize: 10,
+    color: 'rgba(0,255,65,0.55)',
     letterSpacing: 1,
   },
   hudCenter: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 10,
-    color: 'rgba(0,255,65,0.2)',
+    fontSize: 11,
+    color: 'rgba(0,255,65,0.45)',
     letterSpacing: 2,
   },
   hudRight: {
     fontFamily: 'RobotoMono-Bold',
     fontSize: 10,
-    color: 'rgba(255,176,0,0.45)',
+    color: 'rgba(255,176,0,0.65)',
   },
 
   // ── Timeline ──
@@ -660,6 +730,13 @@ const S = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tokenImg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: TOKEN_DIAM,
+    height: TOKEN_DIAM,
   },
   tokenFallback: {
     fontFamily: 'RobotoMono-Bold',
@@ -692,10 +769,9 @@ const S = StyleSheet.create({
   enemySection: {
     flex: 1,
     flexDirection: 'row',
-		flexWrap: 'wrap',
     alignItems: 'stretch',
-		justifyContent: "space-between",
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
     paddingTop: 6,
     gap: 4,
   },
@@ -703,12 +779,11 @@ const S = StyleSheet.create({
   // Enemy card — flex:1 so they share width equally, touchable wraps it
   enemyCardTouch: {
     flex: 1,
-    maxWidth: ENEMY_MAX_W,
+    maxWidth: ENEMY_MAX_W * 1.2,
   },
   enemyCard: {
     flex: 1,
-    maxWidth: ENEMY_MAX_W*1.2,
-		maxHeight: ENEMY_MAX_W*1.9,
+    maxWidth: ENEMY_MAX_W * 1.2,
     borderWidth: 1,
     overflow: 'hidden',
     backgroundColor: 'rgba(8,12,8,0.92)',
@@ -724,7 +799,6 @@ const S = StyleSheet.create({
 	enemyIllusImg: {
 		width: '100%',
 		height: '100%',
-		resizeMode: 'contain',
 		position: 'absolute',
 		top: 0,
 		left: 0,
@@ -740,8 +814,8 @@ const S = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 70,
-    backgroundColor: 'rgba(4,8,4,0.78)',
+    height: 44,
+    backgroundColor: 'rgba(4,8,4,0.60)',
   },
   enemyDeadOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -770,22 +844,22 @@ const S = StyleSheet.create({
   },
   enemyName: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 7,
+    fontSize: 9,
     letterSpacing: 0.3,
     textAlign: 'center',
-    lineHeight: 10,
+    lineHeight: 12,
     marginBottom: 3,
   },
   enemyHpTrack: {
     width: '82%',
-    height: 3,
+    height: 5,
     backgroundColor: 'rgba(255,255,255,0.1)',
     marginBottom: 2,
   },
   enemyHpFill:  { height: '100%' },
   enemyHpLabel: {
     fontFamily: 'RobotoMono-Regular',
-    fontSize: 7,
+    fontSize: 8,
   },
   defeatedText: {
     fontFamily: 'RobotoMono-Regular',
@@ -797,61 +871,109 @@ const S = StyleSheet.create({
   // ── Combat log strip (non-overlapping, below enemies) ──
   logStrip: {
     height: LOG_STRIP_H,
-    backgroundColor: 'rgba(2,5,2,0.96)',
+    backgroundColor: 'rgba(0,18,4,0.99)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,255,65,0.08)',
+    borderTopColor: 'rgba(0,255,65,0.22)',
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 7,
     justifyContent: 'flex-end',
-    gap: 1,
+    gap: 3,
   },
   logEntry: {
     fontFamily: 'RobotoMono-Regular',
-    fontSize: 8.5,
-    lineHeight: 13,
+    fontSize: 12,
+    lineHeight: 17,
   },
 
-  // ── Party strip (horizontal portrait chips) ──
+  // ── Party strip (horizontal portrait cards, mirrors enemy card style) ──
   partyStrip: {
     height: PARTY_STRIP_H,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 10,
+    alignItems: 'stretch',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 4,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,255,65,0.1)',
+    borderTopColor: 'rgba(0,255,65,0.12)',
     backgroundColor: 'rgba(2,5,2,0.98)',
   },
-  partyChipTouch: {
-    alignItems: 'center',
+  partyCardTouch: {
+    flex: 1,
   },
-  partyChipWrap: {
-    alignItems: 'center',
-    gap: 3,
+  partyCard: {
+    flex: 1,
+    borderWidth: 1,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(8,12,8,0.92)',
   },
-  partyChipCircle: {
-    width: PARTY_CHIP_D,
-    height: PARTY_CHIP_D,
-    borderRadius: PARTY_CHIP_D / 2,
+  partyIllus: {
+    flex: 1,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(5,8,5,1)',
   },
-  chipActivePulse: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,255,65,0.5)',
-    borderRadius: PARTY_CHIP_D / 2,
+  partyIllusImg: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
-  chipHpTrack: {
-    width: PARTY_CHIP_D,
-    height: 2.5,
-    borderRadius: 1,
-  },
-  chipHpFill: { height: '100%', borderRadius: 1 },
-  chipName: {
+  partyPlaceholder: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 6,
+    fontSize: 20,
+    color: 'rgba(0,255,65,0.2)',
+  },
+  partyVignette: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 62,
+    backgroundColor: 'rgba(2,6,2,0.85)',
+  },
+  partyActivePulse: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,255,65,0.4)',
+  },
+  partyTargetRing: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 2,
+    borderColor: '#4DBBFF',
+  },
+  partyInfoPin: {
+    position: 'absolute',
+    bottom: 5,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  partyName: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 10,
     letterSpacing: 0.2,
+    textAlign: 'center',
+    marginBottom: 3,
+  },
+  partyHpTrack: {
+    width: '85%',
+    height: 5,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 2,
+  },
+  partyHpFill: { height: '100%' },
+  partyHpLabel: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 8,
+  },
+  partyDeadText: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 10,
+    color: 'rgba(255,62,62,0.5)',
+    letterSpacing: 1,
   },
 
   // ── Action panel ──
@@ -900,7 +1022,7 @@ const S = StyleSheet.create({
   slotAbilityIcon: { color: '#00FF41' },
   slotLabel: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 6,
+    fontSize: 8,
     color: '#FFB000',
     letterSpacing: 0.3,
   },
@@ -913,10 +1035,22 @@ const S = StyleSheet.create({
   },
   targetPrompt: {
     fontFamily: 'RobotoMono-Bold',
-    fontSize: 11,
+    fontSize: 10,
     color: '#FF3E3E',
     letterSpacing: 1,
     textAlign: 'center',
+  },
+  cancelBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,62,62,0.45)',
+  },
+  cancelBtnText: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 8,
+    color: 'rgba(255,62,62,0.65)',
+    letterSpacing: 1,
   },
   enemyTurnText: {
     fontFamily: 'RobotoMono-Regular',
@@ -943,5 +1077,25 @@ const S = StyleSheet.create({
     fontFamily: 'RobotoMono-Bold',
     fontSize: 12,
     color: '#060A06',
+  },
+
+  // ── Defeat animation overlay (inside centerArea, doesn't cover action panel) ──
+  defeatOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  defeatCard: {
+    width: ENEMY_MAX_W * 1.2,
+    height: ENEMY_MAX_W * 1.9,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#FF3E3E',
+  },
+  defeatCardImg: {
+    width: '100%',
+    height: '100%',
   },
 });

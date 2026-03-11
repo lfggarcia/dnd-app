@@ -120,6 +120,14 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const reviveCharacter = useCallback((name: string) => {
     const char = partyData.find(c => c.name === name);
     if (!char) return;
+		if (__DEV__) {
+			const updatedParty = partyData.map(c => {
+				if (c.name !== name) return c;
+				return { ...c, hp: Math.floor(c.maxHp), alive: true, deathCount: 0 };
+			});
+			updateProgress({ partyData: updatedParty });
+			return;
+		}
     const { cost, canAfford } = calculateReviveCost(char, gold);
     if (!canAfford) return;
     const updatedParty = partyData.map(c => {
@@ -339,7 +347,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
                     </View>
                     <TouchableOpacity
                       onPress={() => reviveCharacter(c.name)}
-                      disabled={!canAfford}
+                      disabled={!canAfford && !__DEV__}
                       style={{ borderWidth: 1, borderColor: canAfford ? '#00FF41' : 'rgba(0,255,65,0.3)', paddingHorizontal: 12, paddingVertical: 5 }}
                     >
                       <Text style={{ fontFamily: 'RobotoMono-Bold', fontSize: 10, color: canAfford ? '#00FF41' : 'rgba(0,255,65,0.3)' }}>

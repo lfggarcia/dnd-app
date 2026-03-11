@@ -40,7 +40,7 @@ export type ExpressionKey =
 // ─── Emotion family escalation ────────────────────────────────────────────────
 // Each family has 3 intensity tiers. Same event type → escalate; different → reset to 1.
 
-type EmotionFamily = 'COLERA' | 'MIEDO' | 'DUELO' | 'RESOLUCION' | 'CONTROL' | 'NEUTRO';
+export type EmotionFamily = 'COLERA' | 'MIEDO' | 'DUELO' | 'RESOLUCION' | 'CONTROL' | 'NEUTRO';
 
 const FAMILY_ESCALATION: Record<EmotionFamily, [ExpressionKey, ExpressionKey, ExpressionKey]> = {
   COLERA:     ['angry',       'fierce',      'rage'],

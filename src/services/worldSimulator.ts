@@ -306,7 +306,7 @@ export async function simulateWorld(
   activeGame: SavedGame,
 ): Promise<SimulationResult> {
   const { generateRivals } = await import('./rivalGenerator');
-  const rivals = generateRivals(activeGame.seedHash);
+  const rivals = generateRivals(activeGame.seedHash, activeGame.floor ?? 1, activeGame.cycle ?? 1);
 
   const events: SimulationEvent[] = [];
 

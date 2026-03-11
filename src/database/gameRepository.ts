@@ -256,7 +256,7 @@ export function createSavedGame(
 
 export function updateSavedGame(
   id: string,
-  updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState' | 'partyPortrait' | 'portraitsJson' | 'expressionsJson'>>,
+  updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState' | 'partyPortrait' | 'portraitsJson' | 'expressionsJson' | 'inSafeZone' | 'safeZoneRoomId'>>,
 ): void {
   const db = getDB();
   const sets: string[] = [];
@@ -305,6 +305,14 @@ export function updateSavedGame(
   if (updates.expressionsJson !== undefined) {
     sets.push('expressions_json = ?');
     values.push(updates.expressionsJson ? JSON.stringify(updates.expressionsJson) : null as unknown as string);
+  }
+  if (updates.inSafeZone !== undefined) {
+    sets.push('in_safe_zone = ?');
+    values.push(updates.inSafeZone ? 1 : 0);
+  }
+  if (updates.safeZoneRoomId !== undefined) {
+    sets.push('safe_zone_room_id = ?');
+    values.push(updates.safeZoneRoomId ?? null as unknown as string);
   }
 
   if (sets.length === 0) return;

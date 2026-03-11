@@ -4,22 +4,32 @@ import { CRTOverlay } from '../components/CRTOverlay';
 import { useI18n } from '../i18n';
 import type { ScreenProps } from '../navigation/types';
 
-export const CycleTransitionScreen = ({ navigation }: ScreenProps<'CycleTransition'>) => {
+export const ({ navigation, route }: ScreenProps<'CycleTransition'>) => {
   const { t } = useI18n();
   const [phase, setPhase] = useState(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
-  const nextCycle = 4;
-  const previousFloor = 5;
+  const activeGame        = useGameStore(s => s.activeGame);
+  const lastSimEvents     = useGameStore(s => s.lastSimulationEvents);
+
+  const nextCycle      = route.params?.cycle ?? activeGame?.cycle ?? 1;
+  const previousFloor  = activeGame?.floor ?? 1;
+
+  // Up to 3 world simulation event summaries to show as phases
+  const simSummaries = useMemo(
+    () => (lastSimEvents ?? []).slice(0, 3).map(e => e.summary),
+    [lastSimEvents],
+  );
 
   const phases = useMemo(() => [
     t('cycleTransition.extracting'),
     t('cycleTransition.processing'),
     `${t('cycleTransition.cycle')} ${nextCycle - 1} \u2192 ${t('cycleTransition.cycle')} ${nextCycle}`,
+    ...simSummaries,
     t('cycleTransition.worldShifts'),
     t('cycleTransition.ready'),
-  ], [t]);
+  ], [t, nextCycle, simSummaries]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -42,6 +52,7 @@ export const CycleTransitionScreen = ({ navigation }: ScreenProps<'CycleTransiti
         }),
       ]),
     ).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -61,6 +72,54 @@ export const CycleTransitionScreen = ({ navigation }: ScreenProps<'CycleTransiti
       <CRTOverlay />
 
       <Animated.View style={{ opacity: fadeAnim }} className="items-center px-8">
+        {/* Cycle Number */}
+        <Animated.Text
+          style={{ opacity: pulseAnim }}
+          className="text-primary font-robotomono text-6xl font-bold mb-2"
+        >
+          {nextCycle}
+        </Animated.Text>
+        <Text className="text-primary/40 font-robotomono text-xs mb-8">{t('cycleTransition.cycle')}</Text>
+
+        {/* Phase Text */}
+        <View className="mb-8 h-12 items-center justify-center">
+          <Text className="text-primary font-robotomono text-sm text-center">{phases[phase]}</Text>
+        </View>
+
+        {/* Progress Bar */}
+        <View className="w-48 h-1 bg-primary/10 mb-4">
+          <View className="h-1 bg-primary" style={{ width: `${progress}%` }} />
+        </View>
+
+        {/* Phase Indicators */}
+        <View className="flex-row mb-8">
+          {phases.map((_, i) => (
+            <View
+              key={i}
+              className={`w-2 h-2 mx-1 ${i <= phase ? 'bg-primary' : 'bg-primary/20'}`}
+            />
+          ))}
+        </View>
+
+        {/* Summary */}
+        <View className="border border-primary/20 p-4 w-64 bg-muted/5">
+          <View className="flex-row justify-between mb-2">
+            <Text className="text-primary/40 font-robotomono text-[9px]">{t('cycleTransition.maxFloor')}</Text>
+            <Text className="text-primary font-robotomono text-[9px]">{previousFloor}</Text>
+          </View>
+          <View className="flex-row justify-between mb-2">
+            <Text className="text-primary/40 font-robotomono text-[9px]">{t('cycleTransition.nextCycle')}</Text>
+            <Text className="text-primary font-robotomono text-[9px]">{nextCycle}</Text>
+          </View>
+          <View className="flex-row justify-between">
+            <Text className="text-primary/40 font-robotomono text-[9px]">{t('cycleTransition.towerResets')}</Text>
+            <Text className="text-secondary font-robotomono text-[9px]">{t('common.yes')}</Text>
+          </View>
+        </View>
+      </Animated.View>
+    </View>
+  );
+} className="items-center px-8">
         {/* Cycle Number */}
         <Animated.Text
           style={{ opacity: pulseAnim }}

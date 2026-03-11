@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
+import { useGameStore } from '../stores/gameStore';
+import type { SimulationEvent } from '../services/worldSimulator';
 import type { ScreenProps } from '../navigation/types';
 
 type LogFilter = 'ALL' | 'COMBAT' | 'LORE' | 'SYSTEM';
@@ -14,18 +16,34 @@ interface LogEntry {
   message_es: string;
 }
 
-const LOG_ENTRIES: LogEntry[] = [
-  { cycle: 3, type: 'COMBAT', message_en: 'Floor 5: SKELETON_KNIGHT defeated → 35 XP', message_es: 'Piso 5: SKELETON_KNIGHT derrotado → 35 XP' },
-  { cycle: 3, type: 'LORE', message_en: 'Discovered ancient inscription in the crypt', message_es: 'Inscripción antigua descubierta en la cripta' },
-  { cycle: 3, type: 'SYSTEM', message_en: 'Rivalry: CRIMSON_FANG advanced to Floor 7', message_es: 'Rivalidad: CRIMSON_FANG avanzó al Piso 7' },
-  { cycle: 2, type: 'COMBAT', message_en: 'Floor 3: WIGHT defeated → 20 XP', message_es: 'Piso 3: WIGHT derrotado → 20 XP' },
-  { cycle: 2, type: 'LORE', message_en: 'Found runic tablet fragment (2/4)', message_es: 'Fragmento de tablilla rúnica encontrado (2/4)' },
-  { cycle: 2, type: 'SYSTEM', message_en: 'Village: Forge upgraded to Lv.2', message_es: 'Aldea: Forja mejorada a Nv.2' },
-  { cycle: 1, type: 'COMBAT', message_en: 'Floor 1: RAT_SWARM defeated → 5 XP', message_es: 'Piso 1: RAT_SWARM derrotado → 5 XP' },
-  { cycle: 1, type: 'SYSTEM', message_en: 'Party created. Seed: DARK_KEEP_7741', message_es: 'Grupo creado. Semilla: DARK_KEEP_7741' },
-];
+/** Map SimulationEventType → LogFilter category */
+function simEventToLogType(type: SimulationEvent['type']): LogFilter {
+  switch (type) {
+    case 'AI_COMBAT_WIN':
+    case 'AI_COMBAT_LOSS':
+    case 'BOSS_KILLED':
+      return 'COMBAT';
+    case 'ALLIANCE_FORMED':
+    case 'BOUNTY_ISSUED':
+      return 'SYSTEM';
+    case 'AI_FLOOR_ADVANCE':
+    case 'AI_REST':
+    case 'AI_ELIMINATED':
+    case 'AI_PARTY_SPAWNED':
+    default:
+      return 'SYSTEM';
+  }
+}
 
-const COMBAT_COUNT = LOG_ENTRIES.filter(e => e.type === 'COMBAT').length;
+/** Convert SimulationEvent[] → LogEntry[] */
+function simEventsToLogEntries(events: SimulationEvent[]): LogEntry[] {
+  return events.map(e => ({
+    cycle: e.cycle,
+    type: simEventToLogType(e.type),
+    message_en: e.summary_en,
+    message_es: e.summary,
+  }));
+}
 
 const FILTERS: LogFilter[] = ['ALL', 'COMBAT', 'LORE', 'SYSTEM'];
 
@@ -44,12 +62,18 @@ const TYPE_ICONS: Record<string, string> = {
 
 export const WorldLogScreen = ({ navigation }: ScreenProps<'WorldLog'>) => {
   const { t, lang } = useI18n();
+  const rawEvents = useGameStore(s => s.lastSimulationEvents);
 
   const [filter, setFilter] = useState<LogFilter>('ALL');
 
+  const logEntries = useMemo(
+    () => rawEvents ? simEventsToLogEntries(rawEvents) : [],
+    [rawEvents],
+  );
+
   const filtered = useMemo(
-    () => filter === 'ALL' ? LOG_ENTRIES : LOG_ENTRIES.filter(e => e.type === filter),
-    [filter],
+    () => filter === 'ALL' ? logEntries : logEntries.filter(e => e.type === filter),
+    [filter, logEntries],
   );
 
   const groupedByCycle = useMemo(
@@ -140,16 +164,18 @@ export const WorldLogScreen = ({ navigation }: ScreenProps<'WorldLog'>) => {
       <View className="flex-row p-3 border-t border-primary/20 bg-muted/10">
         <View className="flex-1 items-center">
           <Text className="text-primary/40 font-robotomono text-[8px]">{t('worldLog.totalEntries')}</Text>
-          <Text className="text-primary font-robotomono text-sm font-bold">{LOG_ENTRIES.length}</Text>
+          <Text className="text-primary font-robotomono text-sm font-bold">{logEntries.length}</Text>
         </View>
         <View className="flex-1 items-center">
           <Text className="text-primary/40 font-robotomono text-[8px]">{t('worldLog.cycles')}</Text>
-          <Text className="text-primary font-robotomono text-sm font-bold">3</Text>
+          <Text className="text-primary font-robotomono text-sm font-bold">
+            {logEntries.length > 0 ? Math.max(...logEntries.map(e => e.cycle)) : 0}
+          </Text>
         </View>
         <View className="flex-1 items-center">
           <Text className="text-destructive/40 font-robotomono text-[8px]">{t('worldLog.combats')}</Text>
           <Text className="text-destructive font-robotomono text-sm font-bold">
-            {COMBAT_COUNT}
+            {logEntries.filter(e => e.type === 'COMBAT').length}
           </Text>
         </View>
       </View>

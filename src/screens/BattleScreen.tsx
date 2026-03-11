@@ -26,8 +26,19 @@ import {
   type LiveEnemy,
   type TurnActor,
   type ClassAbility,
+  type CombatEvent,
 } from '../services/combatEngine';
+import {
+  resolveEmotion,
+  tickEmotionDurations,
+  isSignificantEvent,
+  type PartyEmotionalState,
+  type EmotionState,
+} from '../services/emotionalNarrativeService';
+import { NarrativeMomentPanel } from '../components/NarrativeMomentPanel';
 import { MONSTER_ILLUSTRATIONS } from '../constants/monsterIllustrations';
+import { awardXP } from '../services/progressionService';
+import type { XPRewardSource } from '../services/progressionService';
 import type { ScreenProps } from '../navigation/types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -395,6 +406,33 @@ const DefeatAnimation = memo(({ source }: { source: ImageSourcePropType }) => {
 
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
+/** Derive typed CombatEvents from new log lines for real-time emotion updates */
+function deriveEventsFromLogLines(
+  newLines: string[],
+  state: LiveCombatState,
+  turn: number,
+): CombatEvent[] {
+  const events: CombatEvent[] = [];
+  for (const line of newLines) {
+    if (line.includes('CRIT!')) {
+      const isParty = state.partyState.some(m => line.startsWith(`  ${m.name.toUpperCase()}`));
+      const actor = state.partyState.find(m => line.startsWith(`  ${m.name.toUpperCase()}`))?.name ?? '';
+      events.push({ type: isParty ? 'CRIT_DEALT' : 'CRIT_RECEIVED', actorName: actor, turn });
+    }
+    if (line.includes('CAÍDO') || line.includes('CAIDA') || line.includes('0 HP')) {
+      const victim = state.partyState.find(m => line.includes(m.name.toUpperCase()) && m.currentHp <= 0);
+      if (victim) {
+        events.push({ type: 'ALLY_DOWN', actorName: victim.name, turn });
+      }
+    }
+    if (line.includes('nat 1')) {
+      const actor = state.partyState.find(m => line.includes(m.name.toUpperCase()))?.name ?? '';
+      if (actor) events.push({ type: 'NAT_ONE', actorName: actor, turn });
+    }
+  }
+  return events;
+}
+
 export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   const { roomId, roomType } = route.params;
   const { t } = useI18n();
@@ -415,6 +453,37 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   const [cs, setCs]           = useState<LiveCombatState>(() =>
     initCombat(partyData, enemiesRef.current, rngRef.current));
   const [uiPhase, setUiPhase] = useState<UIPhase>('INITIATIVE');
+  const [partyEmotions, setPartyEmotions] = useState<PartyEmotionalState>({});
+  const [activeMoment, setActiveMoment]   = useState<{
+    charName: string;
+    emotion:  EmotionState;
+  } | null>(null);
+
+  // ── Tick emotion durations on turn advance ────────────────────────────────
+  useEffect(() => {
+    if (cs.currentTurnIdx > 0) {
+      setPartyEmotions(prev => tickEmotionDurations(prev));
+    }
+  }, [cs.currentTurnIdx]);
+
+  // ── Process emotion events after each combat action ────────────────────────
+  const processEmotionEvents = useCallback((events: CombatEvent[]) => {
+    for (const event of events) {
+      const char = partyData.find(c =>
+        c.name === event.actorName || c.name === event.targetName,
+      );
+      if (!char) continue;
+
+      setPartyEmotions(prev => {
+        const current = prev[char.name] ?? null;
+        const newEmotion = resolveEmotion(event, char, current);
+        if (isSignificantEvent(event.type)) {
+          setActiveMoment({ charName: char.name, emotion: newEmotion });
+        }
+        return { ...prev, [char.name]: newEmotion };
+      });
+    }
+  }, [partyData]);
 
   // ── Phase transitions ────────────────────────────────────────────────────────
   const goToNextTurn = useCallback((state: LiveCombatState) => {
@@ -423,11 +492,36 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       const finalCs = { ...state, outcome };
       setCs(finalCs);
       const result = buildCombatResultFromLive(finalCs, [], rngRef.current);
-      const updatedParty = partyData.map(c => {
+
+      // Map RoomType → XPRewardSource
+      const xpSourceMap: Partial<Record<string, XPRewardSource>> = {
+        NORMAL: 'MONSTER',
+        EVENT: 'MONSTER',
+        SECRET: 'MONSTER',
+        TREASURE: 'MONSTER',
+        ELITE: 'ELITE_MONSTER',
+        BOSS: 'BOSS',
+      };
+      const xpSource: XPRewardSource = xpSourceMap[roomType] ?? 'MONSTER';
+
+      // Build updated party: sync HP/alive, increment deathCount for newly-dead,
+      // then award XP on victory.
+      let updatedParty = partyData.map(c => {
         const after = result.partyAfter.find(p => p.name === c.name);
         if (!after) return c;
-        return { ...c, hp: after.hpAfter, alive: after.alive };
+        const diedInBattle = c.alive && !after.alive;
+        return {
+          ...c,
+          hp: after.hpAfter,
+          alive: after.alive,
+          deathCount: diedInBattle ? (c.deathCount ?? 0) + 1 : (c.deathCount ?? 0),
+        };
       });
+
+      if (outcome === 'VICTORY') {
+        updatedParty = awardXP(updatedParty, xpSource);
+      }
+
       updateProgress({ partyData: updatedParty });
       setCombatResult(result);
       setUiPhase('ENDED');
@@ -436,7 +530,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     const { state: nextState, phase } = findNextLiveTurn(state);
     setCs(nextState);
     setUiPhase(phase);
-  }, [partyData, updateProgress, setCombatResult]);
+  }, [partyData, roomType, updateProgress, setCombatResult]);
 
   useEffect(() => {
     if (uiPhase !== 'INITIATIVE') return;
@@ -480,17 +574,26 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     const actor = cs.turnOrder[cs.currentTurnIdx];
     if (actor?.type !== 'party') return;
     const newCs    = resolvePlayerAttack(cs, actor.idx, instanceId, rngRef.current);
+    // Derive emotion events from new log lines
+    if (newCs.log.length > cs.log.length) {
+      const newLines = newCs.log.slice(cs.log.length);
+      processEmotionEvents(deriveEventsFromLogLines(newLines, newCs, cs.round));
+    }
     const advanced = advanceTurnLive(newCs);
     goToNextTurn(advanced);
-  }, [cs, goToNextTurn]);
+  }, [cs, goToNextTurn, processEmotionEvents]);
 
   const handleSelectAbilityTarget = useCallback((targetIdx: number) => {
     const actor = cs.turnOrder[cs.currentTurnIdx];
     if (actor?.type !== 'party') return;
     const newCs    = resolvePlayerAbility(cs, actor.idx, targetIdx, rngRef.current);
+    if (newCs.log.length > cs.log.length) {
+      const newLines = newCs.log.slice(cs.log.length);
+      processEmotionEvents(deriveEventsFromLogLines(newLines, newCs, cs.round));
+    }
     const advanced = advanceTurnLive(newCs);
     goToNextTurn(advanced);
-  }, [cs, goToNextTurn]);
+  }, [cs, goToNextTurn, processEmotionEvents]);
 
   const handleContinue = useCallback(() => {
     navigation.navigate('Report', { roomId, roomWasCleared: cs.outcome === 'VICTORY' });
@@ -532,10 +635,14 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   }, [cs.outcome]);
 
   const getPartyPortrait = useCallback((idx: number): string | null => {
+    const char = partyData[idx];
+    if (!char) return null;
     const exprs = expressionsJson[idx];
-    return exprs?.['aggressive'] ?? exprs?.['angry'] ?? exprs?.['neutral']
-      ?? portraitsMap?.[String(idx)] ?? null;
-  }, [expressionsJson, portraitsMap]);
+    if (!exprs) return portraitsMap?.[String(idx)] ?? null;
+    // Use the character's active emotion expression; fallback to neutral; fallback to base portrait
+    const expressionKey = partyEmotions[char.name]?.expression ?? 'neutral';
+    return exprs[expressionKey] ?? exprs['neutral'] ?? portraitsMap?.[String(idx)] ?? null;
+  }, [partyData, expressionsJson, portraitsMap, partyEmotions]);
 
   // ── Precompute timeline data ─────────────────────────────────────────────────
   const timelinePortraits = useMemo<Array<ImageSourcePropType | null>>(() =>
@@ -598,6 +705,21 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
           <DefeatAnimation source={defeatIllus} />
         )}
       </View>
+
+      {/* ── Narrative Moment Panel ── */}
+      {activeMoment != null && (() => {
+        const charIdx = partyData.findIndex(c => c.name === activeMoment.charName);
+        const exprs = expressionsJson[charIdx];
+        const uri = exprs?.[activeMoment.emotion.expression] ?? exprs?.['neutral'] ?? null;
+        return (
+          <NarrativeMomentPanel
+            charName={activeMoment.charName}
+            emotion={activeMoment.emotion}
+            portraitUri={uri}
+            onDismiss={() => setActiveMoment(null)}
+          />
+        );
+      })()}
 
       {/* ── Party strip ── */}
       <View style={S.partyStrip}>

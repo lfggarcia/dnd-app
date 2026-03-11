@@ -9,6 +9,9 @@ export type SavedGameRow = {
   party_data: string;
   floor: number;
   cycle: number;
+  cycle_raw: number | null;
+  last_action_at: string | null;
+  last_sim_events: string | null;
   phase: string;
   gold: number;
   status: string;
@@ -17,6 +20,14 @@ export type SavedGameRow = {
   party_portrait: string | null;
   portraits_json: string | null;
   expressions_json: string | null;
+  // v11 — safe zones
+  in_safe_zone: number | null;
+  safe_zone_room_id: string | null;
+  // v12 — party origin
+  party_origin: string | null;
+  predecessor_game_id: string | null;
+  created_by_player: number | null;
+  elimination_reason: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -27,7 +38,12 @@ export type SavedGame = {
   seedHash: string;
   partyData: CharacterSave[];
   floor: number;
+  /** Integer cycle (1–60). Use cycleRaw for fractional precision. */
   cycle: number;
+  /** Fractional cycle for sub-cycle time tracking (e.g. 1.5 = cycle 1 + half a rest) */
+  cycleRaw: number;
+  lastActionAt: string | null;
+  lastSimEvents: string | null;
   phase: 'DAY' | 'NIGHT';
   gold: number;
   status: 'active' | 'completed' | 'dead';
@@ -38,6 +54,14 @@ export type SavedGame = {
   portraitsJson: Record<string, string> | null;
   /** Map of character index → { expression key → base64 data URI } generated via img2img */
   expressionsJson: Record<string, Record<string, string>> | null;
+  // v11 — safe zones
+  inSafeZone: boolean;
+  safeZoneRoomId: string | null;
+  // v12 — party lifecycle
+  partyOrigin: 'PLAYER' | 'IA_INHERITED' | 'SYSTEM';
+  predecessorGameId: string | null;
+  createdByPlayer: boolean;
+  eliminationReason: 'PURGED' | 'BANKRUPT' | 'DEFEATED' | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -51,20 +75,67 @@ export type Stats = {
   CHA: number;
 };
 
+/** Ascension path for Sprint 7 (essenceService). Defined here to avoid circular deps. */
+export type AscensionPath = 'TITAN' | 'ARCHMAGE' | 'AVATAR_OF_WAR';
+
+/**
+ * CharacterSave — canonical type with all fields from all systems.
+ *
+ * Fields by system:
+ *   Core: name, race, charClass, subclass, background, alignment,
+ *         baseStats, statMethod, featureChoices, hp, maxHp, alive, portrait
+ *   Doc 05 (Moral): morale, killCount
+ *   Doc 06 (Progression): level, xp, deathCount, pendingLevelUps
+ *   Doc 13 (Essences): isAscended, ascensionPath, unlockedAbilities
+ */
 export type CharacterSave = {
-  name: string;
-  race: string;
-  charClass: string;
-  subclass: string;
-  background: string;
-  alignment: string;
-  baseStats: Stats;
-  statMethod: 'standard' | 'rolled';
-  featureChoices: Record<string, string | string[]>;
-  hp: number;
-  maxHp: number;
-  alive: boolean;
-  portrait?: string;
+  // ── CORE ────────────────────────────────────────────────
+  name:            string;
+  race:            string;
+  charClass:       string;
+  subclass:        string;
+  background:      string;
+  alignment:       string;
+  baseStats:       Stats;
+  statMethod:      'standard' | 'rolled';
+  featureChoices:  Record<string, string | string[]>;
+  hp:              number;
+  maxHp:           number;
+  alive:           boolean;
+  portrait?:       string;
+
+  // ── PROGRESSION (Doc 06) ────────────────────────────────
+  level:           number;   // starts at 1; MVP cap = 10, full = 20
+  xp:              number;   // accumulated XP
+  deathCount:      number;   // times died (affects revive cost)
+  pendingLevelUps: number;   // level-ups earned in combat, confirmed at CampScreen
+
+  // ── MORAL (Doc 05) ──────────────────────────────────────
+  morale:          number;   // 0–100, starts at 80
+  killCount:       number;   // AI parties eliminated (affects moral and bounty)
+
+  // ── ASCENSION + ESSENCES (Doc 13) ───────────────────────
+  isAscended:        boolean;
+  ascensionPath?:    AscensionPath;
+  unlockedAbilities: string[];  // ability IDs: class + subclass + essence
+};
+
+/** Default values when creating a new character. */
+export const CHARACTER_SAVE_DEFAULTS: Omit<
+  CharacterSave,
+  'name' | 'race' | 'charClass' | 'subclass' | 'background' | 'alignment' |
+  'baseStats' | 'statMethod' | 'featureChoices' | 'hp' | 'maxHp' | 'portrait'
+> = {
+  alive:             true,
+  level:             1,
+  xp:                0,
+  deathCount:        0,
+  pendingLevelUps:   0,
+  morale:            80,
+  killCount:         0,
+  isAscended:        false,
+  ascensionPath:     undefined,
+  unlockedAbilities: [],
 };
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -90,6 +161,9 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
     partyData: JSON.parse(row.party_data) as CharacterSave[],
     floor: row.floor,
     cycle: row.cycle,
+    cycleRaw: row.cycle_raw ?? row.cycle,
+    lastActionAt: row.last_action_at ?? null,
+    lastSimEvents: row.last_sim_events ?? null,
     phase: row.phase as 'DAY' | 'NIGHT',
     gold: row.gold,
     status: row.status as 'active' | 'completed' | 'dead',
@@ -98,6 +172,12 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
     partyPortrait: row.party_portrait ?? null,
     portraitsJson,
     expressionsJson,
+    inSafeZone: Boolean(row.in_safe_zone),
+    safeZoneRoomId: row.safe_zone_room_id ?? null,
+    partyOrigin: (row.party_origin ?? 'PLAYER') as SavedGame['partyOrigin'],
+    predecessorGameId: row.predecessor_game_id ?? null,
+    createdByPlayer: (row.created_by_player ?? 1) !== 0,
+    eliminationReason: (row.elimination_reason ?? null) as SavedGame['eliminationReason'],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -158,15 +238,18 @@ export function createSavedGame(
   const now = new Date().toISOString();
 
   db.executeSync(
-    `INSERT INTO saved_games (id, seed, seed_hash, party_data, floor, cycle, phase, gold, status, location, map_state, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 1, 1, 'DAY', 0, 'active', 'village', NULL, ?, ?)`,
+    `INSERT INTO saved_games (id, seed, seed_hash, party_data, floor, cycle, cycle_raw, phase, gold, status, location, map_state, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 1, 1, 1.0, 'DAY', 0, 'active', 'village', NULL, ?, ?)`,
     [id, seed, seedHash, JSON.stringify(leanParty(partyData)), now, now],
   );
 
   return {
     id, seed, seedHash, partyData,
-    floor: 1, cycle: 1, phase: 'DAY', gold: 0, status: 'active',
+    floor: 1, cycle: 1, cycleRaw: 1.0, lastActionAt: null, lastSimEvents: null,
+    phase: 'DAY', gold: 0, status: 'active',
     location: 'village', mapState: null, partyPortrait: null, portraitsJson: null, expressionsJson: null,
+    inSafeZone: false, safeZoneRoomId: null,
+    partyOrigin: 'PLAYER', predecessorGameId: null, createdByPlayer: true, eliminationReason: null,
     createdAt: now, updatedAt: now,
   };
 }

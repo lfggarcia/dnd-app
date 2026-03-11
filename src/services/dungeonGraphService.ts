@@ -9,6 +9,8 @@
  * and "Dungeon Graph Generator" design docs.
  */
 
+import { makePRNG as makeBasePRNG } from '../utils/prng';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type RoomType =
@@ -68,23 +70,26 @@ function hashString(s: string): number {
   return h;
 }
 
+/**
+ * Floor-level PRNG adapter — wraps the shared makePRNG with extended API.
+ * Uses numeric seed converted to a string key (NI-03: single source of truth).
+ */
 function makePRNG(seed: number) {
-  let s = seed >>> 0;
+  const base = makeBasePRNG(`floor_${seed}`);
   return {
     next(): number {
-      s = (Math.imul(1664525, s) + 1013904223) >>> 0;
-      return s / 0x100000000;
+      return base.float();
     },
     int(min: number, max: number): number {
-      return min + Math.floor(this.next() * (max - min + 1));
+      return base.next(min, max);
     },
     pick<T>(arr: T[]): T {
-      return arr[Math.floor(this.next() * arr.length)];
+      return arr[base.next(0, arr.length - 1)];
     },
     shuffle<T>(arr: T[]): T[] {
       const a = [...arr];
       for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(this.next() * (i + 1));
+        const j = base.next(0, i);
         [a[i], a[j]] = [a[j], a[i]];
       }
       return a;

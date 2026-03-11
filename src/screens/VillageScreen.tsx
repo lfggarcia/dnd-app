@@ -7,6 +7,7 @@ import { GuildIcon, DiamondIcon, HammerIcon, ShieldIcon, MoonIcon, CrossIcon, Sw
 import { useGameStore } from '../stores/gameStore';
 import { useI18n } from '../i18n';
 import { generateRivals } from '../services/rivalGenerator';
+import { calculateReviveCost } from '../services/economyService';
 import { getResourcesByEndpoint } from '../database';
 import type { ScreenProps } from '../navigation/types';
 
@@ -117,12 +118,16 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const allRivalsWaiting = rivals.every(r => r.status === 'waiting');
 
   const reviveCharacter = useCallback((name: string) => {
+    const char = partyData.find(c => c.name === name);
+    if (!char) return;
+    const { cost, canAfford } = calculateReviveCost(char, gold);
+    if (!canAfford) return;
     const updatedParty = partyData.map(c => {
       if (c.name !== name) return c;
-      return { ...c, hp: Math.floor(c.maxHp / 2), alive: true };
+      return { ...c, hp: Math.floor(c.maxHp / 2), alive: true, deathCount: (c.deathCount ?? 0) + 1 };
     });
-    updateProgress({ partyData: updatedParty });
-  }, [partyData, updateProgress]);
+    updateProgress({ partyData: updatedParty, gold: gold - cost });
+  }, [partyData, gold, updateProgress]);
 
   const handleBuildingPress = useCallback((key: string) => {
     if (key === 'church') { setShowChurch(true); return; }
@@ -307,7 +312,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
               ✝ IGLESIA — RESURRECCIÓN
             </Text>
             <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.5)', marginBottom: 14 }}>
-              GRATIS (temporal) · Restaura al 50% de HP máximo
+              RESURRECCIÓN · Restaura al 50% HP máximo
             </Text>
 
             {partyData.filter(c => !c.alive || c.hp <= 0).length === 0 ? (
@@ -317,7 +322,9 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
             ) : (
               partyData
                 .filter(c => !c.alive || c.hp <= 0)
-                .map(c => (
+                .map(c => {
+                  const { cost, canAfford } = calculateReviveCost(c, gold);
+                  return (
                   <View
                     key={c.name}
                     style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.1)' }}
@@ -332,12 +339,16 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
                     </View>
                     <TouchableOpacity
                       onPress={() => reviveCharacter(c.name)}
-                      style={{ borderWidth: 1, borderColor: '#00FF41', paddingHorizontal: 12, paddingVertical: 5 }}
+                      disabled={!canAfford}
+                      style={{ borderWidth: 1, borderColor: canAfford ? '#00FF41' : 'rgba(0,255,65,0.3)', paddingHorizontal: 12, paddingVertical: 5 }}
                     >
-                      <Text style={{ fontFamily: 'RobotoMono-Bold', fontSize: 10, color: '#00FF41' }}>REVIVIR</Text>
+                      <Text style={{ fontFamily: 'RobotoMono-Bold', fontSize: 10, color: canAfford ? '#00FF41' : 'rgba(0,255,65,0.3)' }}>
+                        REVIVIR {cost}G
+                      </Text>
                     </TouchableOpacity>
                   </View>
-                ))
+                  );
+                })
             )}
 
             <TouchableOpacity

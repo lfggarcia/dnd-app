@@ -1,6 +1,6 @@
 import { getDB } from './connection';
 
-const CURRENT_VERSION = 6;
+const CURRENT_VERSION = 12;
 
 const migrations: Record<number, string[]> = {
   1: [
@@ -80,6 +80,103 @@ const migrations: Record<number, string[]> = {
     // Character expression variants — map of index → { neutral, happy, angry, sad, surprised, wounded }
     // Generated via img2img from the base portrait; stored as base64 data URIs
     `ALTER TABLE saved_games ADD COLUMN expressions_json TEXT`,
+  ],
+
+  // Sprint 5B — Fractional cycle tracking + simulation events
+  7: [
+    `ALTER TABLE saved_games ADD COLUMN cycle_raw REAL NOT NULL DEFAULT 1.0`,
+    `ALTER TABLE saved_games ADD COLUMN last_action_at TEXT`,
+    `ALTER TABLE saved_games ADD COLUMN last_sim_events TEXT`,
+  ],
+
+  // Sprint 6A — Items inventory
+  8: [
+    `CREATE TABLE IF NOT EXISTS items (
+      id TEXT PRIMARY KEY,
+      seed_hash TEXT NOT NULL,
+      owner_game_id TEXT,
+      owner_char_name TEXT,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('weapon','armor','consumable','material','boss_loot')),
+      rarity TEXT NOT NULL CHECK(rarity IN ('common','uncommon','rare','unique')),
+      is_equipped INTEGER NOT NULL DEFAULT 0,
+      is_unique INTEGER NOT NULL DEFAULT 0,
+      obtained_cycle INTEGER NOT NULL DEFAULT 1,
+      floor_obtained INTEGER NOT NULL DEFAULT 1,
+      gold_value INTEGER NOT NULL DEFAULT 0,
+      data TEXT NOT NULL DEFAULT '{}',
+      claimed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_items_game ON items(owner_game_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_items_seed ON items(seed_hash)`,
+    `CREATE INDEX IF NOT EXISTS idx_items_type ON items(type)`,
+    `CREATE INDEX IF NOT EXISTS idx_items_floor ON items(floor_obtained)`,
+  ],
+
+  // Sprint 6A — World events and bounty system
+  9: [
+    `CREATE TABLE IF NOT EXISTS events (
+      id TEXT PRIMARY KEY,
+      seed_hash TEXT NOT NULL,
+      type TEXT NOT NULL,
+      floor INTEGER NOT NULL,
+      cycle INTEGER NOT NULL,
+      party_name TEXT NOT NULL,
+      target_name TEXT,
+      data TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_events_seed ON events(seed_hash)`,
+    `CREATE INDEX IF NOT EXISTS idx_events_cycle ON events(cycle DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_events_type ON events(type)`,
+
+    `CREATE TABLE IF NOT EXISTS bounties (
+      id TEXT PRIMARY KEY,
+      seed_hash TEXT NOT NULL,
+      target_game_id TEXT NOT NULL,
+      issued_by TEXT NOT NULL DEFAULT 'GUILD',
+      reward_amount INTEGER NOT NULL DEFAULT 0,
+      bounty_level INTEGER NOT NULL DEFAULT 1,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      kill_count INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_bounties_seed ON bounties(seed_hash)`,
+    `CREATE INDEX IF NOT EXISTS idx_bounties_active ON bounties(is_active)`,
+  ],
+
+  // Sprint 6A — Alliance system
+  10: [
+    `CREATE TABLE IF NOT EXISTS alliances (
+      id TEXT PRIMARY KEY,
+      seed_hash TEXT NOT NULL,
+      party_a TEXT NOT NULL,
+      party_b TEXT NOT NULL,
+      protection_fee INTEGER NOT NULL DEFAULT 0,
+      expires_at_cycle INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','expired','terminated')),
+      created_at TEXT NOT NULL,
+      created_cycle INTEGER NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_alliances_seed ON alliances(seed_hash)`,
+    `CREATE INDEX IF NOT EXISTS idx_alliances_party_a ON alliances(party_a)`,
+    `CREATE INDEX IF NOT EXISTS idx_alliances_status ON alliances(status)`,
+  ],
+
+  // Sprint 6F — Safe zone tracking (doc 11)
+  11: [
+    `ALTER TABLE saved_games ADD COLUMN in_safe_zone INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE saved_games ADD COLUMN safe_zone_room_id TEXT`,
+  ],
+
+  // Sprint 6C — Party lifecycle and origin (doc 12)
+  12: [
+    `ALTER TABLE saved_games ADD COLUMN party_origin TEXT NOT NULL DEFAULT 'PLAYER'`,
+    `ALTER TABLE saved_games ADD COLUMN predecessor_game_id TEXT`,
+    `ALTER TABLE saved_games ADD COLUMN created_by_player INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE saved_games ADD COLUMN elimination_reason TEXT`,
   ],
 };
 

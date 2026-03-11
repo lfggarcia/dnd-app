@@ -18,6 +18,7 @@ import type { MonsterStats, KillRecord } from './monsterEvolutionService';
 import { calculateXP, getEvolvedMonster } from './monsterEvolutionService';
 import type { RoomType } from './dungeonGraphService';
 import { CLASS_STAT_PRIORITY } from './characterStats';
+import { makePRNG, type PRNG } from '../utils/prng';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -36,6 +37,31 @@ export type CombatEnemy = {
   loot: string | null;
 };
 
+export type CombatEventType =
+  | 'ALLY_DOWN'              // un miembro de la party llegó a 0 HP
+  | 'CRIT_DEALT'             // la party hizo un golpe crítico (nat 20)
+  | 'CRIT_RECEIVED'          // un enemigo hizo un golpe crítico a la party
+  | 'NAT_ONE'                // fumble propio (nat 1)
+  | 'LOW_HEALTH'             // HP de un miembro < 25%
+  | 'VERY_LOW_HEALTH'        // HP < 10% — supervivencia crítica
+  | 'ABILITY_USED'           // habilidad de clase activada
+  | 'ENEMY_DEFEATED'         // un enemigo fue derrotado
+  | 'BOSS_DEFEATED'          // el boss cayó (roomType === 'BOSS')
+  | 'VICTORY'                // combate terminado — victoria
+  | 'DEFEAT'                 // combate terminado — derrota
+  | 'ESSENCE_DROP_RARE'      // rank 4 o 3 (Raro o Épico) obtenido en combate
+  | 'ESSENCE_DROP_MYTHIC'    // rank 2 o 1 (Mítico o Legendario) obtenido en combate
+  | 'ESSENCE_EVOLVED'        // esencia evolucionada al nivel 2 o 3
+  | 'CHARACTER_ASCENDED';    // personaje completó la ascensión
+
+export type CombatEvent = {
+  type: CombatEventType;
+  actorName: string;
+  targetName?: string;
+  value?: number;
+  turn: number;
+};
+
 export type CombatResult = {
   outcome: 'VICTORY' | 'DEFEAT';
   roundsElapsed: number;
@@ -48,28 +74,16 @@ export type CombatResult = {
   damageDone: Record<string, number>;
   /** Sequential combat log lines for display in BattleScreen */
   log: string[];
+  /** Typed combat events derived from the final state — optional, non-breaking */
+  events?: CombatEvent[];
 };
 
-// ─── PRNG (djb2 + LCG — matches dungeonGraphService.ts) ──────────────────────
-
-function makePRNG(seed: string) {
-  let h = 5381;
-  for (let i = 0; i < seed.length; i++) {
-    h = (Math.imul(h, 33) ^ seed.charCodeAt(i)) >>> 0;
-  }
-  let s = h >>> 0;
-  return {
-    next(min = 0, max = 1): number {
-      s = (Math.imul(1664525, s) + 1013904223) >>> 0;
-      const f = s / 0x100000000;
-      return Math.floor(min + f * (max - min + 1));
-    },
-  };
-}
+// ─── PRNG — imported from src/utils/prng.ts (NI-03) ────────────────────────
+// makePRNG and PRNG type come from the shared utility above.
 
 // ─── Dice parser ──────────────────────────────────────────────────────────────
 
-function rollDice(notation: string, rng: ReturnType<typeof makePRNG>): number {
+function rollDice(notation: string, rng: RNG): number {
   // Accepts "NdS", "NdS+B", "NdS-B"
   const m = notation.match(/^(\d+)d(\d+)([+-]\d+)?$/);
   if (!m) return 1;
@@ -403,7 +417,7 @@ export type LiveCombatState = {
 
 // ─── Interactive Combat — Engine ──────────────────────────────────────────────
 
-type RNG = ReturnType<typeof makePRNG>;
+type RNG = PRNG;
 
 export function createCombatRNG(seed: string): RNG {
   return makePRNG(seed);
@@ -807,6 +821,71 @@ export function buildCombatResultFromLive(
     alive: c.currentHp > 0,
   }));
 
+  // ── Derive typed events from final state ─────────────────
+  const events: CombatEvent[] = [];
+
+  // Fallen party members
+  state.partyState
+    .filter(m => m.currentHp <= 0 && m.hpBefore > 0)
+    .forEach(m => events.push({ type: 'ALLY_DOWN', actorName: m.name, turn: state.round }));
+
+  // Critical HP states
+  state.partyState
+    .filter(m => m.currentHp > 0)
+    .forEach(m => {
+      const pct = m.currentHp / m.maxHp;
+      if (pct < 0.10) {
+        events.push({ type: 'VERY_LOW_HEALTH', actorName: m.name, value: Math.round(pct * 100), turn: state.round });
+      } else if (pct < 0.25) {
+        events.push({ type: 'LOW_HEALTH', actorName: m.name, value: Math.round(pct * 100), turn: state.round });
+      }
+    });
+
+  // Parse log for crits and fumbles
+  state.log.forEach((line, i) => {
+    if (line.includes('CRIT!')) {
+      const isPartyAttack = state.partyState.some(m => line.startsWith(`  ${m.name.toUpperCase()}`));
+      const actorName = state.partyState.find(m => line.startsWith(`  ${m.name.toUpperCase()}`))?.name
+        ?? state.enemyState.find(e => line.startsWith(`  ${e.displayName.toUpperCase().replace(/ /g, '_')}`))?.displayName
+        ?? 'unknown';
+      events.push({
+        type: isPartyAttack ? 'CRIT_DEALT' : 'CRIT_RECEIVED',
+        actorName,
+        turn: Math.floor(i / Math.max(1, state.turnOrder.length)) + 1,
+      });
+    }
+    if (line.includes('nat 1')) {
+      const actorName = state.partyState.find(m => line.includes(m.name.toUpperCase()))?.name ?? 'unknown';
+      events.push({ type: 'NAT_ONE', actorName, turn: state.round });
+    }
+  });
+
+  // Abilities used (parse from log markers)
+  const ABILITY_MARKERS = [
+    'FURIA', 'SEGUNDO_ALIENTO', 'GOLPE_DIVINO', 'MARCA_CAZADOR',
+    'ATAQUE_FURTIVO', 'MISIL_MAGICO', 'PALABRA_CURATIVA', 'ENREDAR',
+    'LLUVIA_GOLPES', 'INSPIRAR', 'ORBE_CROMATICO', 'EXPLOSION_OSCURA',
+  ];
+  state.log.forEach(line => {
+    const marker = ABILITY_MARKERS.find(m => line.includes(m));
+    if (marker) {
+      const actorName = state.partyState.find(m => line.includes(m.name.toUpperCase()))?.name ?? 'unknown';
+      events.push({ type: 'ABILITY_USED', actorName, turn: state.round });
+    }
+  });
+
+  // Defeated enemies
+  defeatedEnemies.forEach(e => {
+    events.push({ type: 'ENEMY_DEFEATED', actorName: e.name, turn: state.round });
+  });
+
+  // Final outcome
+  events.push({
+    type: state.outcome === 'VICTORY' ? 'VICTORY' : 'DEFEAT',
+    actorName: 'party',
+    turn: state.round,
+  });
+
   return {
     outcome: state.outcome ?? 'DEFEAT',
     roundsElapsed: state.round,
@@ -816,5 +895,6 @@ export function buildCombatResultFromLive(
     goldEarned,
     damageDone: state.damageDone,
     log: state.log,
+    events,
   };
 }

@@ -23,6 +23,8 @@ type GameState = {
   loading: boolean;
   /** Last combat result — in-memory only, not persisted */
   lastCombatResult: CombatResult | null;
+  /** Last world simulation events — updated on each advanceCycle call */
+  lastSimulationEvents: import('../services/worldSimulator').SimulationEvent[] | null;
 };
 
 type GameActions = {
@@ -48,6 +50,12 @@ type GameActions = {
   clearActive: () => void;
   /** Store the result of the last combat for ReportScreen to consume */
   setCombatResult: (result: CombatResult) => void;
+  /** Advance game time by the cost of an action; runs world simulation and persists cycleRaw */
+  advanceCycle: (action: import('../services/timeService').TimeAction) => Promise<void>;
+  /** Fast-forward to end of season (cycle 60) for testing / debug purposes */
+  advanceToVillage: () => Promise<void>;
+  /** Overwrite the last simulation events (useful after manual world sim calls) */
+  setSimulationEvents: (events: import('../services/worldSimulator').SimulationEvent[]) => void;
 };
 
 // ─── Store ────────────────────────────────────────────────
@@ -57,6 +65,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   savedGames: [],
   loading: false,
   lastCombatResult: null,
+  lastSimulationEvents: null,
 
   hydrate: () => {
     set({ loading: true });
@@ -151,4 +160,56 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   clearActive: () => set({ activeGame: null }),
 
   setCombatResult: (result) => set({ lastCombatResult: result }),
+
+  advanceCycle: async (action) => {
+    const { activeGame } = get();
+    if (!activeGame) return;
+
+    const { advanceTime } = await import('../services/timeService');
+    const { simulateWorld } = await import('../services/worldSimulator');
+
+    const { newCycleRaw, newCycle } = advanceTime(activeGame.cycleRaw ?? activeGame.cycle, action);
+
+    const simResult = await simulateWorld(activeGame.seedHash, newCycle, activeGame);
+
+    const updates = {
+      cycleRaw: newCycleRaw,
+      cycle: newCycle,
+      lastSimEvents: JSON.stringify(simResult.events),
+      lastActionAt: new Date().toISOString(),
+    };
+
+    updateSavedGame(activeGame.id, updates as Parameters<typeof updateSavedGame>[1]);
+    set({
+      activeGame: { ...activeGame, ...updates, updatedAt: new Date().toISOString() },
+      lastSimulationEvents: simResult.events,
+    });
+  },
+
+  advanceToVillage: async () => {
+    const { activeGame } = get();
+    if (!activeGame) return;
+
+    const { advanceToEndOfSeason } = await import('../services/timeService');
+    const { simulateWorld } = await import('../services/worldSimulator');
+
+    const { newCycle } = advanceToEndOfSeason(activeGame.cycleRaw ?? activeGame.cycle);
+
+    const simResult = await simulateWorld(activeGame.seedHash, newCycle, activeGame);
+
+    const updates = {
+      cycleRaw: newCycle as number,
+      cycle: newCycle as number,
+      lastSimEvents: JSON.stringify(simResult.events),
+      lastActionAt: new Date().toISOString(),
+    };
+
+    updateSavedGame(activeGame.id, updates as Parameters<typeof updateSavedGame>[1]);
+    set({
+      activeGame: { ...activeGame, ...updates, updatedAt: new Date().toISOString() },
+      lastSimulationEvents: simResult.events,
+    });
+  },
+
+  setSimulationEvents: (events) => set({ lastSimulationEvents: events }),
 }));

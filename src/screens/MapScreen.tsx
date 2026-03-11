@@ -330,6 +330,15 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       navigation.navigate('Battle', { roomId: String(room.id), roomType: room.type });
       return;
     }
+    if (room.type === 'SAFE_ZONE') {
+      setFloor(afterVisit);
+      setCurrentRoomId(room.id);
+      setSelectedRoom(null);
+      const savedState = serializeExplorationState(afterVisit, room.id);
+      updateProgress({ location: 'map', mapState: JSON.stringify(savedState), inSafeZone: true, safeZoneRoomId: String(room.id) });
+      navigation.navigate('Camp', { roomId: String(room.id), floor: activeGame?.floor ?? 1 });
+      return;
+    }
     // Non-combat: move, reveal adjacent, keep panel open with post-entry info
     const afterReveal = revealAdjacentRooms(afterVisit, room.id);
     setFloor(afterReveal);

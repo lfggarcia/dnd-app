@@ -24,6 +24,27 @@ const CycleTransitionScreen = lazy(() =>
 const WorldLogScreen = lazy(() =>
   import('../screens/WorldLogScreen').then(m => ({ default: m.WorldLogScreen }))
 );
+const CampScreen = lazy(() =>
+  import('../screens/CampScreen').then(m => ({ default: m.CampScreen }))
+);
+const LevelUpScreen = lazy(() =>
+  import('../screens/LevelUpScreen').then(m => ({ default: m.LevelUpScreen }))
+);
+const NegotiationScreen = lazy(() =>
+  import('../screens/NegotiationScreen').then(m => ({ default: m.NegotiationScreen }))
+);
+const AllianceScreen = lazy(() =>
+  import('../screens/AllianceScreen').then(m => ({ default: m.AllianceScreen }))
+);
+const UnificationScreen = lazy(() =>
+  import('../screens/UnificationScreen').then(m => ({ default: m.UnificationScreen }))
+);
+const SimulationLoadingScreen = lazy(() =>
+  import('../screens/SimulationLoadingScreen').then(m => ({ default: m.SimulationLoadingScreen }))
+);
+const SettingsScreen = lazy(() =>
+  import('../screens/SettingsScreen').then(m => ({ default: m.SettingsScreen }))
+);
 
 const LazyFallback = () => (
   <View style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
@@ -55,6 +76,13 @@ export const AppNavigator = () => {
         <Stack.Screen name="Extraction" component={ExtractionScreen} />
         <Stack.Screen name="WorldLog" component={WorldLogScreen as React.ComponentType<object>} />
         <Stack.Screen name="CycleTransition" component={CycleTransitionScreen as React.ComponentType<object>} />
+        <Stack.Screen name="Camp" component={CampScreen as React.ComponentType<object>} />
+        <Stack.Screen name="LevelUp" component={LevelUpScreen as React.ComponentType<object>} />
+        <Stack.Screen name="Negotiation" component={NegotiationScreen as React.ComponentType<object>} />
+        <Stack.Screen name="Alliance" component={AllianceScreen as React.ComponentType<object>} />
+        <Stack.Screen name="Unification" component={UnificationScreen as React.ComponentType<object>} />
+        <Stack.Screen name="SimulationLoading" component={SimulationLoadingScreen as React.ComponentType<object>} />
+        <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType<object>} />
       </Stack.Navigator>
     </Suspense>
   );

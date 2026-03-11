@@ -20,7 +20,8 @@ export type RoomType =
   | 'EVENT'
   | 'TREASURE'
   | 'BOSS'
-  | 'SECRET';
+  | 'SECRET'
+  | 'SAFE_ZONE';
 
 export interface DungeonRoom {
   /** Unique ID within the floor */

@@ -2,14 +2,8 @@ import React, {
   useEffect, useCallback, useState, useRef, useMemo, memo,
 } from 'react';
 import {
-  useSharedValue, useDerivedValue, withTiming, withSpring,
-} from 'react-native-reanimated';
-import {
-  Canvas, Image as SkiaImage, useImage, Group, RoundedRect, Paint, BlurMask,
-} from '@shopify/react-native-skia';
-import {
   View, Text, TouchableOpacity, ScrollView, BackHandler,
-  Image, StyleSheet, Dimensions, Platform,
+  Image, Animated, StyleSheet, Dimensions, Platform,
   type ImageSourcePropType,
 } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
@@ -353,71 +347,48 @@ const LogStrip = memo(({ log }: { log: string[] }) => {
   );
 });
 
-// ── Defeat Animation (Skia + Reanimated) ────────────────────────────────────────
-
-const DEG_TO_RAD = Math.PI / 180;
+// ── Defeat Animation ─────────────────────────────────────────────────────────────
 
 const DefeatAnimation = memo(({ source }: { source: ImageSourcePropType }) => {
-  const skiaImg = useImage(source as number);
-  const [layoutReady, setLayoutReady] = useState(false);
+  const scale   = useRef(new Animated.Value(0.4)).current;
+  const rotDeg  = useRef(new Animated.Value(-8)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
-  const scale   = useSharedValue(0.4);
-  const rotDeg  = useSharedValue(-8);
-  const opacity = useSharedValue(0);
-  const cx      = useSharedValue(0);
-  const cy      = useSharedValue(0);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    opacity.value = withTiming(1, { duration: 280 });
-    scale.value   = withSpring(2.0, { damping: 10, stiffness: 55 });
-    rotDeg.value  = withTiming(5, { duration: 1100 });
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.spring(scale,   { toValue: 2.0, damping: 10, stiffness: 55, useNativeDriver: true }),
+      Animated.timing(rotDeg,  { toValue: 5, duration: 1100, useNativeDriver: true }),
+    ]).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const rotate = rotDeg.interpolate({ inputRange: [-8, 5], outputRange: ['-8deg', '5deg'] });
 
   const cardW = ENEMY_MAX_W * 1.2;
   const cardH = ENEMY_MAX_W * 1.9;
 
-  // Drive Skia transforms via Reanimated derived values (runs on UI thread)
-  const transform = useDerivedValue(() => [
-    { translateX: cx.value },
-    { translateY: cy.value },
-    { rotate: rotDeg.value * DEG_TO_RAD },
-    { scale: scale.value },
-    { translateX: -cardW / 2 },
-    { translateY: -cardH / 2 },
-  ]);
-
-  const imgOpacity = useDerivedValue(() => opacity.value);
-
   return (
-    <View
-      style={S.defeatOverlay}
-      onLayout={e => {
-        cx.value = e.nativeEvent.layout.width / 2;
-        cy.value = e.nativeEvent.layout.height / 2;
-        setLayoutReady(true);
-      }}
-    >
-      {layoutReady && (
-        <Canvas style={StyleSheet.absoluteFill}>
-          {skiaImg && (
-            <Group transform={transform} opacity={imgOpacity}>
-              {/* Outer red glow */}
-              <RoundedRect x={0} y={0} width={cardW} height={cardH} r={3} color="transparent">
-                <Paint color="#CC1010">
-                  <BlurMask blur={22} style="outer" />
-                </Paint>
-              </RoundedRect>
-              {/* Monster illustration */}
-              <SkiaImage image={skiaImg} x={0} y={0} width={cardW} height={cardH} fit="cover" />
-              {/* Red border */}
-              <RoundedRect x={0} y={0} width={cardW} height={cardH} r={3} color="transparent">
-                <Paint style="stroke" color="#FF3E3E" strokeWidth={3} />
-              </RoundedRect>
-            </Group>
-          )}
-        </Canvas>
-      )}
+    <View style={S.defeatOverlay}>
+      <Animated.View
+        style={{
+          width: cardW,
+          height: cardH,
+          opacity,
+          transform: [{ scale }, { rotate }],
+          borderRadius: 3,
+          borderWidth: 3,
+          borderColor: '#FF3E3E',
+          overflow: 'hidden',
+          shadowColor: '#CC1010',
+          shadowOffset: { width: 0, height: 0 },
+          shadowRadius: 22,
+          shadowOpacity: 1,
+          elevation: 20,
+        }}
+      >
+        <Image source={source} style={{ width: cardW, height: cardH }} resizeMode="cover" />
+      </Animated.View>
     </View>
   );
 });

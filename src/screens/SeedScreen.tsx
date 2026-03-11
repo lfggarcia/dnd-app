@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
 import type { ScreenProps } from '../navigation/types';
 import { useFocusEffect } from '@react-navigation/native';
 import Animated, {
@@ -50,6 +50,20 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
 
   const onExecute = () => {
     if (!seed || isProcessing) return;
+    // RT-08: validate seed to prevent low-entropy hash collisions
+    if (seed.length < 4) {
+      Alert.alert('Seed inválida', 'La seed debe tener al menos 4 caracteres');
+      return;
+    }
+    if (!/^[\x20-\x7E]+$/.test(seed)) {
+      Alert.alert('Seed inválida', 'Solo se permiten caracteres ASCII imprimibles');
+      return;
+    }
+    const uniqueChars = new Set(seed).size;
+    if (uniqueChars < 2) {
+      Alert.alert('Seed inválida', 'La seed necesita más variedad de caracteres');
+      return;
+    }
     Keyboard.dismiss();
     setIsProcessing(true);
     const hash = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0).toString(16).toUpperCase();

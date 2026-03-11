@@ -40,39 +40,16 @@ const FACTION_PREFIXES: readonly string[] = [
   'CONSEJO',  'TORMENTA', 'SANGRE',   'SELLO',    'MARCA',
 ];
 
-// ─── Deterministic PRNG (LCG) ─────────────────────────────
+// ─── PRNG — imports shared utility (NI-03) ────────────────
 
-function hashString(str: string): number {
-  // djb2 variant — fast and well-distributed for short strings
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) {
-    h = (Math.imul(h, 33) ^ str.charCodeAt(i)) >>> 0;
-  }
-  return h;
-}
-
-type PRNG = { next: () => number; pickIndex: (len: number) => number };
-
-function makePRNG(seed: number): PRNG {
-  // Linear Congruential Generator — deterministic, no external deps
-  let s = seed >>> 0;
-  return {
-    next(): number {
-      s = (Math.imul(1664525, s) + 1013904223) >>> 0;
-      return s / 0x100000000;
-    },
-    pickIndex(len: number): number {
-      return Math.floor(this.next() * len);
-    },
-  };
-}
+import { makePRNG } from '../utils/prng';
 
 // ─── Fisher-Yates shuffle using PRNG ─────────────────────
 
-function shuffle<T>(arr: readonly T[], rng: PRNG): T[] {
+function shuffle<T>(arr: readonly T[], rng: ReturnType<typeof makePRNG>): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = rng.pickIndex(i + 1);
+    const j = rng.next(0, i);
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -104,7 +81,7 @@ function loadCreaturesFromDB(): string[] | null {
 // Returns up to 10 unique faction codes for a given seedHash.
 
 export function buildRivalPool(seedHash: string): string[] {
-  const rng = makePRNG(hashString(seedHash + '_rivals'));
+  const rng = makePRNG(`${seedHash}_rivals`);
 
   // Prefer live DB data; fall back to static SRD pool
   const creatures = loadCreaturesFromDB() ?? FALLBACK_CREATURES;
@@ -127,7 +104,7 @@ export function generateRivals(
   playerFloor: number,
   playerCycle: number,
 ): RivalEntry[] {
-  const rng  = makePRNG(hashString(seedHash + '_state'));
+  const rng  = makePRNG(`${seedHash}_state`);
   const pool = buildRivalPool(seedHash);
 
   return pool.slice(0, 5).map((name, i) => {
@@ -135,13 +112,13 @@ export function generateRivals(
 
     const floor = isNew
       ? 0
-      : Math.max(0, playerFloor - 1 + Math.floor(rng.next() * 3) - (i % 2));
+      : Math.max(0, playerFloor - 1 + Math.floor(rng.float() * 3) - (i % 2));
 
     const status: RivalEntry['status'] = isNew ? 'waiting' : 'active';
 
     const rep = isNew
       ? 0
-      : Math.min(99, Math.max(5, 20 + playerCycle * 2 - i * 8 + Math.floor(rng.next() * 10)));
+      : Math.min(99, Math.max(5, 20 + playerCycle * 2 - i * 8 + Math.floor(rng.float() * 10)));
 
     return { name, floor, status, rep };
   });

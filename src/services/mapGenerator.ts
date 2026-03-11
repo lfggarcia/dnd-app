@@ -81,33 +81,14 @@ function buildTypePool(floor: number): NodeType[] {
   return ['COMBAT', 'COMBAT', 'EVENT', 'EVENT', 'UNKNOWN', 'UNKNOWN'];
 }
 
-// ─── PRNG (djb2 hash + LCG — same family as rivalGenerator.ts) ───────────────
+// ─── PRNG — imports shared utility (NI-03) ───────────────────────────────────
 
-function hashString(s: string): number {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) {
-    h = (Math.imul(h, 33) ^ s.charCodeAt(i)) >>> 0;
-  }
-  return h;
-}
-
-function makePRNG(seed: number) {
-  let s = seed >>> 0;
-  return {
-    next(): number {
-      s = (Math.imul(1664525, s) + 1013904223) >>> 0;
-      return s / 0x100000000;
-    },
-    pick(len: number): number {
-      return Math.floor(this.next() * len);
-    },
-  };
-}
+import { makePRNG } from '../utils/prng';
 
 function shuffle<T>(arr: T[], rng: ReturnType<typeof makePRNG>): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = rng.pick(i + 1);
+    const j = rng.next(0, i);
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -125,14 +106,14 @@ function shuffle<T>(arr: T[], rng: ReturnType<typeof makePRNG>): T[] {
  * - All other nodes start as LOCKED.
  */
 export function generateFloorNodes(seedHash: string, floor: number): MapNode[] {
-  const rng = makePRNG(hashString(`${seedHash}_map_${floor}`));
+  const rng = makePRNG(`${seedHash}_map_${floor}`);
 
   // Shuffle type pool for the 6 variable inner nodes
   const types = shuffle(buildTypePool(floor), rng);
 
   // Boss label picked from seed
   const bossPool = LABELS.BOSS;
-  const bossLabel = bossPool[rng.pick(bossPool.length)];
+  const bossLabel = bossPool[rng.next(0, bossPool.length - 1)];
 
   // Entry node connections (ids directly reachable from entry)
   const entryConnections = new Set(TOPOLOGY[0].connections);
@@ -151,7 +132,7 @@ export function generateFloorNodes(seedHash: string, floor: number): MapNode[] {
     // Variable nodes: assign type from shuffled pool
     const type = types[idx - 1];
     const pool = LABELS[type];
-    const label = pool.length > 0 ? pool[rng.pick(pool.length)] : undefined;
+    const label = pool.length > 0 ? pool[rng.next(0, pool.length - 1)] : undefined;
     const status: MapNode['status'] = entryConnections.has(topo.id) ? 'AVAILABLE' : 'LOCKED';
 
     return { ...topo, type, status, label };

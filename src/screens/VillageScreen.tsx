@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, BackHandler, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler, Modal, Alert } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -50,6 +50,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const { t } = useI18n();
   const clearActive = useGameStore(s => s.clearActive);
   const updateProgress = useGameStore(s => s.updateProgress);
+  const advanceCycle = useGameStore(s => s.advanceCycle);
   const partyData = useGameStore(s => s.activeGame?.partyData ?? []);
   const gold = useGameStore(s => s.activeGame?.gold ?? 0);
   const cycle = useGameStore(s => s.activeGame?.cycle ?? 1);
@@ -73,6 +74,14 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
     return () => sub.remove();
   }, []);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [showSeasonEndModal, setShowSeasonEndModal] = useState(false);
+
+  // Show season-end modal when cycle reaches 60
+  useEffect(() => {
+    if (cycle >= 60) {
+      setShowSeasonEndModal(true);
+    }
+  }, [cycle]);
 
   const rivals = useMemo(
     () => generateRivals(seedHash, maxFloor, cycle),
@@ -139,9 +148,21 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
 
   const handleBuildingPress = useCallback((key: string) => {
     if (key === 'church') { setShowChurch(true); return; }
+    if (key === 'inn') {
+      const REST_INN_COST = 50;
+      if (gold < REST_INN_COST) {
+        Alert.alert(t('village.insufficientGold') ?? 'Sin fondos', `La posada cuesta ${REST_INN_COST}G`);
+        return;
+      }
+      updateProgress({ gold: gold - REST_INN_COST });
+      advanceCycle('REST_LONG').then(() => {
+        navigation.navigate('CycleTransition', { from: 'DAY', to: 'NIGHT', cycle: (cycle ?? 1) + 1 });
+      });
+      return;
+    }
     const screen = BUILDING_NAV[key];
     if (screen) navigation.navigate(screen as any);
-  }, [navigation]);
+  }, [navigation, gold, cycle, updateProgress, advanceCycle, t]);
 
   return (
     <View className="flex-1 bg-background">
@@ -364,6 +385,32 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
               style={{ marginTop: 16, borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', padding: 10, alignItems: 'center' }}
             >
               <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 10, color: 'rgba(0,255,65,0.6)' }}>CERRAR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Season End Modal — cycle 60 */}
+      <Modal visible={showSeasonEndModal} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <View style={{ borderWidth: 1, borderColor: '#FFB000', backgroundColor: '#0A0E0A', padding: 24, width: '100%' }}>
+            <Text style={{ fontFamily: 'RobotoMono-Bold', color: '#FFB000', fontSize: 14, textAlign: 'center', marginBottom: 16 }}>
+              ⚠ LA TORRE SE CIERRA
+            </Text>
+            <Text style={{ fontFamily: 'RobotoMono-Regular', color: 'rgba(0,255,65,0.7)', fontSize: 11, textAlign: 'center', marginBottom: 24 }}>
+              Has llegado al Ciclo 60.{'\n'}La Torre expulsa a todos los aventureros.
+            </Text>
+            <TouchableOpacity
+              onPress={() => { setShowSeasonEndModal(false); clearActive(); }}
+              style={{ borderWidth: 1, borderColor: '#FFB000', padding: 14, alignItems: 'center', marginBottom: 12 }}
+            >
+              <Text style={{ fontFamily: 'RobotoMono-Bold', color: '#FFB000', fontSize: 12 }}>INICIAR NUEVA TEMPORADA</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowSeasonEndModal(false)}
+              style={{ borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', padding: 14, alignItems: 'center' }}
+            >
+              <Text style={{ fontFamily: 'RobotoMono-Regular', color: 'rgba(0,255,65,0.5)', fontSize: 12 }}>VER HISTORIAL DE LA TORRE</Text>
             </TouchableOpacity>
           </View>
         </View>

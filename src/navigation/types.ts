@@ -14,6 +14,14 @@ export type RootStackParamList = {
   Extraction: { fromDefeat?: boolean } | undefined;
   WorldLog: undefined;
   CycleTransition: { from: 'DAY' | 'NIGHT'; to: 'DAY' | 'NIGHT'; cycle: number };
+  // Sprint 6 screens
+  Camp: { roomId: string; floor: number };
+  LevelUp: { charIndex: number };
+  Negotiation: { rivalName: string; floor: number };
+  Alliance: undefined;
+  Unification: { previousPartyNames: string[]; inheritedLevel: number };
+  SimulationLoading: { fromCycle: number };
+  Settings: undefined;
 };
 
 export type ScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<

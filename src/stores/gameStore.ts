@@ -34,8 +34,8 @@ type GameActions = {
   startNewGame: (seed: string, seedHash: string, party: CharacterSave[]) => SavedGame;
   /** Resume a saved game by id */
   loadGame: (id: string) => boolean;
-  /** Update current game progress (floor, cycle, phase, gold, party, location, mapState) */
-  updateProgress: (updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState'>>) => void;
+  /** Update current game progress (floor, cycle, phase, gold, party, location, mapState, safeZone) */
+  updateProgress: (updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState' | 'inSafeZone' | 'safeZoneRoomId'>>) => void;
   /** Save the AI-generated party portrait (base64 data URI) */
   savePortrait: (portrait: string) => void;
   /** Save individual character portraits as a map of index → base64 data URI */

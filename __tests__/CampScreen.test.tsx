@@ -117,39 +117,39 @@ describe('CampScreen', () => {
         route={makeRoute() as never}
       />,
     );
-    expect(getByText('Aria')).toBeTruthy();
+    expect(getByText(/Aria/)).toBeTruthy();
   });
 
-  test('shows floor information from route params', () => {
-    const { getByText } = render(
-      <CampScreen
-        navigation={makeNavigation() as never}
-        route={makeRoute(4) as never}
-      />,
-    );
-    // Floor 4 should appear somewhere (e.g., "Piso 4" or "Floor 4")
-    const floorEl = getByText(/4/);
-    expect(floorEl).toBeTruthy();
-  });
-
-  test('defaults to PARTY tab showing member list', () => {
+  test('shows character class and level', () => {
     const { getByText } = render(
       <CampScreen
         navigation={makeNavigation() as never}
         route={makeRoute() as never}
       />,
     );
-    // Should show party member on PARTY tab
-    expect(getByText('Aria')).toBeTruthy();
+    // charClass is rendered as "FIGHTER · Lv 3"
+    expect(getByText(/FIGHTER/)).toBeTruthy();
   });
 
-  test('renders gold value', () => {
+  test('shows HP bar values', () => {
     const { getByText } = render(
       <CampScreen
         navigation={makeNavigation() as never}
         route={makeRoute() as never}
       />,
     );
-    expect(getByText(/500/)).toBeTruthy();
+    // HP is rendered as "HP 20/30"
+    expect(getByText(/HP 20/)).toBeTruthy();
+  });
+
+  test('shows level-up indicator for pending level ups', () => {
+    const { getByText } = render(
+      <CampScreen
+        navigation={makeNavigation() as never}
+        route={makeRoute() as never}
+      />,
+    );
+    // pendingLevelUps: 1 → shows "CONFIRMAR NIVEL 4" button
+    expect(getByText(/CONFIRMAR/)).toBeTruthy();
   });
 });

@@ -310,6 +310,10 @@ export async function simulateWorld(
 
   const events: SimulationEvent[] = [];
 
+  // RT-01: time-limit guard to prevent blocking JS thread on low-end devices
+  const MAX_TOTAL_TIME_MS = 100;
+  const simStartTime = Date.now();
+
   // Inicializar estado de cada party IA
   const aiStates: AIPartyState[] = rivals.map(rival => ({
     entry: { ...rival },
@@ -322,6 +326,7 @@ export async function simulateWorld(
 
   // Simular ciclo por ciclo
   for (let cycle = 1; cycle <= targetCycle; cycle++) {
+    if (Date.now() - simStartTime > MAX_TOTAL_TIME_MS) break;
     const rng = makePRNG(`${seedHash}_world_${cycle}`);
 
     for (let i = 0; i < aiStates.length; i++) {

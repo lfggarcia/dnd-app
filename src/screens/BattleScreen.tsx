@@ -39,6 +39,7 @@ import { NarrativeMomentPanel } from '../components/NarrativeMomentPanel';
 import { MONSTER_ILLUSTRATIONS } from '../constants/monsterIllustrations';
 import { awardXP } from '../services/progressionService';
 import type { XPRewardSource } from '../services/progressionService';
+import { applyMoralEvent } from '../services/moralSystem';
 import type { ScreenProps } from '../navigation/types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -458,6 +459,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     charName: string;
     emotion:  EmotionState;
   } | null>(null);
+  const momentCountRef = useRef(0);
 
   // ── Tick emotion durations on turn advance ────────────────────────────────
   useEffect(() => {
@@ -477,7 +479,8 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       setPartyEmotions(prev => {
         const current = prev[char.name] ?? null;
         const newEmotion = resolveEmotion(event, char, current);
-        if (isSignificantEvent(event.type)) {
+        if (isSignificantEvent(event.type) && momentCountRef.current < 3) {
+          momentCountRef.current += 1;
           setActiveMoment({ charName: char.name, emotion: newEmotion });
         }
         return { ...prev, [char.name]: newEmotion };
@@ -520,7 +523,21 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
 
       if (outcome === 'VICTORY') {
         updatedParty = awardXP(updatedParty, xpSource);
+        updatedParty = applyMoralEvent(updatedParty, roomType === 'BOSS' ? 'BOSS_DEFEATED' : 'KILL_MONSTER');
+      } else {
+        updatedParty = applyMoralEvent(updatedParty, 'DEFEAT_IN_COMBAT');
       }
+
+      // Apply PARTY_MEMBER_DIED for each ally that died this combat
+      const diedThisCombat = updatedParty.filter(
+        (c, i) => partyData[i]?.alive && !c.alive
+      ).length;
+      for (let i = 0; i < diedThisCombat; i++) {
+        updatedParty = applyMoralEvent(updatedParty, 'PARTY_MEMBER_DIED');
+      }
+
+      // Reset narrative moment counter for next combat
+      momentCountRef.current = 0;
 
       updateProgress({ partyData: updatedParty });
       setCombatResult(result);
@@ -596,8 +613,8 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   }, [cs, goToNextTurn, processEmotionEvents]);
 
   const handleContinue = useCallback(() => {
-    navigation.navigate('Report', { roomId, roomWasCleared: cs.outcome === 'VICTORY' });
-  }, [cs.outcome, navigation, roomId]);
+    navigation.navigate('Report', { roomId, roomWasCleared: cs.outcome === 'VICTORY', roomType });
+  }, [cs.outcome, navigation, roomId, roomType]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {

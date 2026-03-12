@@ -11,6 +11,7 @@ import Animated, {
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { BossRoomEntryUI } from '../components/BossRoomEntryUI';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import Svg, { Line as SvgLine, Circle as SvgCircle, G as SvgG } from 'react-native-svg';
@@ -160,6 +161,8 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const { t } = useI18n();
   const activeGame = useGameStore(s => s.activeGame);
   const updateProgress = useGameStore(s => s.updateProgress);
+  const partyData = useGameStore(s => s.activeGame?.partyData ?? []);
+  const advanceCycle = useGameStore(s => s.advanceCycle);
 
   const floorIndex = activeGame?.floor ?? 1;
   const cycle = activeGame?.cycle ?? 1;
@@ -377,8 +380,10 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const handleReturnToVillage = useCallback(() => {
     const state = serializeExplorationState(floor, currentRoomId);
     updateProgress({ location: 'village', mapState: JSON.stringify(state) });
-    navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
-  }, [floor, currentRoomId, updateProgress, navigation]);
+    advanceCycle('RETURN_VILLAGE').then(() => {
+      navigation.reset({ index: 0, routes: [{ name: 'Village' }] });
+    });
+  }, [floor, currentRoomId, updateProgress, advanceCycle, navigation]);
 
   const combatCount = useMemo(
     () => floor.rooms.filter(r => r.type === 'NORMAL' || r.type === 'ELITE').length,
@@ -591,7 +596,16 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       )}
 
       {/* Room action panel */}
-      {selectedRoom && (
+      {selectedRoom && !isBossCleared && (
+        selectedRoom.type === 'BOSS' && !selectedRoom.visited ? (
+          <BossRoomEntryUI
+            bossLabel={selectedRoom.label}
+            floor={floorIndex}
+            party={partyData}
+            onEnter={handleEnterRoom}
+            onCancel={() => setSelectedRoom(null)}
+          />
+        ) : (
         <View style={[styles.roomPanel, { borderTopColor: ROOM_STYLES[selectedRoom.type].borderColor + '66' }]}>
           <Text style={[styles.roomPanelTitle, { color: ROOM_STYLES[selectedRoom.type].textColor }]}>
             [{ROOM_STYLES[selectedRoom.type].code}] {selectedRoom.label}
@@ -624,6 +638,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
             </TouchableOpacity>
           </View>
         </View>
+        )
       )}
 
       {/* Bottom Info Panel */}

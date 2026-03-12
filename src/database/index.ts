@@ -17,3 +17,29 @@ export {
   getAllSyncMeta,
 } from './repository';
 export type { Resource, Translation } from './repository';
+export {
+  createItem,
+  getItemById,
+  getItemsByGame,
+  getItemsByCharacter,
+  isBossLootClaimed,
+  equipItem,
+  unequipItem,
+  claimItem,
+  assignItemToGame,
+  deleteItem,
+  deleteItemsByGame,
+} from './itemRepository';
+export type { Item, ItemType, ItemRarity, CreateItemInput } from './itemRepository';
+export {
+  createWorldEvent,
+  getWorldEventsBySeed,
+  getWorldEventsByType,
+  countPartyKills,
+  createBounty,
+  getActiveBounties,
+  getBountyForTarget,
+  deactivateBounty,
+  escalateBounty,
+} from './eventRepository';
+export type { WorldEvent, WorldEventType, Bounty, CreateWorldEventInput, CreateBountyInput } from './eventRepository';

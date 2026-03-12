@@ -11,6 +11,13 @@ import {
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
+import { BountyBoard } from '../components/BountyBoard';
+import { AllianceCard } from '../components/AllianceCard';
+import { getAllActiveBounties } from '../services/bountyService';
+import type { BountyRecord } from '../services/bountyService';
+import { getActiveAlliances, terminateAlliance } from '../services/allianceService';
+import type { Alliance } from '../services/allianceService';
+import { getAllSavedGames } from '../database/gameRepository';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { CharacterSave } from '../database/gameRepository';
@@ -167,6 +174,28 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
   const portraitsJson   = activeGame?.portraitsJson ?? null;
 
   const [modalUri, setModalUri] = useState<string | null>(null);
+  const [showBountyBoard, setShowBountyBoard] = useState(false);
+  const [showAlliances, setShowAlliances] = useState(false);
+  const [showRankings, setShowRankings] = useState(false);
+
+  const activeBounties = useMemo<BountyRecord[]>(() => {
+    if (!showBountyBoard || !activeGame?.seedHash) return [];
+    try { return getAllActiveBounties(activeGame.seedHash); } catch { return []; }
+  }, [showBountyBoard, activeGame?.seedHash]);
+
+  const activeAlliances = useMemo<Alliance[]>(() => {
+    if (!showAlliances || !activeGame?.id || !activeGame?.seedHash) return [];
+    try { return getActiveAlliances(activeGame.id, activeGame.seedHash); } catch { return []; }
+  }, [showAlliances, activeGame?.id, activeGame?.seedHash]);
+
+  const rankings = useMemo(() => {
+    if (!showRankings) return [];
+    try {
+      return getAllSavedGames()
+        .sort((a, b) => (b.floor ?? 0) - (a.floor ?? 0))
+        .slice(0, 10);
+    } catch { return []; }
+  }, [showRankings]);
 
   const handleCharPress     = useCallback((idx: number) => {
     navigation.navigate('CharacterDetail', { charIndex: idx });
@@ -246,7 +275,7 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
           {/* ── Guild Options ── */}
           <Text style={S.sectionTitle}>{t('guild.options')}</Text>
 
-          <TouchableOpacity style={S.optionBtn} activeOpacity={0.7}>
+          <TouchableOpacity style={S.optionBtn} activeOpacity={0.7} onPress={() => setShowRankings(v => !v)}>
             <View style={S.optionIconBox}>
               <Text style={S.optionIconText}>RNK</Text>
             </View>
@@ -254,10 +283,60 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
               <Text style={S.optionTitle}>{t('village.viewRankings')}</Text>
               <Text style={S.optionDesc}>{t('guild.rankingsDesc')}</Text>
             </View>
-            <Text style={S.optionArrow}>&gt;</Text>
+            <Text style={S.optionArrow}>{showRankings ? 'v' : '>'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={S.optionBtn} activeOpacity={0.7}>
+          {showRankings && (
+            <View style={{ marginBottom: 8 }}>
+              {rankings.length === 0 ? (
+                <Text style={{ color: '#888', fontSize: 12, paddingLeft: 8 }}>—</Text>
+              ) : rankings.map((g, i) => (
+                <View key={g.id} style={{ flexDirection: 'row', paddingVertical: 4, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: '#ffffff22' }}>
+                  <Text style={{ color: '#aaa', width: 24, fontSize: 12 }}>#{i + 1}</Text>
+                  <Text style={{ color: '#fff', flex: 1, fontSize: 12 }}>{g.seedHash}</Text>
+                  <Text style={{ color: '#00FF41', fontSize: 12 }}>Floor {g.floor}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <TouchableOpacity style={S.optionBtn} activeOpacity={0.7} onPress={() => setShowAlliances(v => !v)}>
+            <View style={S.optionIconBox}>
+              <Text style={S.optionIconText}>ALI</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={S.optionTitle}>{lang === 'es' ? 'Alianzas Activas' : 'Active Alliances'}</Text>
+              <Text style={S.optionDesc}>{lang === 'es' ? 'Gestionar pactos de protección' : 'Manage protection pacts'}</Text>
+            </View>
+            <Text style={S.optionArrow}>{showAlliances ? 'v' : '>'}</Text>
+          </TouchableOpacity>
+
+          {showAlliances && activeGame && (
+            <View style={{ marginBottom: 8 }}>
+              {activeAlliances.length === 0 ? (
+                <Text style={{ color: '#888', fontSize: 12, paddingLeft: 8 }}>
+                  {lang === 'es' ? 'Sin alianzas activas' : 'No active alliances'}
+                </Text>
+              ) : activeAlliances.map(alliance => (
+                <AllianceCard
+                  key={alliance.id}
+                  alliance={alliance}
+                  currentCycle={activeGame.cycle ?? 1}
+                  onBreak={() => {
+                    try { terminateAlliance(alliance.id); } catch { /* ignore */ }
+                    setShowAlliances(false);
+                    setTimeout(() => setShowAlliances(true), 50);
+                  }}
+                />
+              ))}
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={S.optionBtn}
+            activeOpacity={0.7}
+            onPress={() => setShowBountyBoard(v => !v)}
+          >
             <View style={S.optionIconBox}>
               <Text style={S.optionIconText}>MIS</Text>
             </View>
@@ -265,8 +344,15 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
               <Text style={S.optionTitle}>{t('village.bountyBoard')}</Text>
               <Text style={S.optionDesc}>{t('guild.bountyDesc')}</Text>
             </View>
-            <Text style={S.optionArrow}>&gt;</Text>
+            <Text style={S.optionArrow}>{showBountyBoard ? 'v' : '>'}</Text>
           </TouchableOpacity>
+
+          {showBountyBoard && activeGame && (
+            <BountyBoard
+              bounties={activeBounties}
+              seedHash={activeGame.seedHash}
+            />
+          )}
 
           <TouchableOpacity
             style={S.optionBtn}

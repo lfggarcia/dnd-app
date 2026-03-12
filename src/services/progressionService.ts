@@ -102,3 +102,19 @@ export function formatXPProgress(char: CharacterSave): string {
   const nextLevelXP = getXPToNextLevel(level);
   return `${xp} / ${nextLevelXP} XP (nv ${level})`;
 }
+
+/**
+ * SYSTEMS.MD §6C: When a player starts a new party on an existing seed,
+ * the new party starts at the average level of the previous party's survivors.
+ * Minimum starting level is 1, maximum is the highest previous level.
+ */
+export function getInheritedLevel(previousParty: CharacterSave[]): number {
+  const survivors = previousParty.filter(c => c.alive);
+  if (survivors.length === 0) {
+    // All dead — inherit from the highest-leveled character
+    const maxLevel = Math.max(1, ...previousParty.map(c => c.level ?? 1));
+    return Math.max(1, Math.floor(maxLevel * 0.5)); // penalty for full-wipe
+  }
+  const avgLevel = survivors.reduce((sum, c) => sum + (c.level ?? 1), 0) / survivors.length;
+  return Math.max(1, Math.floor(avgLevel));
+}

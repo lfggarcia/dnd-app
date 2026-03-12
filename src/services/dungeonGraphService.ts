@@ -61,22 +61,14 @@ export interface FloorExplorationState {
   currentRoomId: number;
 }
 
-// ─── PRNG (djb2 + LCG — same family as mapGenerator.ts) ─────────────────────
-
-function hashString(s: string): number {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) {
-    h = (Math.imul(h, 33) ^ s.charCodeAt(i)) >>> 0;
-  }
-  return h;
-}
+// ─── PRNG (wraps shared makePRNG from utils/prng) ─────────────────────────────
 
 /**
  * Floor-level PRNG adapter — wraps the shared makePRNG with extended API.
- * Uses numeric seed converted to a string key (NI-03: single source of truth).
+ * Uses string seed directly for proper namespace (RT-02).
  */
-function makePRNG(seed: number) {
-  const base = makeBasePRNG(`floor_${seed}`);
+function makePRNG(seedKey: string) {
+  const base = makeBasePRNG(seedKey);
   return {
     next(): number {
       return base.float();
@@ -236,7 +228,7 @@ function buildRoomGraph(
  * - Called once per floor entry; subsequent entries re-use saved layout.
  */
 export function generateDungeonFloor(seedHash: string, floorIndex: number): DungeonFloor {
-  const rng = makePRNG(hashString(`${seedHash}_dungeon_${floorIndex}`));
+  const rng = makePRNG(`${seedHash}_dungeon_${floorIndex}`);
 
   const roomCount = rng.int(12, 20);
   const secretCount = rng.int(0, 3);
@@ -316,7 +308,7 @@ export function applyFloorMutations(
 ): DungeonFloor {
   if (cycle <= 1) return floor; // No mutations on first cycle
 
-  const rng = makePRNG(hashString(`${floor.seedHash}_mutations_${floor.floorIndex}_c${cycle}`));
+  const rng = makePRNG(`${floor.seedHash}_mutations_${floor.floorIndex}_c${cycle}`);
   const mutationChance = Math.min(0.1 * (cycle - 1), 0.6); // Up to 60% chance
 
   const updatedRooms = floor.rooms.map(r => {

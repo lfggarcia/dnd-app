@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
+import { attemptFlee } from '../services/encounterService';
 import type { ScreenProps } from '../navigation/types';
 
 type NegotiationAction = 'ATTACK' | 'NEGOTIATE' | 'FLEE';
@@ -20,6 +21,7 @@ export const NegotiationScreen = ({ navigation, route }: ScreenProps<'Negotiatio
 
   const [action, setAction] = useState<NegotiationAction | null>(null);
   const [fleeResult, setFleeResult] = useState<'SUCCESS' | 'FAIL' | null>(null);
+  const [fleeLog, setFleeLog] = useState<string[]>([]);
 
   // Costs scale with floor
   const PASS_COST     = Math.max(100, floor * 50);

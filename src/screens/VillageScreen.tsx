@@ -3,12 +3,15 @@ import { View, Text, TouchableOpacity, ScrollView, BackHandler, Modal, Alert } f
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { InventoryGrid } from '../components/InventoryGrid';
 import { GuildIcon, DiamondIcon, HammerIcon, ShieldIcon, MoonIcon, CrossIcon, SwordIcon } from '../components/Icons';
 import { useGameStore } from '../stores/gameStore';
 import { useI18n } from '../i18n';
 import { generateRivals } from '../services/rivalGenerator';
 import { calculateReviveCost } from '../services/economyService';
 import { getResourcesByEndpoint } from '../database';
+import { getItemsByGame } from '../database/itemRepository';
+import type { LootDrop } from '../services/lootService';
 import type { ScreenProps } from '../navigation/types';
 
 // Deterministic pick N items from a string[] using a string seed
@@ -59,6 +62,23 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const seedHash = useGameStore(s => s.activeGame?.seedHash ?? '0');
   const [showExitModal, setShowExitModal] = useState(false);
   const [showChurch, setShowChurch] = useState(false);
+  const [showArmory, setShowArmory] = useState(false);
+
+  const activeGameId = useGameStore(s => s.activeGame?.id ?? null);
+
+  const inventoryItems = useMemo<LootDrop[]>(() => {
+    if (!showArmory || !activeGameId) return [];
+    try {
+      return getItemsByGame(activeGameId).map(item => ({
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        rarity: item.rarity,
+        goldValue: item.goldValue,
+        data: item.data,
+      }));
+    } catch { return []; }
+  }, [showArmory, activeGameId]);
 
   // Mark location as village on mount
   useEffect(() => {
@@ -147,6 +167,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   }, [partyData, gold, updateProgress]);
 
   const handleBuildingPress = useCallback((key: string) => {
+    if (key === 'armory') { setShowArmory(v => !v); return; }
     if (key === 'church') { setShowChurch(true); return; }
     if (key === 'inn') {
       const REST_INN_COST = 50;
@@ -201,29 +222,37 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
         <Text className="text-primary font-robotomono text-xs font-bold mb-3">{t('village.buildings')}</Text>
 
         {BUILDING_KEYS.map((key) => (
-          <TouchableOpacity
-            key={key}
-            className="border border-primary/30 p-3 bg-muted/10 mb-2 flex-row items-center"
-            onPress={() => handleBuildingPress(key)}
-          >
-            <View className="mr-3">
-              {React.createElement(BUILDING_ICON_COMPONENTS[key], { size: 20 })}
-            </View>
-            <View className="flex-1">
-              <Text className="text-primary font-robotomono text-[11px] font-bold">
-                {t(`village.${key}`)}
-              </Text>
-              <Text className="text-primary/40 font-robotomono text-[9px] mt-0.5">
-                {t(`village.${key}Desc`)}
-              </Text>
-              {key === 'market' && marketItems.length > 0 && (
-                <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(255,176,0,0.55)', marginTop: 3 }}>
-                  {t('village.marketStock')}: {marketItems.join(' · ')}
+          <React.Fragment key={key}>
+            <TouchableOpacity
+              className="border border-primary/30 p-3 bg-muted/10 mb-2 flex-row items-center"
+              onPress={() => handleBuildingPress(key)}
+            >
+              <View className="mr-3">
+                {React.createElement(BUILDING_ICON_COMPONENTS[key], { size: 20 })}
+              </View>
+              <View className="flex-1">
+                <Text className="text-primary font-robotomono text-[11px] font-bold">
+                  {t(`village.${key}`)}
                 </Text>
-              )}
-            </View>
-            <Text className="text-primary/30 font-robotomono text-xs">{'>'}</Text>
-          </TouchableOpacity>
+                <Text className="text-primary/40 font-robotomono text-[9px] mt-0.5">
+                  {t(`village.${key}Desc`)}
+                </Text>
+                {key === 'market' && marketItems.length > 0 && (
+                  <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(255,176,0,0.55)', marginTop: 3 }}>
+                    {t('village.marketStock')}: {marketItems.join(' · ')}
+                  </Text>
+                )}
+              </View>
+              <Text className="text-primary/30 font-robotomono text-xs">{key === 'armory' && showArmory ? 'v' : '>'}</Text>
+            </TouchableOpacity>
+            {key === 'armory' && showArmory && (
+              <InventoryGrid
+                items={inventoryItems}
+                onItemPress={() => {}}
+                onItemEquip={() => {}}
+              />
+            )}
+          </React.Fragment>
         ))}
 
         {/* Rivalry Monitor */}

@@ -123,3 +123,16 @@ export function getBountyRiskMultiplier(bountyLevel: number): number {
 export function getBountyLabel(bountyLevel: number): string {
   return BOUNTY_THRESHOLDS.find(t => t.level === bountyLevel)?.label ?? 'LIMPIO';
 }
+
+/**
+ * Retorna todos los bounties activos para un seed (tablero del gremio).
+ */
+export function getAllActiveBounties(seedHash: string): BountyRecord[] {
+  const db = getDB();
+  const result = db.executeSync(
+    'SELECT * FROM bounties WHERE seed_hash = ? AND is_active = 1 ORDER BY bounty_level DESC, reward_amount DESC',
+    [seedHash],
+  );
+  const rows = (result.rows ?? []) as Record<string, unknown>[];
+  return rows.map(rowToBounty);
+}

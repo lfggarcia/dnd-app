@@ -358,3 +358,13 @@ export function deleteSavedGame(id: string): void {
   const db = getDB();
   db.executeSync('DELETE FROM saved_games WHERE id = ?', [id]);
 }
+
+export function getLatestGameBySeedHash(seedHash: string): SavedGame | null {
+  const db = getDB();
+  const result = db.executeSync(
+    "SELECT * FROM saved_games WHERE seed_hash = ? ORDER BY updated_at DESC LIMIT 1",
+    [seedHash],
+  );
+  const row = result.rows?.[0] as SavedGameRow | undefined;
+  return row ? rowToSavedGame(row) : null;
+}

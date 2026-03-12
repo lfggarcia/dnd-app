@@ -1,21 +1,81 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { TypewriterText } from '../components/TypewriterText';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
+import { generateRoomLoot, generateBossUniqueLoot } from '../services/lootService';
+import { createItem, isBossLootClaimed } from '../database/itemRepository';
+import type { LootDrop } from '../services/lootService';
 import type { ScreenProps } from '../navigation/types';
 
 export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
-  const { roomWasCleared } = route.params;
-  const { t } = useI18n();
+  const { roomWasCleared, roomId, roomType } = route.params;
+  const { t, lang } = useI18n();
 
   const combatResult   = useGameStore(s => s.lastCombatResult);
   const activeFloor    = useGameStore(s => s.activeGame?.floor ?? 1);
   const activeCycle    = useGameStore(s => s.activeGame?.cycle ?? 1);
+  const seedHash       = useGameStore(s => s.activeGame?.seedHash ?? '0');
+  const activeGameId   = useGameStore(s => s.activeGame?.id ?? null);
+  const updateProgress = useGameStore(s => s.updateProgress);
+  const gold           = useGameStore(s => s.activeGame?.gold ?? 0);
 
   const outcome = combatResult?.outcome ?? (roomWasCleared ? 'VICTORY' : 'DEFEAT');
+
+  const [lootDrops, setLootDrops] = useState<LootDrop[]>([]);
+
+  // Generate and persist loot on first render after a victory
+  useEffect(() => {
+    if (outcome !== 'VICTORY' || !roomType || !activeGameId) return;
+    try {
+      const lootTable = ['NORMAL', 'ELITE', 'BOSS', 'TREASURE', 'SECRET'] as const;
+      type LootRoomType = typeof lootTable[number];
+      const validType: LootRoomType = lootTable.includes(roomType as LootRoomType)
+        ? (roomType as LootRoomType)
+        : 'NORMAL';
+
+      const drops: LootDrop[] = generateRoomLoot(roomId, validType, activeFloor, activeCycle, seedHash);
+
+      if (validType === 'BOSS') {
+        const alreadyClaimed = isBossLootClaimed(seedHash, roomId);
+        if (!alreadyClaimed) {
+          const unique = generateBossUniqueLoot(seedHash, roomId, activeFloor);
+          if (unique) drops.push(unique);
+        }
+      }
+
+      // Persist to DB
+      for (const drop of drops) {
+        try {
+          createItem({
+            seedHash,
+            ownerGameId: activeGameId,
+            ownerCharName: null,
+            name: drop.name,
+            type: drop.type,
+            rarity: drop.rarity,
+            isEquipped: false,
+            isUnique: drop.type === 'boss_loot',
+            obtainedCycle: activeCycle,
+            floorObtained: activeFloor,
+            goldValue: drop.goldValue,
+            data: drop.data,
+            claimed: false,
+          });
+        } catch { /* already exists — idempotent */ }
+      }
+
+      // Update gold from goldEarned
+      if (combatResult?.goldEarned) {
+        updateProgress({ gold: gold + combatResult.goldEarned });
+      }
+
+      setLootDrops(drops);
+    } catch { /* non-critical — report still shows */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleContinue = useCallback(() => {
     if (outcome === 'DEFEAT') {
@@ -149,6 +209,22 @@ export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
                 </View>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* Loot Obtained */}
+        {lootDrops.length > 0 && (
+          <View className="mb-4 border border-accent/30 p-3 bg-accent/5">
+            <Text className="text-accent font-robotomono text-[9px] mb-2 font-bold">
+              {lang === 'es' ? 'BOTÍN OBTENIDO' : 'LOOT OBTAINED'}
+            </Text>
+            {lootDrops.map((drop, i) => (
+              <View key={i} className="flex-row justify-between items-center mb-1 py-1 border-b border-accent/10">
+                <Text className="text-primary/70 font-robotomono text-[9px] flex-1">{drop.name}</Text>
+                <Text className="text-accent font-robotomono text-[8px] uppercase mr-2">{drop.rarity}</Text>
+                <Text className="text-secondary font-robotomono text-[8px]">{drop.goldValue}G</Text>
+              </View>
+            ))}
           </View>
         )}
 

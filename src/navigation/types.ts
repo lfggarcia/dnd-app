@@ -10,7 +10,7 @@ export type RootStackParamList = {
   CharacterDetail: { charIndex: number };
   Map: undefined;
   Battle: { roomId: string; roomType: RoomType };
-  Report: { roomId: string; roomWasCleared: boolean };
+  Report: { roomId: string; roomWasCleared: boolean; roomType?: string };
   Extraction: { fromDefeat?: boolean } | undefined;
   WorldLog: undefined;
   CycleTransition: { from: 'DAY' | 'NIGHT'; to: 'DAY' | 'NIGHT'; cycle: number };

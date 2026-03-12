@@ -3,7 +3,7 @@
  * Validates that the RT-01 time limit guard works correctly.
  */
 
-// Mock the dynamic import of rivalGenerator and the db
+// Mock the dynamic import of rivalGenerator (worldSimulator uses await import())
 jest.mock('../src/services/rivalGenerator', () => ({
   generateRivals: jest.fn().mockReturnValue([
     {
@@ -16,6 +16,7 @@ jest.mock('../src/services/rivalGenerator', () => ({
       gold: 200,
       kills: 3,
       deaths: 1,
+      rep: 10,
       profileTag: 'AGGRESSIVE',
     },
     {
@@ -28,16 +29,10 @@ jest.mock('../src/services/rivalGenerator', () => ({
       gold: 300,
       kills: 5,
       deaths: 0,
+      rep: 20,
       profileTag: 'DEFENSIVE',
     },
   ]),
-}));
-
-jest.mock('../src/database', () => ({
-  createWorldEvent: jest.fn(),
-  getWorldEventsBySeed: jest.fn().mockReturnValue([]),
-  createBounty: jest.fn(),
-  getActiveBounties: jest.fn().mockReturnValue([]),
 }));
 
 import { simulateWorld } from '../src/services/worldSimulator';
@@ -48,20 +43,15 @@ function makeMockGame(overrides: Partial<SavedGame> = {}): SavedGame {
     id: 'game_test_001',
     seed: 'test_seed',
     seedHash: 'abc123',
-    partyData: [],
+    partyData: JSON.stringify([]),
     floor: 1,
     cycle: 1,
-    cycleRaw: 1,
-    phase: 'DAY',
     gold: 500,
     status: 'active',
-    location: 'VILLAGE',
-    highestFloor: 1,
-    mapState: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
-  } as SavedGame;
+  } as unknown as SavedGame;
 }
 
 describe('simulateWorld performance (RT-01)', () => {
@@ -70,7 +60,7 @@ describe('simulateWorld performance (RT-01)', () => {
     const start = Date.now();
     await simulateWorld('abc123', 50, game);
     const elapsed = Date.now() - start;
-    // Should be well under 500ms due to RT-01 guard
+    // Should be well under 500ms due to RT-01 guard (100ms hard cap)
     expect(elapsed).toBeLessThan(500);
   });
 
@@ -87,9 +77,16 @@ describe('simulateWorld performance (RT-01)', () => {
     const game = makeMockGame();
     const result1 = await simulateWorld('abc123', 3, game);
     const result2 = await simulateWorld('abc123', 3, game);
-    // Events and rival counts should match
+    // Events count should be deterministic
     expect(result1.events.length).toBe(result2.events.length);
     expect(result1.updatedRivals.length).toBe(result2.updatedRivals.length);
+  });
+
+  test('capped at 20 events max (relevantEvents = events.slice(-20))', async () => {
+    const game = makeMockGame();
+    // Run 50 cycles — any excess events get trimmed to last 20
+    const result = await simulateWorld('abc123', 50, game);
+    expect(result.events.length).toBeLessThanOrEqual(20);
   });
 
   test('events have required fields', async () => {

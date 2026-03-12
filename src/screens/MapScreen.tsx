@@ -36,13 +36,14 @@ const NODE_HALF = NODE_SIZE / 2;
 
 // ─── Room visual styles ───────────────────────────────────────────────────────
 const ROOM_STYLES: Record<RoomType, { borderColor: string; bgColor: string; code: string; textColor: string }> = {
-  START:    { borderColor: '#00FF41', bgColor: 'rgba(0,255,65,0.16)',   code: 'INIT', textColor: '#00FF41' },
-  NORMAL:   { borderColor: '#FF3B30', bgColor: 'rgba(255,59,48,0.15)',  code: 'CMB',  textColor: '#FF6B63' },
-  ELITE:    { borderColor: '#FF9F0A', bgColor: 'rgba(255,159,10,0.16)', code: 'ELT',  textColor: '#FFBC45' },
-  EVENT:    { borderColor: '#00E5FF', bgColor: 'rgba(0,229,255,0.13)',  code: 'EVT',  textColor: '#40EEFF' },
-  TREASURE: { borderColor: '#FFD60A', bgColor: 'rgba(255,214,10,0.14)', code: 'REW',  textColor: '#FFD60A' },
-  BOSS:     { borderColor: '#FF453A', bgColor: 'rgba(255,69,58,0.24)',  code: 'BOSS', textColor: '#FF7070' },
-  SECRET:   { borderColor: '#BF5AF2', bgColor: 'rgba(191,90,242,0.15)', code: 'SEC',  textColor: '#CF7AFF' },
+  START:     { borderColor: '#00FF41', bgColor: 'rgba(0,255,65,0.16)',   code: 'INIT', textColor: '#00FF41' },
+  NORMAL:    { borderColor: '#FF3B30', bgColor: 'rgba(255,59,48,0.15)',  code: 'CMB',  textColor: '#FF6B63' },
+  ELITE:     { borderColor: '#FF9F0A', bgColor: 'rgba(255,159,10,0.16)', code: 'ELT',  textColor: '#FFBC45' },
+  EVENT:     { borderColor: '#00E5FF', bgColor: 'rgba(0,229,255,0.13)',  code: 'EVT',  textColor: '#40EEFF' },
+  TREASURE:  { borderColor: '#FFD60A', bgColor: 'rgba(255,214,10,0.14)', code: 'REW',  textColor: '#FFD60A' },
+  BOSS:      { borderColor: '#FF453A', bgColor: 'rgba(255,69,58,0.24)',  code: 'BOSS', textColor: '#FF7070' },
+  SECRET:    { borderColor: '#BF5AF2', bgColor: 'rgba(191,90,242,0.15)', code: 'SEC',  textColor: '#CF7AFF' },
+  SAFE_ZONE: { borderColor: '#4CD964', bgColor: 'rgba(76,217,100,0.12)', code: 'SAFE', textColor: '#4CD964' },
 };
 
 // ─── Room action description helper ─────────────────────────────────────────

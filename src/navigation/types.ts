@@ -8,9 +8,10 @@ export type RootStackParamList = {
   Village: undefined;
   Guild: undefined;
   CharacterDetail: { charIndex: number };
+  Ascension: { charIndex: number };
   Map: undefined;
   Battle: { roomId: string; roomType: RoomType };
-  Report: { roomId: string; roomWasCleared: boolean; roomType?: string };
+  Report: { roomId: string; roomWasCleared: boolean; roomType?: string; bossLootAlreadyClaimed?: boolean };
   Extraction: { fromDefeat?: boolean } | undefined;
   WorldLog: undefined;
   CycleTransition: { from: 'DAY' | 'NIGHT'; to: 'DAY' | 'NIGHT'; cycle: number };

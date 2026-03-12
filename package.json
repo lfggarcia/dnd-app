@@ -10,7 +10,8 @@
     "test": "jest",
     "sprites:test": "node scripts/test-sprite-gen.js",
     "sprites:generate": "node scripts/generate-sprites.js --resume",
-    "sprites:generate:fresh": "node scripts/generate-sprites.js"
+    "sprites:generate:fresh": "node scripts/generate-sprites.js",
+    "check:circular": "npx madge --circular src/services/"
   },
   "dependencies": {
     "@op-engineering/op-sqlite": "^15.2.5",

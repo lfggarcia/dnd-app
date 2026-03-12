@@ -45,6 +45,9 @@ const SimulationLoadingScreen = lazy(() =>
 const SettingsScreen = lazy(() =>
   import('../screens/SettingsScreen').then(m => ({ default: m.SettingsScreen }))
 );
+const AscensionScreen = lazy(() =>
+  import('../screens/AscensionScreen').then(m => ({ default: m.AscensionScreen }))
+);
 
 const LazyFallback = () => (
   <View style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
@@ -83,6 +86,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="Unification" component={UnificationScreen as React.ComponentType<object>} />
         <Stack.Screen name="SimulationLoading" component={SimulationLoadingScreen as React.ComponentType<object>} />
         <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType<object>} />
+        <Stack.Screen name="Ascension" component={AscensionScreen as React.ComponentType<object>} />
       </Stack.Navigator>
     </Suspense>
   );

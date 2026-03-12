@@ -40,6 +40,7 @@ import { MONSTER_ILLUSTRATIONS } from '../constants/monsterIllustrations';
 import { awardXP } from '../services/progressionService';
 import type { XPRewardSource } from '../services/progressionService';
 import { applyMoralEvent } from '../services/moralSystem';
+import { isBossLootClaimed } from '../database/itemRepository';
 import type { ScreenProps } from '../navigation/types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -444,6 +445,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   const expressionsJson = useGameStore(s => s.activeGame?.expressionsJson ?? {});
   const activeFloor     = useGameStore(s => s.activeGame?.floor ?? 1);
   const activeCycle     = useGameStore(s => s.activeGame?.cycle ?? 1);
+  const seedHash        = useGameStore(s => s.activeGame?.seedHash ?? '');
   const setCombatResult = useGameStore(s => s.setCombatResult);
   const updateProgress  = useGameStore(s => s.updateProgress);
 
@@ -460,6 +462,19 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     emotion:  EmotionState;
   } | null>(null);
   const momentCountRef = useRef(0);
+  const bossLootClaimedRef = useRef(false);
+
+  // Check on mount if boss loot was already claimed for this room
+  useEffect(() => {
+    if (roomType === 'BOSS' && seedHash) {
+      try {
+        bossLootClaimedRef.current = isBossLootClaimed(seedHash, roomId);
+      } catch {
+        bossLootClaimedRef.current = false;
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Tick emotion durations on turn advance ────────────────────────────────
   useEffect(() => {
@@ -613,7 +628,12 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   }, [cs, goToNextTurn, processEmotionEvents]);
 
   const handleContinue = useCallback(() => {
-    navigation.navigate('Report', { roomId, roomWasCleared: cs.outcome === 'VICTORY', roomType });
+    navigation.navigate('Report', {
+      roomId,
+      roomWasCleared: cs.outcome === 'VICTORY',
+      roomType,
+      bossLootAlreadyClaimed: roomType === 'BOSS' ? bossLootClaimedRef.current : undefined,
+    });
   }, [cs.outcome, navigation, roomId, roomType]);
 
   useEffect(() => {

@@ -21,6 +21,8 @@ import Animated, {
 import { CRTOverlay } from '../components/CRTOverlay';
 import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
 import { EXPRESSION_PRESETS } from '../services/geminiImageService';
+import { getItemsByGame } from '../database/itemRepository';
+import type { Item } from '../database/itemRepository';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { Stats } from '../database/gameRepository';
@@ -211,15 +213,29 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
   const { charIndex } = route.params;
   const { lang } = useI18n();
 
-  const activeGame = useGameStore(s => s.activeGame);
+  const activeGame    = useGameStore(s => s.activeGame);
+  const activeGameId  = useGameStore(s => s.activeGame?.id ?? null);
   const party = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
   const expressionsJson = activeGame?.expressionsJson ?? {};
 
   const [selectedExpression, setSelectedExpression] = useState('neutral');
   const [fullscreenUri, setFullscreenUri] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'STATS' | 'EQUIPO'>('STATS');
+  const [charItems, setCharItems] = useState<Item[]>([]);
 
   const char = party[charIndex];
   const expressions = expressionsJson[charIndex] ?? null;
+
+  // Load equipment for this character
+  useEffect(() => {
+    if (!activeGameId || !char) return;
+    try {
+      const all = getItemsByGame(activeGameId);
+      setCharItems(all.filter(it => it.ownerCharName === char.name));
+    } catch {
+      setCharItems([]);
+    }
+  }, [activeGameId, char]);
 
   // Portrait fade on expression change
   const portraitOpacity = useSharedValue(1);
@@ -401,10 +417,26 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
           </View>
         )}
 
+        {/* ── Tab Switcher ── */}
+        <View style={S.tabRow}>
+          {(['STATS', 'EQUIPO'] as const).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[S.tabBtn, activeTab === tab && S.tabBtnActive]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[S.tabBtnText, activeTab === tab && S.tabBtnTextActive]}>
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* ── Body ── */}
         <View style={S.body}>
 
-          {/* ── Meta info ── */}
+          {activeTab === 'STATS' && (
+            <View>
           <View style={S.metaRow}>
             <Text style={S.metaTag}>{char.background}</Text>
             <Text style={S.metaSep}>·</Text>
@@ -468,6 +500,44 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
                 : (lang === 'es' ? 'Tirada de dados' : 'Rolled Stats')}
             </Text>
           </View>
+
+          </View>
+          )}
+
+          {activeTab === 'EQUIPO' && (
+            <View>
+              <View style={S.section}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionLine} />
+                  <Text style={S.sectionLabel}>
+                    {lang === 'es' ? 'EQUIPO' : 'EQUIPMENT'}
+                  </Text>
+                  <View style={S.sectionLine} />
+                </View>
+                {charItems.length === 0 ? (
+                  <Text style={S.emptyEquip}>
+                    {lang === 'es' ? 'Sin equipo asignado' : 'No equipment assigned'}
+                  </Text>
+                ) : (
+                  charItems.map(item => (
+                    <View key={item.id} style={S.itemRow}>
+                      <View style={S.itemInfo}>
+                        <Text style={S.itemName}>{item.name}</Text>
+                        <Text style={S.itemMeta}>
+                          {item.type}  ·  {item.rarity}  ·  {item.goldValue}g
+                        </Text>
+                      </View>
+                      {item.isEquipped && (
+                        <Text style={S.equippedBadge}>
+                          {lang === 'es' ? 'EQUIPADO' : 'EQUIPPED'}
+                        </Text>
+                      )}
+                    </View>
+                  ))
+                )}
+              </View>
+            </View>
+          )}
 
         </View>
       </ScrollView>
@@ -829,5 +899,74 @@ const S = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignSelf: 'flex-start',
+  },
+
+  // Tab switcher
+  tabRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,255,65,0.15)',
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  tabBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginRight: 4,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabBtnActive: {
+    borderBottomColor: '#00FF41',
+  },
+  tabBtnText: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 11,
+    color: 'rgba(0,255,65,0.4)',
+    letterSpacing: 1,
+  },
+  tabBtnTextActive: {
+    color: '#00FF41',
+  },
+
+  // Equipment tab
+  emptyEquip: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 13,
+    color: 'rgba(0,255,65,0.35)',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,255,65,0.08)',
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemName: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 13,
+    color: '#00FF41',
+  },
+  itemMeta: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 10,
+    color: 'rgba(0,255,65,0.45)',
+    marginTop: 2,
+  },
+  equippedBadge: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 9,
+    color: '#FFB000',
+    borderWidth: 1,
+    borderColor: '#FFB000',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    letterSpacing: 1,
   },
 });

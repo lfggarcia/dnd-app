@@ -11,7 +11,7 @@ import type { LootDrop } from '../services/lootService';
 import type { ScreenProps } from '../navigation/types';
 
 export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
-  const { roomWasCleared, roomId, roomType } = route.params;
+  const { roomWasCleared, roomId, roomType, bossLootAlreadyClaimed } = route.params;
   const { t, lang } = useI18n();
 
   const combatResult   = useGameStore(s => s.lastCombatResult);
@@ -39,7 +39,7 @@ export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
       const drops: LootDrop[] = generateRoomLoot(roomId, validType, activeFloor, activeCycle, seedHash);
 
       if (validType === 'BOSS') {
-        const alreadyClaimed = isBossLootClaimed(seedHash, roomId);
+        const alreadyClaimed = bossLootAlreadyClaimed ?? isBossLootClaimed(seedHash, roomId);
         if (!alreadyClaimed) {
           const unique = generateBossUniqueLoot(seedHash, roomId, activeFloor);
           if (unique) drops.push(unique);

@@ -162,6 +162,7 @@ const ROOM_ENEMY_POOLS: Record<RoomType, EnemyPool> = {
     { base: 'wight',   count: [1, 2] },
     { base: 'banshee', count: [1, 1] },
   ],
+  SAFE_ZONE: [],
 };
 
 const LOOT_TABLE = [

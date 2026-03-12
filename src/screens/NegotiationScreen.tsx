@@ -4,6 +4,7 @@ import { CRTOverlay } from '../components/CRTOverlay';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import { attemptFlee } from '../services/encounterService';
+import { makePRNG } from '../utils/prng';
 import type { ScreenProps } from '../navigation/types';
 
 type NegotiationAction = 'ATTACK' | 'NEGOTIATE' | 'FLEE';
@@ -17,6 +18,7 @@ export const NegotiationScreen = ({ navigation, route }: ScreenProps<'Negotiatio
   const gold         = useGameStore(s => s.activeGame?.gold ?? 0);
   const partyData    = useGameStore(s => s.activeGame?.partyData ?? []);
   const seedHash     = useGameStore(s => s.activeGame?.seedHash ?? '0');
+  const cycle        = useGameStore(s => s.activeGame?.cycle ?? 1);
   const updateProgress = useGameStore(s => s.updateProgress);
 
   const [action, setAction] = useState<NegotiationAction | null>(null);
@@ -74,10 +76,11 @@ export const NegotiationScreen = ({ navigation, route }: ScreenProps<'Negotiatio
   }, [gold, TRIBUTE_COST, updateProgress, rivalName, navigation, lang]);
 
   const handleFlee = useCallback(() => {
-    // d20 + DEX mod vs DC 15
+    // d20 + DEX mod vs DC 15 — IG-01: use makePRNG for deterministic rolls
+    const rng  = makePRNG(`${seedHash}_flee_${cycle}`);
     const lead = partyData.find(c => c.alive);
     const dexMod = lead ? Math.floor(((lead.baseStats?.DEX ?? 10) - 10) / 2) : 0;
-    const roll   = Math.floor(Math.random() * 20) + 1 + dexMod;
+    const roll   = Math.floor(rng.float() * 20) + 1 + dexMod;
     if (roll >= FLEE_DC) {
       setFleeResult('SUCCESS');
       setTimeout(() => navigation.goBack(), 1500);

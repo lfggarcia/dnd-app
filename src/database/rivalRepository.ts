@@ -14,10 +14,12 @@ export interface PersistedRival {
 }
 
 export function saveRivals(seedHash: string, rivals: RivalEntry[], cycle: number): void {
+  if (rivals.length === 0) return;
   const db = getDB();
   const now = new Date().toISOString();
-  for (const r of rivals) {
-    db.execute(
+  // op-sqlite: use executeBatch for multiple INSERTs — one native call vs N calls
+  db.executeBatch(
+    rivals.map(r => [
       `INSERT OR REPLACE INTO rival_states
        (id, seed_hash, floor, rep, profile, memory, last_cycle, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -31,8 +33,8 @@ export function saveRivals(seedHash: string, rivals: RivalEntry[], cycle: number
         cycle,
         now,
       ],
-    );
-  }
+    ] as [string, unknown[]]),
+  );
 }
 
 export function saveRivalsWithState(
@@ -42,27 +44,31 @@ export function saveRivalsWithState(
   memories: Record<string, AIMemoryState>,
   cycle: number,
 ): void {
+  if (rivals.length === 0) return;
   const db = getDB();
   const now = new Date().toISOString();
-  for (const r of rivals) {
-    const profile = profiles[r.name] ?? 'OPPORTUNISTIC';
-    const memory = memories[r.name] ?? {};
-    db.execute(
-      `INSERT OR REPLACE INTO rival_states
-       (id, seed_hash, floor, rep, profile, memory, last_cycle, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        `${seedHash}_${r.name}`,
-        seedHash,
-        r.floor,
-        r.rep ?? 0,
-        JSON.stringify(profile),
-        JSON.stringify(memory),
-        cycle,
-        now,
-      ],
-    );
-  }
+  // op-sqlite: use executeBatch — one native call vs N calls (Best Practices § 6.3)
+  db.executeBatch(
+    rivals.map(r => {
+      const profile = profiles[r.name] ?? 'OPPORTUNISTIC';
+      const memory = memories[r.name] ?? {};
+      return [
+        `INSERT OR REPLACE INTO rival_states
+         (id, seed_hash, floor, rep, profile, memory, last_cycle, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          `${seedHash}_${r.name}`,
+          seedHash,
+          r.floor,
+          r.rep ?? 0,
+          JSON.stringify(profile),
+          JSON.stringify(memory),
+          cycle,
+          now,
+        ],
+      ] as [string, unknown[]];
+    }),
+  );
 }
 
 export function loadRivals(seedHash: string): PersistedRival[] {

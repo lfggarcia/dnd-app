@@ -354,11 +354,15 @@ export interface PerceptionResult {
 export function rollGroupPerception(
   partyWis: number[],
   enemyStealth: number,
+  seedHash: string,
+  cycle: number,
 ): PerceptionResult {
   // D&D 5e: take best perception in the party for a group check
+  // IG-01: use makePRNG for deterministic rolls
+  const rng = makePRNG(`${seedHash}_perception_${cycle}`);
   const maxWis = Math.max(...partyWis);
   const wisBonus = Math.floor((maxWis - 10) / 2);
-  const d20 = Math.ceil(Math.random() * 20);
+  const d20 = Math.ceil(rng.float() * 20);
   const roll = d20 + wisBonus;
   const success = roll >= enemyStealth;
 
@@ -374,6 +378,6 @@ export function rollGroupPerception(
     success,
     roll,
     dc: enemyStealth,
-    narratorHint: success && hints ? hints[Math.floor(Math.random() * hints.length)] : undefined,
+    narratorHint: success && hints ? hints[Math.floor(rng.float() * hints.length)] : undefined,
   };
 }

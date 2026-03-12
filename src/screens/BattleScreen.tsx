@@ -374,19 +374,19 @@ const LogStrip = memo(({ log }: { log: string[] }) => {
 
 const DefeatAnimation = memo(({ source }: { source: ImageSourcePropType }) => {
   const scale   = useRef(new Animated.Value(0.6)).current;
-  const rotDeg  = useRef(new Animated.Value(-8)).current;
+  const rotDeg  = useRef(new Animated.Value(-5)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }),
       Animated.spring(scale,   { toValue: 1.0, damping: 18, stiffness: 70, useNativeDriver: true }),
-      Animated.timing(rotDeg,  { toValue: 5, duration: 1100, useNativeDriver: true }),
+      Animated.timing(rotDeg,  { toValue: 4, duration: 1100, useNativeDriver: true }),
     ]).start();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const rotate = rotDeg.interpolate({ inputRange: [-8, 5], outputRange: ['-8deg', '5deg'] });
+  const rotate = rotDeg.interpolate({ inputRange: [-5, 4], outputRange: ['-5deg', '4deg'] });
 
   const cardW = ENEMY_MAX_W * 1.2;
   const cardH = ENEMY_MAX_W * 1.9;
@@ -994,7 +994,10 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
                 {currentPartyMember?.standardActionUsed ? 'USADA' : 'TÁCTICA'}
               </Text>
             </TouchableOpacity>
-            <View style={[S.actionSlot, S.slotEmpty]} />
+            <View style={[S.actionSlot, S.slotDisabled, { borderColor: 'rgba(0,255,65,0.1)' }]}>
+              <Text style={[S.slotIcon, { color: 'rgba(0,255,65,0.2)' }]}>⚗</Text>
+              <Text style={[S.slotLabel, { color: 'rgba(0,255,65,0.2)' }]}>ÍTEM</Text>
+            </View>
           </View>
         )}
 

@@ -54,6 +54,9 @@ const MarketScreen = lazy(() =>
 const BlacksmithScreen = lazy(() =>
   import('../screens/BlacksmithScreen').then(m => ({ default: m.BlacksmithScreen }))
 );
+const EventResolutionScreen = lazy(() =>
+  import('../screens/EventResolutionScreen').then(m => ({ default: m.EventResolutionScreen }))
+);
 
 const LazyFallback = () => (
   <View style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
@@ -95,6 +98,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="Ascension" component={AscensionScreen as React.ComponentType<object>} />
         <Stack.Screen name="Market" component={MarketScreen as React.ComponentType<object>} />
         <Stack.Screen name="Blacksmith" component={BlacksmithScreen as React.ComponentType<object>} />
+        <Stack.Screen name="EventResolution" component={EventResolutionScreen as React.ComponentType<object>} />
       </Stack.Navigator>
     </Suspense>
   );

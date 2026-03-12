@@ -349,6 +349,21 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       navigation.navigate('Camp', { roomId: String(room.id), floor: activeGame?.floor ?? 1 });
       return;
     }
+    if (room.type === 'EVENT') {
+      const afterReveal = revealAdjacentRooms(afterVisit, room.id);
+      setFloor(afterReveal);
+      setCurrentRoomId(room.id);
+      setSelectedRoom(null);
+      const savedState = serializeExplorationState(afterReveal, room.id);
+      updateProgress({ location: 'map', mapState: JSON.stringify(savedState) });
+      const eventSeed = `${activeGame?.seedHash ?? '0'}_event_${floorIndex}_${room.id}`;
+      navigation.navigate('EventResolution', {
+        roomId: String(room.id),
+        eventType: 'AUTO',
+        eventSeed,
+      });
+      return;
+    }
     // Non-combat: move, reveal adjacent, keep panel open with post-entry info
     const afterReveal = revealAdjacentRooms(afterVisit, room.id);
     setFloor(afterReveal);

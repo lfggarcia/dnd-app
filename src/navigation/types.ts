@@ -25,6 +25,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Market: undefined;
   Blacksmith: undefined;
+  EventResolution: { roomId: string; eventType: string; eventSeed: string };
 };
 
 export type ScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<

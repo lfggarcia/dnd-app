@@ -6152,6 +6152,11 @@ react-native-gesture-handler@^2.30.0:
     hoist-non-react-statics "^3.3.0"
     invariant "^2.2.4"
 
+react-native-image-manipulator@^1.0.6:
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/react-native-image-manipulator/-/react-native-image-manipulator-1.0.6.tgz#704291184de3ebccf5eaccfbf2e250ef5abe1df5"
+  integrity sha512-MdbSlD144STW6iQThlg2WKyopTJYbWDDs19nng7QGlNO60nz7UGRZWNRuFL8LOURUnWn7Fa0zp5VLOSEOqyrnQ==
+
 react-native-is-edge-to-edge@1.2.1:
   version "1.2.1"
   resolved "https://registry.npmjs.org/react-native-is-edge-to-edge/-/react-native-is-edge-to-edge-1.2.1.tgz"

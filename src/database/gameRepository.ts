@@ -33,6 +33,8 @@ export type SavedGameRow = {
   // v16 — combat crash recovery
   combat_room_id: string | null;
   combat_room_type: string | null;
+  // v17 — party name visible in rankings
+  party_name: string | null;
   created_at: string;
   updated_at: string;
 };

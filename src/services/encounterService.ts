@@ -7,6 +7,11 @@
  */
 
 import { makePRNG } from '../utils/prng';
+import {
+  checkSecretBossUnlock,
+  type KillRecord,
+  type SecretBossCondition,
+} from './monsterEvolutionService';
 import type { RivalEntry } from './rivalGenerator';
 import type { CharacterSave } from '../database/gameRepository';
 
@@ -173,4 +178,32 @@ export function resolveNegotiation(
  */
 export function estimateRivalPower(rival: RivalEntry): number {
   return rival.floor * 10 + (rival.rep ?? 0) * 0.5;
+}
+
+// ─── Secret Boss ──────────────────────────────────────────
+
+export type SecretBossEncounter =
+  | { type: 'none' }
+  | { type: 'secret_boss'; condition: SecretBossCondition };
+
+/**
+ * GAP-03: Before resolving a BOSS room encounter, check if secret boss
+ * conditions are met. Returns the triggered condition or 'none'.
+ * spawnChance defaults to 0.7 — secret boss overrides normal boss 70% of the time.
+ */
+export function checkSecretBossForRoom(
+  killRecords: KillRecord[],
+  floor: number,
+  cycle: number,
+  seedHash: string,
+  flags: string[] = [],
+  spawnChance = 0.7,
+): SecretBossEncounter {
+  const condition = checkSecretBossUnlock(killRecords, floor, cycle, flags);
+  if (!condition) return { type: 'none' };
+
+  const rng = makePRNG(`${seedHash}_secretboss_${floor}_${cycle}`);
+  if (rng.float() > spawnChance) return { type: 'none' };
+
+  return { type: 'secret_boss', condition };
 }

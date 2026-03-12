@@ -15,6 +15,7 @@ import {
   type SavedGame,
   type CharacterSave,
 } from '../database/gameRepository';
+import { capEssencesOnUnification } from '../database/essenceRepository';
 import { getInheritedLevel } from './progressionService';
 
 export type SeedStatus =
@@ -44,6 +45,8 @@ export function markAsIAInherited(previousGameId: string): void {
   updateSavedGame(previousGameId, {
     partyOrigin: 'IA_INHERITED',
   });
+  // RI-01: cap low-rank essences so the new party doesn't start with full gear
+  capEssencesOnUnification(previousGameId);
 }
 
 /** R5: Apply the inherited level to every character in the new party */

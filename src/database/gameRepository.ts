@@ -28,6 +28,8 @@ export type SavedGameRow = {
   predecessor_game_id: string | null;
   created_by_player: number | null;
   elimination_reason: string | null;
+  // v15 — kill records for secret boss evaluation
+  kill_records: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -62,6 +64,8 @@ export type SavedGame = {
   predecessorGameId: string | null;
   createdByPlayer: boolean;
   eliminationReason: 'PURGED' | 'BANKRUPT' | 'DEFEATED' | null;
+  // v15 — kill records for secret boss evaluation
+  killRecords: import('../services/monsterEvolutionService').KillRecord[];
   createdAt: string;
   updatedAt: string;
 };
@@ -178,6 +182,9 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
     predecessorGameId: row.predecessor_game_id ?? null,
     createdByPlayer: (row.created_by_player ?? 1) !== 0,
     eliminationReason: (row.elimination_reason ?? null) as SavedGame['eliminationReason'],
+    killRecords: (() => {
+      try { return row.kill_records ? JSON.parse(row.kill_records) : []; } catch { return []; }
+    })(),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -250,6 +257,7 @@ export function createSavedGame(
     location: 'village', mapState: null, partyPortrait: null, portraitsJson: null, expressionsJson: null,
     inSafeZone: false, safeZoneRoomId: null,
     partyOrigin: 'PLAYER', predecessorGameId: null, createdByPlayer: true, eliminationReason: null,
+    killRecords: [],
     createdAt: now, updatedAt: now,
   };
 }
@@ -262,7 +270,7 @@ export function updateSavedGame(
     | 'partyPortrait' | 'portraitsJson' | 'expressionsJson'
     | 'inSafeZone' | 'safeZoneRoomId'
     | 'lastActionAt' | 'lastSimEvents'
-    | 'partyOrigin'
+    | 'partyOrigin' | 'killRecords'
   >>,
 ): void {
   const db = getDB();
@@ -336,6 +344,10 @@ export function updateSavedGame(
   if (updates.partyOrigin !== undefined) {
     sets.push('party_origin = ?');
     values.push(updates.partyOrigin);
+  }
+  if (updates.killRecords !== undefined) {
+    sets.push('kill_records = ?');
+    values.push(JSON.stringify(updates.killRecords));
   }
 
   if (sets.length === 0) return;

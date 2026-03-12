@@ -1,6 +1,6 @@
 import { getDB } from './connection';
 
-const CURRENT_VERSION = 14;
+const CURRENT_VERSION = 15;
 
 const migrations: Record<number, string[]> = {
   1: [
@@ -225,6 +225,11 @@ const migrations: Record<number, string[]> = {
       updated_at  TEXT NOT NULL
     )`,
     `CREATE INDEX IF NOT EXISTS idx_rival_states_seed ON rival_states (seed_hash)`,
+  ],
+
+  // GAP-03 — kill_records for secret boss unlock evaluation
+  15: [
+    `ALTER TABLE saved_games ADD COLUMN kill_records TEXT DEFAULT NULL`,
   ],
 };
 

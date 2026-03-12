@@ -149,3 +149,37 @@ export function getMonsterKills(gameId: string, charName: string, monsterKey: st
   );
   return (result.rows?.[0]?.kill_count ?? 0) as number;
 }
+
+// ─── Unification Essence Cap (RI-01) ─────────────────────
+
+/**
+ * RI-01: When a new game starts via seed unification, enforce the cap:
+ * at most 1 essence of rank ≤ 3 per character from the previous game.
+ * Higher-ranked essences (rank 4–5) are kept without limit.
+ *
+ * Call this after the new game is created, passing the previous game ID.
+ */
+export function capEssencesOnUnification(previousGameId: string): void {
+  const db = getDB();
+  const result = db.executeSync(
+    'SELECT DISTINCT owner_char_name FROM essences WHERE owner_game_id = ?',
+    [previousGameId],
+  );
+  const charNames = (result.rows ?? []).map(r => r.owner_char_name as string);
+
+  for (const charName of charNames) {
+    // Get all low-rank essences ordered oldest first
+    const lowRank = db.executeSync(
+      `SELECT id FROM essences
+       WHERE owner_game_id = ? AND owner_char_name = ? AND rank <= 3
+       ORDER BY obtained_cycle ASC, obtained_floor ASC`,
+      [previousGameId, charName],
+    );
+    const ids = (lowRank.rows ?? []).map(r => r.id as string);
+    // Keep only the first one (lowest cycle/floor = oldest); delete the rest
+    const toDelete = ids.slice(1);
+    for (const id of toDelete) {
+      db.executeSync('DELETE FROM essences WHERE id = ?', [id]);
+    }
+  }
+}

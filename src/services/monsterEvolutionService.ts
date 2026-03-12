@@ -376,3 +376,16 @@ export function checkSecretBossTriggers(
     .filter(c => c.check(kills, floor, cycle, flags))
     .map(c => c.id);
 }
+
+/**
+ * GAP-03: Returns the first SecretBossCondition whose check passes for the
+ * given kill records, floor, and cycle. Returns null if none are met.
+ */
+export function checkSecretBossUnlock(
+  kills: KillRecord[],
+  floor: number,
+  cycle: number,
+  flags: string[] = [],
+): SecretBossCondition | null {
+  return SECRET_BOSS_CONDITIONS.find(c => c.check(kills, floor, cycle, flags)) ?? null;
+}

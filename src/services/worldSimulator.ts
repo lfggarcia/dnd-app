@@ -55,6 +55,8 @@ type AIPartyState = {
   consecutiveLosses: number;
   profile: AIProfile;
   memory: AIMemoryState;
+  /** RI-02: cycles remaining where this party is forced into DEFENSIVE mode after a PvP kill */
+  forcedDefensiveCycles: number;
 };
 
 /**
@@ -69,6 +71,14 @@ function decideAction(
 ): AIAction {
   const weights = getActionWeights(state.profile, state.memory);
   const adjusted = { ...weights };
+
+  // RI-02: after a PvP elimination, forced into DEFENSIVE for 5 cycles
+  if (state.forcedDefensiveCycles > 0) {
+    adjusted.huntParty = 0;
+    adjusted.fightMonster = Math.max(0, adjusted.fightMonster - 0.30);
+    adjusted.rest += 0.30;
+    adjusted.avoidCombat += 0.20;
+  }
 
   // HP baja → priorizar descanso, evitar combate
   if (state.hp < 30) {
@@ -176,6 +186,8 @@ function executeAction(
       if (rng.bool(winChance)) {
         updated.hp = Math.max(30, updated.hp - 20);
         updated.gold += Math.floor(target.gold * 0.3);
+        // RI-02: 5 cycles of forced DEFENSIVE after eliminating another party
+        updated.forcedDefensiveCycles = 5;
         events.push({
           type: 'AI_COMBAT_WIN',
           cycle,
@@ -282,6 +294,7 @@ export async function simulateWorld(
     consecutiveLosses: 0,
     profile: deriveBaseProfile(rival.name, seedHash),
     memory: createMemory(rival.name),
+    forcedDefensiveCycles: 0,
   }));
 
   // Simular ciclo por ciclo — comenzar desde fromCycle si se especifica

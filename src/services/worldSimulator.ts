@@ -262,6 +262,7 @@ export async function simulateWorld(
   seedHash: string,
   targetCycle: number,
   activeGame: SavedGame,
+  fromCycle?: number,
 ): Promise<SimulationResult> {
   const { generateRivals } = await import('./rivalGenerator');
   const rivals = generateRivals(activeGame.seedHash, activeGame.floor ?? 1, activeGame.cycle ?? 1);
@@ -283,8 +284,9 @@ export async function simulateWorld(
     memory: createMemory(rival.name),
   }));
 
-  // Simular ciclo por ciclo
-  for (let cycle = 1; cycle <= targetCycle; cycle++) {
+  // Simular ciclo por ciclo — comenzar desde fromCycle si se especifica
+  const startCycle = fromCycle ?? 1;
+  for (let cycle = startCycle; cycle <= targetCycle; cycle++) {
     if (Date.now() - simStartTime > MAX_TOTAL_TIME_MS) break;
     const rng = makePRNG(`${seedHash}_world_${cycle}`);
 

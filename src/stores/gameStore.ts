@@ -166,23 +166,36 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (!activeGame) return;
 
     const { advanceTime } = await import('../services/timeService');
-    const { simulateWorld } = await import('../services/worldSimulator');
-
     const { newCycleRaw, newCycle } = advanceTime(activeGame.cycleRaw ?? activeGame.cycle, action);
 
-    const simResult = await simulateWorld(activeGame.seedHash, newCycle, activeGame);
+    // GAP-04: only run world simulation when a full cycle integer boundary is crossed
+    const prevCycleInt = Math.floor(activeGame.cycleRaw ?? activeGame.cycle);
+    const newCycleInt  = Math.floor(newCycleRaw);
+
+    let simResult = { events: [] as import('../services/worldSimulator').SimulationEvent[], updatedRivals: [] as import('../services/rivalGenerator').RivalEntry[] };
+    if (newCycleInt !== prevCycleInt) {
+      const { simulateWorld } = await import('../services/worldSimulator');
+      simResult = await simulateWorld(
+        activeGame.seedHash,
+        newCycleInt,
+        activeGame,
+        prevCycleInt + 1, // only simulate new cycles, not from the beginning
+      );
+    }
 
     const updates = {
       cycleRaw: newCycleRaw,
-      cycle: newCycle,
-      lastSimEvents: JSON.stringify(simResult.events),
-      lastActionAt: new Date().toISOString(),
+      cycle: newCycleInt,
+      ...(simResult.events.length > 0 && {
+        lastSimEvents: JSON.stringify(simResult.events),
+        lastActionAt: new Date().toISOString(),
+      }),
     };
 
     updateSavedGame(activeGame.id, updates as Parameters<typeof updateSavedGame>[1]);
     set({
       activeGame: { ...activeGame, ...updates, updatedAt: new Date().toISOString() },
-      lastSimulationEvents: simResult.events,
+      ...(simResult.events.length > 0 && { lastSimulationEvents: simResult.events }),
     });
   },
 

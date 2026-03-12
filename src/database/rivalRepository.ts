@@ -71,11 +71,11 @@ export function saveRivalsWithState(
   );
 }
 
-export function loadRivals(seedHash: string): PersistedRival[] {
+export function loadRivals(seedHash: string, limit = 15): PersistedRival[] {
   const db = getDB();
   const rows = db.execute(
-    'SELECT * FROM rival_states WHERE seed_hash = ? ORDER BY floor ASC',
-    [seedHash],
+    'SELECT * FROM rival_states WHERE seed_hash = ? ORDER BY floor DESC LIMIT ?',
+    [seedHash, limit],
   ).rows;
   return rows.map(r => ({
     id: r.id as string,

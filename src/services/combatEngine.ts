@@ -395,6 +395,10 @@ export type LivePartyMember = {
   /** RI-07: true when this character was revived this turn (Fénix essence).
    *  Blocks active ability usage to prevent Fénix+Tiempo combo exploit. */
   justRevived: boolean;
+  /** UI-01: true when player chose ESQUIVAR this turn — enemy attacks with disadvantage. */
+  dodging: boolean;
+  /** UI-01: true when any standard action (ESQUIVAR/AVANZAR/AYUDAR) was used this turn. */
+  standardActionUsed: boolean;
 };
 
 export type LiveEnemy = MonsterStats & {
@@ -445,6 +449,8 @@ export function initCombat(
       rageActive: false,
       inspiredBonus: 0,
       justRevived: false,
+      dodging: false,
+      standardActionUsed: false,
     }));
 
   const enemyState: LiveEnemy[] = enemies.map((e, i) => ({
@@ -509,11 +515,13 @@ export function advanceTurnLive(state: LiveCombatState): LiveCombatState {
         ? state.partyState[actor.idx].currentHp > 0
         : !state.enemyState[actor.idx].defeated;
     if (isAlive) {
-      // RI-07: clear justRevived when this actor's new turn begins
+      // RI-07/UI-01: clear justRevived, dodging and standardActionUsed when this actor's new turn begins
       let partyState = state.partyState;
       if (actor.type === 'party') {
         partyState = state.partyState.map((m, idx) =>
-          idx === actor.idx && m.justRevived ? { ...m, justRevived: false } : m,
+          idx === actor.idx
+            ? { ...m, justRevived: false, dodging: false, standardActionUsed: false }
+            : m,
         );
       }
       return { ...state, partyState, currentTurnIdx: nextIdx, round: newRound, log };
@@ -780,7 +788,12 @@ export function resolveEnemyTurn(
   }
 
   const targetAC = 10 + Math.floor((target.baseStats.DEX - 10) / 2);
-  const d20 = rng.next(1, 20);
+  // UI-01: if target is dodging, enemy rolls with disadvantage (take lower of two d20s)
+  let d20 = rng.next(1, 20);
+  if (target.dodging) {
+    const d20b = rng.next(1, 20);
+    d20 = Math.min(d20, d20b);
+  }
   const roll = d20 + attacker.attackBonus;
   const isCrit = d20 === 20;
   const isFumble = d20 === 1;
@@ -801,6 +814,55 @@ export function resolveEnemyTurn(
   }
 
   return { ...state, partyState, enemyState, log };
+}
+
+/** UI-01: Player chooses ESQUIVAR — sets dodging=true, ends turn. */
+export function resolvePlayerDodge(
+  state: LiveCombatState,
+  actorPartyIdx: number,
+): LiveCombatState {
+  const log = [...state.log];
+  const partyState = state.partyState.map((m, idx) =>
+    idx === actorPartyIdx
+      ? { ...m, dodging: true, standardActionUsed: true }
+      : m,
+  );
+  const actor = partyState[actorPartyIdx];
+  log.push(`  ${actor.name.toUpperCase()} — ESQUIVA (ventaja defensiva hasta próximo turno)`);
+  return { ...state, partyState, log };
+}
+
+/** UI-01: Player chooses AVANZAR — +10ft movement flavour, ends turn. */
+export function resolvePlayerDash(
+  state: LiveCombatState,
+  actorPartyIdx: number,
+): LiveCombatState {
+  const log = [...state.log];
+  const partyState = state.partyState.map((m, idx) =>
+    idx === actorPartyIdx ? { ...m, standardActionUsed: true } : m,
+  );
+  const actor = partyState[actorPartyIdx];
+  log.push(`  ${actor.name.toUpperCase()} — AVANZA (acción de carrera)`);
+  return { ...state, partyState, log };
+}
+
+/** UI-01: Player chooses AYUDAR — grants advantage to next ally attack (inspiredBonus flag). */
+export function resolvePlayerHelp(
+  state: LiveCombatState,
+  actorPartyIdx: number,
+  targetPartyIdx: number,
+): LiveCombatState {
+  const log = [...state.log];
+  const partyState = state.partyState.map((m, idx) => {
+    if (idx === actorPartyIdx) return { ...m, standardActionUsed: true };
+    // Grant a d4 inspired bonus to the helped ally
+    if (idx === targetPartyIdx) return { ...m, inspiredBonus: 4 };
+    return m;
+  });
+  const actor = partyState[actorPartyIdx];
+  const helped = partyState[targetPartyIdx];
+  log.push(`  ${actor.name.toUpperCase()} AYUDA a ${helped.name.toUpperCase()} (próximo ataque con ventaja)`);
+  return { ...state, partyState, log };
 }
 
 export function buildCombatResultFromLive(

@@ -21,7 +21,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
-import { EXPRESSION_PRESETS } from '../services/geminiImageService';
+import { EXPRESSION_PRESETS, generateCharacterPortrait, generateCharacterExpressions } from '../services/geminiImageService';
 import { getItemsByGame } from '../database/itemRepository';
 import type { Item } from '../database/itemRepository';
 import { getEssencesByChar, equipEssence, unequipEssence, getEquippedCount } from '../database/essenceRepository';
@@ -220,6 +220,7 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
 
   const activeGame    = useGameStore(s => s.activeGame);
   const activeGameId  = useGameStore(s => s.activeGame?.id ?? null);
+  const saveCharacterPortraits = useGameStore(s => s.saveCharacterPortraits);
   const party = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
   const expressionsJson = activeGame?.expressionsJson ?? {};
 
@@ -228,6 +229,7 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
   const [activeTab, setActiveTab] = useState<'STATS' | 'EQUIPO' | 'ESENCIAS'>('STATS');
   const [charItems, setCharItems] = useState<Item[]>([]);
   const [essenceList, setEssenceList] = useState<SavedEssence[]>([]);
+  const [generatingPortrait, setGeneratingPortrait] = useState(false);
 
   const char = party[charIndex];
   const expressions = expressionsJson[charIndex] ?? null;
@@ -255,6 +257,24 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
   useEffect(() => {
     if (activeTab === 'ESENCIAS') refreshEssences();
   }, [activeTab, refreshEssences]);
+
+  const handleGeneratePortrait = useCallback(async () => {
+    if (!char || generatingPortrait) return;
+    setGeneratingPortrait(true);
+    try {
+      const uri = await generateCharacterPortrait(char);
+      saveCharacterPortraits({ [String(charIndex)]: uri });
+      // Also generate expression variants (non-blocking)
+      try {
+        const expressions = await generateCharacterExpressions(char, uri);
+        useGameStore.getState().saveCharacterExpressions({ [String(charIndex)]: expressions });
+      } catch { /* non-blocking */ }
+    } catch (err) {
+      __DEV__ && console.error('[CharacterDetail] portrait generation error:', err);
+    } finally {
+      setGeneratingPortrait(false);
+    }
+  }, [char, charIndex, generatingPortrait, saveCharacterPortraits]);
 
   // Portrait fade on expression change
   const portraitOpacity = useSharedValue(1);
@@ -383,6 +403,16 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
           ) : (
             <View style={S.portraitPlaceholder}>
               <Text style={S.portraitInit}>{char.name.charAt(0).toUpperCase()}</Text>
+              <TouchableOpacity
+                style={S.generatePortraitBtn}
+                onPress={handleGeneratePortrait}
+                disabled={generatingPortrait}
+                activeOpacity={0.7}
+              >
+                <Text style={S.generatePortraitBtnText}>
+                  {generatingPortrait ? '⟳ GENERANDO...' : '✦ GENERAR IMAGEN'}
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -742,11 +772,25 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(0,255,65,0.03)',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 24,
   },
   portraitInit: {
     fontFamily: 'RobotoMono-Bold',
     fontSize: 80,
     color: 'rgba(0,255,65,0.12)',
+  },
+  generatePortraitBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.35)',
+    backgroundColor: 'rgba(0,255,65,0.04)',
+  },
+  generatePortraitBtnText: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 11,
+    color: 'rgba(0,255,65,0.75)',
+    letterSpacing: 1.5,
   },
   expandHint: {
     position: 'absolute',

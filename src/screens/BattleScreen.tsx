@@ -17,6 +17,9 @@ import {
   findNextLiveTurn,
   resolvePlayerAttack,
   resolvePlayerAbility,
+  resolvePlayerDodge,
+  resolvePlayerDash,
+  resolvePlayerHelp,
   resolveEnemyTurn,
   buildCombatResultFromLive,
   createCombatRNG,
@@ -472,6 +475,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   const [cs, setCs]           = useState<LiveCombatState>(() =>
     initCombat(partyData, enemiesRef.current, rngRef.current));
   const [uiPhase, setUiPhase] = useState<UIPhase>('INITIATIVE');
+  const [showTacticalPicker, setShowTacticalPicker] = useState(false);
   const [partyEmotions, setPartyEmotions] = useState<PartyEmotionalState>({});
   const [activeMoment, setActiveMoment]   = useState<{
     charName: string;
@@ -696,6 +700,29 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     }
   }, [cs, handleAttack, goToNextTurn]);
 
+  const handleTactic = useCallback((tactic: 'DODGE' | 'DASH' | 'HELP') => {
+    setShowTacticalPicker(false);
+    const actor = cs.turnOrder[cs.currentTurnIdx];
+    if (actor?.type !== 'party') return;
+    let newCs: LiveCombatState;
+    if (tactic === 'DODGE') {
+      newCs = resolvePlayerDodge(cs, actor.idx);
+    } else if (tactic === 'DASH') {
+      newCs = resolvePlayerDash(cs, actor.idx);
+    } else {
+      // HELP: assist a random alive ally (not self)
+      const aliveAllies = cs.partyState
+        .map((m, i) => ({ m, i }))
+        .filter(({ m, i }) => m.currentHp > 0 && i !== actor.idx);
+      const helpTarget = aliveAllies.length > 0
+        ? aliveAllies[0].i
+        : actor.idx;
+      newCs = resolvePlayerHelp(cs, actor.idx, helpTarget);
+    }
+    const advanced = advanceTurnLive(newCs);
+    goToNextTurn(advanced);
+  }, [cs, goToNextTurn]);
+
   const handleSelectAttackTarget = useCallback((instanceId: number) => {
     const actor = cs.turnOrder[cs.currentTurnIdx];
     if (actor?.type !== 'party') return;
@@ -897,6 +924,41 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
         </Modal>
       )}
 
+      {/* ── Tactical picker modal (UI-01) ── */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showTacticalPicker}
+        onRequestClose={() => setShowTacticalPicker(false)}
+      >
+        <TouchableOpacity
+          style={S.tacticalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowTacticalPicker(false)}
+        >
+          <View style={S.tacticalCard}>
+            <Text style={S.tacticalTitle}>ACCIÓN TÁCTICA</Text>
+            {([
+              { id: 'DODGE', icon: '🛡', label: 'ESQUIVAR', desc: 'Ataques enemigos con desventaja' },
+              { id: 'DASH',  icon: '💨', label: 'AVANZAR',  desc: 'Dobla el movimiento este turno' },
+              { id: 'HELP',  icon: '🤝', label: 'AYUDAR',   desc: 'Aliado obtiene ventaja en su siguiente ataque' },
+            ] as const).map(opt => (
+              <TouchableOpacity
+                key={opt.id}
+                style={S.tacticalOption}
+                onPress={() => handleTactic(opt.id)}
+              >
+                <Text style={S.tacticalOptIcon}>{opt.icon}</Text>
+                <View>
+                  <Text style={S.tacticalOptLabel}>{opt.label}</Text>
+                  <Text style={S.tacticalOptDesc}>{opt.desc}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* ── Action Panel ── */}
       <View style={S.actionPanel}>
 
@@ -922,7 +984,16 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
                 {currentAbility?.name ?? 'HABILIDAD'}
               </Text>
             </TouchableOpacity>
-            <View style={[S.actionSlot, S.slotEmpty]} />
+            <TouchableOpacity
+              onPress={() => setShowTacticalPicker(true)}
+              disabled={!!currentPartyMember?.standardActionUsed}
+              style={[S.actionSlot, S.slotTactic, !!currentPartyMember?.standardActionUsed && S.slotDisabled]}
+            >
+              <Text style={S.slotIcon}>🛡</Text>
+              <Text style={S.slotLabel} numberOfLines={1}>
+                {currentPartyMember?.standardActionUsed ? 'USADA' : 'TÁCTICA'}
+              </Text>
+            </TouchableOpacity>
             <View style={[S.actionSlot, S.slotEmpty]} />
           </View>
         )}
@@ -1309,6 +1380,10 @@ const S = StyleSheet.create({
     borderColor: 'rgba(0,255,65,0.1)',
     backgroundColor: 'transparent',
   },
+  slotTactic: {
+    borderColor: '#4FC3F7',
+    backgroundColor: 'rgba(79,195,247,0.04)',
+  },
   slotDisabled: { opacity: 0.32 },
   slotIcon: {
     fontSize: 20,
@@ -1322,6 +1397,50 @@ const S = StyleSheet.create({
     letterSpacing: 0.3,
   },
   slotAbilityLabel: { color: '#00FF41' },
+  tacticalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'flex-end',
+    paddingBottom: 140,
+    alignItems: 'center',
+  },
+  tacticalCard: {
+    backgroundColor: '#0A0F0A',
+    borderWidth: 1,
+    borderColor: '#4FC3F7',
+    borderRadius: 4,
+    padding: 16,
+    width: SCREEN_W * 0.85,
+    gap: 4,
+  },
+  tacticalTitle: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 11,
+    color: '#4FC3F7',
+    letterSpacing: 2,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  tacticalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(79,195,247,0.15)',
+  },
+  tacticalOptIcon: { fontSize: 22 },
+  tacticalOptLabel: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 10,
+    color: '#4FC3F7',
+    letterSpacing: 1,
+  },
+  tacticalOptDesc: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 9,
+    color: 'rgba(79,195,247,0.65)',
+  },
   initiativeText: {
     fontFamily: 'RobotoMono-Regular',
     fontSize: 11,

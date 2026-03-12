@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
@@ -18,6 +19,7 @@ import type { BountyRecord } from '../services/bountyService';
 import { getActiveAlliances, terminateAlliance } from '../services/allianceService';
 import type { Alliance } from '../services/allianceService';
 import { getAllSavedGames } from '../database/gameRepository';
+import { generateCharacterPortrait, generateCharacterExpressions } from '../services/geminiImageService';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { CharacterSave } from '../database/gameRepository';
@@ -40,11 +42,13 @@ type CardProps = {
   uri: string | null;
   accent: string;
   idx: number;
+  generatingPortrait?: boolean;
   onPress: (idx: number) => void;
   onLongPress: (uri: string) => void;
+  onGeneratePortrait: (idx: number) => void;
 };
 
-const CharacterCard = memo(({ char, uri, accent, idx, onPress, onLongPress }: CardProps) => {
+const CharacterCard = memo(({ char, uri, accent, idx, generatingPortrait, onPress, onLongPress, onGeneratePortrait }: CardProps) => {
   const { hpPct, hpColor } = useMemo(() => {
     const pct = char.maxHp > 0 ? char.hp / char.maxHp : 0;
     const color = !char.alive
@@ -53,8 +57,11 @@ const CharacterCard = memo(({ char, uri, accent, idx, onPress, onLongPress }: Ca
     return { hpPct: pct, hpColor: color };
   }, [char.hp, char.maxHp, char.alive]);
 
-  const handlePress     = useCallback(() => onPress(idx),                   [onPress, idx]);
-  const handleLongPress = useCallback(() => { if (uri) onLongPress(uri); }, [onLongPress, uri]);
+  const handlePress     = useCallback(() => onPress(idx), [onPress, idx]);
+  const handleLongPress = useCallback(() => {
+    if (uri) onLongPress(uri);
+    else onGeneratePortrait(idx);
+  }, [uri, onLongPress, onGeneratePortrait, idx]);
 
   return (
     <TouchableOpacity
@@ -73,9 +80,16 @@ const CharacterCard = memo(({ char, uri, accent, idx, onPress, onLongPress }: Ca
           />
         ) : (
           <View style={[StyleSheet.absoluteFillObject, S.portraitPlaceholder]}>
-            <Text style={[S.portraitInitial, { color: `${accent}55` }]}>
-              {char.name.charAt(0).toUpperCase()}
-            </Text>
+            {generatingPortrait ? (
+              <ActivityIndicator color={accent} size="small" />
+            ) : (
+              <>
+                <Text style={[S.portraitInitial, { color: `${accent}55` }]}>
+                  {char.name.charAt(0).toUpperCase()}
+                </Text>
+                <Text style={[S.portraitGenHint, { color: `${accent}55` }]}>HOLD: GENERAR</Text>
+              </>
+            )}
           </View>
         )}
 
@@ -129,11 +143,13 @@ type GridProps = {
   party: CharacterSave[];
   expressionsJson: Record<number, Record<string, string>>;
   portraitsJson: Record<string, string> | null;
+  generatingForIdx: number | null;
   onCharPress: (idx: number) => void;
   onCharLongPress: (uri: string) => void;
+  onGeneratePortrait: (idx: number) => void;
 };
 
-const PartyGrid = memo(({ party, expressionsJson, portraitsJson, onCharPress, onCharLongPress }: GridProps) => {
+const PartyGrid = memo(({ party, expressionsJson, portraitsJson, generatingForIdx, onCharPress, onCharLongPress, onGeneratePortrait }: GridProps) => {
   if (party.length === 0) return null;
 
   return (
@@ -153,8 +169,10 @@ const PartyGrid = memo(({ party, expressionsJson, portraitsJson, onCharPress, on
             uri={uri}
             accent={STRIP_ACCENTS[i % STRIP_ACCENTS.length]}
             idx={i}
+            generatingPortrait={generatingForIdx === i}
             onPress={onCharPress}
             onLongPress={onCharLongPress}
+            onGeneratePortrait={onGeneratePortrait}
           />
         );
       })}
@@ -167,6 +185,7 @@ const PartyGrid = memo(({ party, expressionsJson, portraitsJson, onCharPress, on
 export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
   const { t, lang } = useI18n();
   const activeGame = useGameStore(s => s.activeGame);
+  const saveCharacterPortraits = useGameStore(s => s.saveCharacterPortraits);
 
   const party           = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
   const aliveCount      = useMemo(() => party.filter(c => c.alive).length, [party]);
@@ -177,6 +196,7 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
   const [showBountyBoard, setShowBountyBoard] = useState(false);
   const [showAlliances, setShowAlliances] = useState(false);
   const [showRankings, setShowRankings] = useState(false);
+  const [generatingForIdx, setGeneratingForIdx] = useState<number | null>(null);
 
   const activeBounties = useMemo<BountyRecord[]>(() => {
     if (!showBountyBoard || !activeGame?.seedHash) return [];
@@ -204,6 +224,25 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
   const handleCharLongPress = useCallback((uri: string) => {
     setModalUri(uri);
   }, []);
+
+  const handleGeneratePortrait = useCallback(async (idx: number) => {
+    if (generatingForIdx !== null) return;
+    const char = party[idx];
+    if (!char) return;
+    setGeneratingForIdx(idx);
+    try {
+      const uri = await generateCharacterPortrait(char);
+      saveCharacterPortraits({ [String(idx)]: uri });
+      try {
+        const expressions = await generateCharacterExpressions(char, uri);
+        useGameStore.getState().saveCharacterExpressions({ [String(idx)]: expressions });
+      } catch { /* non-blocking */ }
+    } catch (err) {
+      __DEV__ && console.error('[Guild] portrait generation error:', err);
+    } finally {
+      setGeneratingForIdx(null);
+    }
+  }, [generatingForIdx, party, saveCharacterPortraits]);
 
   const handlePortraitClose = useCallback(() => setModalUri(null), []);
 
@@ -245,8 +284,10 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
               party={party}
               expressionsJson={expressionsJson}
               portraitsJson={portraitsJson}
+              generatingForIdx={generatingForIdx}
               onCharPress={handleCharPress}
               onCharLongPress={handleCharLongPress}
+              onGeneratePortrait={handleGeneratePortrait}
             />
 
             {/* Party metadata strip */}
@@ -459,10 +500,16 @@ const S = StyleSheet.create({
   portraitPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
   portraitInitial: {
     fontFamily: 'RobotoMono-Bold',
     fontSize: 52,
+  },
+  portraitGenHint: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 7,
+    letterSpacing: 0.5,
   },
   portraitTopBar: {
     position: 'absolute',

@@ -327,30 +327,106 @@ if (secretBoss && Math.random() < secretBoss.spawnChance) {
 
 ---
 
-## GAP-04 🟡 — RID-02: Exploit REST_SHORT congela el tiempo IA
+## GAP-04 🔴 — advanceCycle llama simulateWorld en cada acción, y simula desde ciclo 1
 
 ### ¿Por qué importa?
-`REST_SHORT` cuesta 0.5 ciclos. Si el jugador hace 2 descansos cortos, `cycleRaw` pasa de 3.0 a 4.0 pero el check de `simulateWorld` puede no dispararse si solo verifica `cycle` entero y no el cruce de entero en `cycleRaw`.
+Hay dos problemas relacionados que se encontraron revisando el código real:
 
-### Verificar la condición en timeService
+**Problema A — simulateWorld corre en cada acción sin excepción**
 
-En `src/services/timeService.ts`, buscar `advanceCycle` y verificar que la condición para disparar la simulación es:
+`advanceCycle()` en `gameStore.ts` llama `simulateWorld` después de **cualquier acción** — MOVE, SEARCH, REST_SHORT, REST_LONG — sin verificar si el ciclo entero cambió. Un `REST_SHORT` (0.5 ciclos) dispara la simulación completa igual que un MOVE.
 
 ```typescript
-// ✅ CORRECTO — detecta cruce de entero
-const prevCycleInt = Math.floor(prevCycleRaw);
-const newCycleInt  = Math.floor(newCycleRaw);
-if (newCycleInt !== prevCycleInt) {
-  // disparar simulateWorld
-}
+// gameStore.ts ~línea 168 — ESTADO ACTUAL
+const { newCycleRaw, newCycle } = advanceTime(activeGame.cycleRaw ?? activeGame.cycle, action);
+const simResult = await simulateWorld(activeGame.seedHash, newCycle, activeGame);
+// ❌ simulateWorld siempre se llama — no hay guard de "¿cruzó un ciclo entero?"
+```
 
-// ❌ INCORRECTO — solo detecta ciclo entero exacto
-if (newCycle !== currentCycle) { ... }
+**Problema B — simulateWorld simula desde ciclo 1, no desde el ciclo anterior**
+
+En `worldSimulator.ts`, el loop interno es `for (let cycle = 1; cycle <= targetCycle; cycle++)`. Cada llamada re-simula todos los ciclos desde el inicio. Con un jugador en ciclo 30, cada acción dispara 30 iteraciones del motor IA completo.
+
+El guard de 100ms (`MAX_TOTAL_TIME_MS`) trunca la simulación pero deja el resultado incompleto, y se descarta en el siguiente `advanceCycle`.
+
+### Pasos para resolverlo
+
+**Paso 1 — Guard de cruce de entero en advanceCycle**
+
+```typescript
+// gameStore.ts — advanceCycle
+advanceCycle: async (action) => {
+  const { activeGame } = get();
+  if (!activeGame) return;
+
+  const { advanceTime } = await import('../services/timeService');
+  const { newCycleRaw, newCycle } = advanceTime(
+    activeGame.cycleRaw ?? activeGame.cycle, action
+  );
+
+  // ✅ NUEVO: solo simular si el ciclo entero cambió
+  const prevCycleInt = Math.floor(activeGame.cycleRaw ?? activeGame.cycle);
+  const newCycleInt  = Math.floor(newCycleRaw);
+
+  let simResult = { events: [] as SimulationEvent[], updatedRivals: [] };
+  if (newCycleInt !== prevCycleInt) {
+    const { simulateWorld } = await import('../services/worldSimulator');
+    simResult = await simulateWorld(activeGame.seedHash, newCycleInt, activeGame);
+    saveRivals(activeGame.seedHash, simResult.updatedRivals, newCycleInt); // GAP-01
+  }
+
+  const updates = {
+    cycleRaw: newCycleRaw,
+    cycle: newCycleInt,
+    ...(simResult.events.length > 0 && {
+      lastSimEvents: JSON.stringify(simResult.events),
+      lastActionAt: new Date().toISOString(),
+    }),
+  };
+
+  updateSavedGame(activeGame.id, updates as Parameters<typeof updateSavedGame>[1]);
+  set({
+    activeGame: { ...activeGame, ...updates, updatedAt: new Date().toISOString() },
+    ...(simResult.events.length > 0 && { lastSimulationEvents: simResult.events }),
+  });
+},
+```
+
+**Paso 2 — Simular solo ciclos nuevos, no desde el inicio**
+
+Añadir `fromCycle` como parámetro a `simulateWorld`:
+
+```typescript
+// worldSimulator.ts — signature
+export async function simulateWorld(
+  seedHash: string,
+  targetCycle: number,
+  activeGame: SavedGame,
+  fromCycle?: number,   // ← nuevo parámetro opcional
+): Promise<SimulationResult> {
+  // ...
+  const startCycle = fromCycle ?? 1;
+  for (let cycle = startCycle; cycle <= targetCycle; cycle++) {
+    // ...
+  }
+}
+```
+
+```typescript
+// gameStore.ts — pasar fromCycle
+simResult = await simulateWorld(
+  activeGame.seedHash,
+  newCycleInt,
+  activeGame,
+  prevCycleInt + 1,  // solo simular los ciclos nuevos
+);
 ```
 
 **Checklist de verificación:**
-- [ ] Dos `REST_SHORT` consecutivos disparan `simulateWorld` al cruzar el entero
-- [ ] Un `REST_SHORT` solitario que no cruza entero NO dispara `simulateWorld`
+- [ ] Un `REST_SHORT` solitario (3.5 → 4.0) NO dispara `simulateWorld`
+- [ ] Dos `REST_SHORT` (3.0 → 3.5 → 4.0) — el segundo sí dispara `simulateWorld`
+- [ ] `simulateWorld` con `fromCycle=5, targetCycle=6` solo itera 2 ciclos, no 6
+- [ ] El WorldLog de `SimulationLoadingScreen` sigue recibiendo eventos correctamente
 
 ---
 
@@ -380,11 +456,15 @@ Estos no son bugs de implementación sino mecánicas que necesitan caps/guards a
 ## Orden de implementación recomendado
 
 ```
+GAP-04 (advanceCycle guard + fromCycle) — 3-4 horas — performance crítica
+  Razón: actualmente simulateWorld corre en cada MOVE, cada SEARCH,
+  cada REST_SHORT. En ciclo 30 eso son 30 iteraciones del motor IA
+  por cada paso del jugador. Es el problema más urgente.
+  ↓
 GAP-02 (checkForAbandonment) — 2-3 horas — impacto gameplay inmediato
   ↓
-GAP-04 (REST_SHORT exploit) — 1 hora — verificación/fix simple
-  ↓
 GAP-01 (rival persistence) — 1 día — requiere migration + nuevo repo
+  Nota: combinar con GAP-04 porque saveRivals se llama en advanceCycle
   ↓
 RI-02 (party monopolista) — 4-6 horas — verificar guards en worldSimulator
   ↓

@@ -57,7 +57,19 @@ export const MainScreen = ({ navigation }: ScreenProps<'Main'>) => {
   const handleMenuPress = useCallback((key: string) => {
     if (key === 'new') navigation.navigate('Seed');
     if (key === 'continue' && hasActive) {
-      if (activeGame?.location === 'map') {
+      if (activeGame?.combatRoomId != null) {
+        // Crash recovery: a combat was in progress — go directly to Battle
+        navigation.reset({
+          index: 0,
+          routes: [{
+            name: 'Battle',
+            params: {
+              roomId: activeGame.combatRoomId,
+              roomType: activeGame.combatRoomType ?? 'NORMAL',
+            },
+          }],
+        });
+      } else if (activeGame?.location === 'map') {
         navigation.reset({ index: 0, routes: [{ name: 'Map' }] });
       } else {
         navigation.reset({ index: 0, routes: [{ name: 'Village' }] });

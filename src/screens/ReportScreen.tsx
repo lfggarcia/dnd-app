@@ -15,6 +15,7 @@ export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
   const { t, lang } = useI18n();
 
   const combatResult   = useGameStore(s => s.lastCombatResult);
+  const lastSimEvents  = useGameStore(s => s.lastSimulationEvents);
   const activeFloor    = useGameStore(s => s.activeGame?.floor ?? 1);
   const activeCycle    = useGameStore(s => s.activeGame?.cycle ?? 1);
   const seedHash       = useGameStore(s => s.activeGame?.seedHash ?? '0');
@@ -162,7 +163,7 @@ export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
               <View key={i} className="flex-row justify-between items-center mb-1 py-1 border-b border-primary/10">
                 <View className="flex-row items-center">
                   <Text className="text-primary font-robotomono text-[9px] font-bold mr-2">{c.name.toUpperCase()}</Text>
-                  <Text className="text-secondary/60 font-robotomono text-[7px]">{t(`party.class_${c.charClass}`)}</Text>
+                  <Text className="text-secondary/60 font-robotomono text-[7px]">{t(`party.class_${c.charClass.toUpperCase()}`)}</Text>
                 </View>
                 <View className="flex-row items-center">
                   <Text className="text-primary/60 font-robotomono text-[8px]">
@@ -228,15 +229,24 @@ export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
           </View>
         )}
 
-        {/* World Event Alert (placeholder until Sprint 5 world simulator) */}
-        <View className="mb-4 border border-destructive/30 p-3 bg-destructive/5">
-          <Text className="text-destructive font-robotomono text-xs font-bold">
-            ⚠ {t('report.worldEvent')}
-          </Text>
-          <Text style={{ color: 'rgba(255,62,62,0.7)' }} className="font-robotomono text-[11px] mt-1">
-            PARTY "LAST_LIGHT" ELIMINATED · {t('common.floor')} 03 · {t('common.cycle')} 01
-          </Text>
-        </View>
+        {/* World Event Alert — real events from world simulation */}
+        {(() => {
+          const notableEvent = lastSimEvents?.find(e =>
+            e.type === 'AI_ELIMINATED' || e.type === 'ALLIANCE_FORMED' || e.type === 'BOSS_KILLED'
+          );
+          return notableEvent ? (
+            <View className="mb-4 border border-destructive/30 p-3 bg-destructive/5">
+              <Text className="text-destructive font-robotomono text-xs font-bold">
+                ⚠ {t('report.worldEvent')}
+              </Text>
+              <Text style={{ color: 'rgba(255,62,62,0.7)' }} className="font-robotomono text-[11px] mt-1">
+                {lang === 'es' ? notableEvent.summary : (notableEvent.summary_en ?? notableEvent.summary)}
+                {' · '}{t('common.floor')} {String(notableEvent.floor ?? activeFloor).padStart(2, '0')}
+                {' · '}{t('common.cycle')} {String(notableEvent.cycle ?? activeCycle).padStart(2, '0')}
+              </Text>
+            </View>
+          ) : null;
+        })()}
 
         <View className="h-8" />
       </ScrollView>

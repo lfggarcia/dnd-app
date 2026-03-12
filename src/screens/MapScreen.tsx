@@ -326,11 +326,17 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
     };
     const isCombat = room.type === 'NORMAL' || room.type === 'ELITE' || room.type === 'BOSS';
     if (isCombat) {
-      setFloor(afterVisit);
+      // DO NOT mark visited:true yet — mark it after combat ends in BattleScreen
+      // Instead, set combatRoomId so that if the app crashes we can detect pending combat
       setCurrentRoomId(room.id);
       setSelectedRoom(null);
-      const savedState = serializeExplorationState(afterVisit, room.id);
-      updateProgress({ location: 'map', mapState: JSON.stringify(savedState) });
+      const savedState = serializeExplorationState(floor, room.id);
+      updateProgress({
+        location: 'map',
+        mapState: JSON.stringify(savedState),
+        combatRoomId: String(room.id),
+        combatRoomType: room.type,
+      });
       navigation.navigate('Battle', { roomId: String(room.id), roomType: room.type });
       return;
     }
@@ -629,10 +635,15 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
                 </Text>
               </TouchableOpacity>
             )}
-            {selectedRoom.visited && (selectedRoom.type === 'START' || selectedRoom.type === 'TREASURE' || selectedRoom.type === 'SECRET') && (
+            {selectedRoom.visited && selectedRoom.type === 'START' && (
               <TouchableOpacity onPress={handleReturnToVillage} style={styles.returnBtn}>
                 <Text style={styles.returnBtnText}>{t('extraction.returnVillage')}</Text>
               </TouchableOpacity>
+            )}
+            {selectedRoom.visited && selectedRoom.type !== 'START' && (
+              <Text style={{ color: 'rgba(0,255,65,0.4)', fontFamily: 'RobotoMono-Regular', fontSize: 9, textAlign: 'center', marginVertical: 4 }}>
+                {t('map.returnToStart') || 'Sala explorada. Regresa al INICIO para extraerte.'}
+              </Text>
             )}
             <TouchableOpacity onPress={() => setSelectedRoom(null)} style={styles.cancelBtn}>
               <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>

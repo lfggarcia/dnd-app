@@ -370,14 +370,14 @@ const LogStrip = memo(({ log }: { log: string[] }) => {
 // ── Defeat Animation ─────────────────────────────────────────────────────────────
 
 const DefeatAnimation = memo(({ source }: { source: ImageSourcePropType }) => {
-  const scale   = useRef(new Animated.Value(0.4)).current;
+  const scale   = useRef(new Animated.Value(0.6)).current;
   const rotDeg  = useRef(new Animated.Value(-8)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }),
-      Animated.spring(scale,   { toValue: 2.0, damping: 10, stiffness: 55, useNativeDriver: true }),
+      Animated.spring(scale,   { toValue: 1.0, damping: 18, stiffness: 70, useNativeDriver: true }),
       Animated.timing(rotDeg,  { toValue: 5, duration: 1100, useNativeDriver: true }),
     ]).start();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -461,6 +461,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   const activeCycle     = useGameStore(s => s.activeGame?.cycle ?? 1);
   const seedHash        = useGameStore(s => s.activeGame?.seedHash ?? '');
   const activeGameId    = useGameStore(s => s.activeGame?.id ?? '');
+  const mapState        = useGameStore(s => s.activeGame?.mapState ?? null);
   const setCombatResult = useGameStore(s => s.setCombatResult);
   const updateProgress  = useGameStore(s => s.updateProgress);
 
@@ -629,7 +630,25 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       // Reset narrative moment counter for next combat
       momentCountRef.current = 0;
 
-      updateProgress({ partyData: updatedParty });
+      // BUG-04/05: clear combatRoomId and mark room visited on victory
+      const roomIdNum = Number(roomId);
+      let updatedMapState: string | null = null;
+      if (outcome === 'VICTORY' && mapState) {
+        try {
+          const parsed = JSON.parse(mapState) as { floorIndex: number; visitedRoomIds: number[]; revealedRoomIds: number[]; currentRoomId: number };
+          if (!parsed.visitedRoomIds.includes(roomIdNum)) {
+            parsed.visitedRoomIds.push(roomIdNum);
+          }
+          updatedMapState = JSON.stringify(parsed);
+        } catch { /* leave mapState unchanged */ }
+      }
+
+      updateProgress({
+        partyData: updatedParty,
+        combatRoomId: null,
+        combatRoomType: null,
+        ...(updatedMapState ? { mapState: updatedMapState } : {}),
+      });
       setCombatResult(result);
       setUiPhase('ENDED');
       return;
@@ -1360,6 +1379,8 @@ const S = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.72)',
     zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // ── Desertion modal (UI-GAP-01) ──

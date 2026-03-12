@@ -30,6 +30,9 @@ export type SavedGameRow = {
   elimination_reason: string | null;
   // v15 — kill records for secret boss evaluation
   kill_records: string | null;
+  // v16 — combat crash recovery
+  combat_room_id: string | null;
+  combat_room_type: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -66,6 +69,11 @@ export type SavedGame = {
   eliminationReason: 'PURGED' | 'BANKRUPT' | 'DEFEATED' | null;
   // v15 — kill records for secret boss evaluation
   killRecords: import('../services/monsterEvolutionService').KillRecord[];
+  // v16 — combat crash recovery
+  /** ID of the room where combat is in progress. null = no active combat. */
+  combatRoomId: string | null;
+  /** type of the room where combat is in progress (NORMAL, ELITE, BOSS). */
+  combatRoomType: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -185,6 +193,8 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
     killRecords: (() => {
       try { return row.kill_records ? JSON.parse(row.kill_records) : []; } catch { return []; }
     })(),
+    combatRoomId: row.combat_room_id ?? null,
+    combatRoomType: row.combat_room_type ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -271,6 +281,7 @@ export function updateSavedGame(
     | 'inSafeZone' | 'safeZoneRoomId'
     | 'lastActionAt' | 'lastSimEvents'
     | 'partyOrigin' | 'killRecords'
+    | 'combatRoomId' | 'combatRoomType'
   >>,
 ): void {
   const db = getDB();
@@ -348,6 +359,14 @@ export function updateSavedGame(
   if (updates.killRecords !== undefined) {
     sets.push('kill_records = ?');
     values.push(JSON.stringify(updates.killRecords));
+  }
+  if (updates.combatRoomId !== undefined) {
+    sets.push('combat_room_id = ?');
+    values.push(updates.combatRoomId ?? null as unknown as string);
+  }
+  if (updates.combatRoomType !== undefined) {
+    sets.push('combat_room_type = ?');
+    values.push(updates.combatRoomType ?? null as unknown as string);
   }
 
   if (sets.length === 0) return;

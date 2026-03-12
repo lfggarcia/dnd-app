@@ -175,7 +175,12 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
         Alert.alert(t('village.insufficientGold') ?? 'Sin fondos', `La posada cuesta ${REST_INN_COST}G`);
         return;
       }
-      updateProgress({ gold: gold - REST_INN_COST });
+      const restedParty = partyData.map(c => ({
+        ...c,
+        hp: c.alive ? c.maxHp : c.hp,
+        morale: Math.min(100, (c.morale ?? 80) + 15),
+      }));
+      updateProgress({ gold: gold - REST_INN_COST, partyData: restedParty });
       advanceCycle('REST_LONG').then(() => {
         navigation.navigate('CycleTransition', { from: 'DAY', to: 'NIGHT', cycle: (cycle ?? 1) + 1 });
       });

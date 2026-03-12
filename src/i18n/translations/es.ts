@@ -108,12 +108,18 @@ export const es = {
     race_TIEFLING: 'Tiefling',
 
     // Class names
-    class_FIGHTER: 'Guerrero',
-    class_ROGUE: 'Pícaro',
-    class_WIZARD: 'Mago',
+    class_BARBARIAN: 'Bárbaro',
+    class_BARD: 'Bardo',
     class_CLERIC: 'Clérigo',
+    class_DRUID: 'Druida',
+    class_FIGHTER: 'Guerrero',
+    class_MONK: 'Monje',
+    class_PALADIN: 'Paladín',
     class_RANGER: 'Explorador',
+    class_ROGUE: 'Pícaro',
+    class_SORCERER: 'Hechicero',
     class_WARLOCK: 'Brujo',
+    class_WIZARD: 'Mago',
 
     // Background names
     bg_SOLDIER: 'Soldado',
@@ -193,6 +199,7 @@ export const es = {
     title: 'Mapa del piso',
     village: 'Villa',
     scannerResults: 'Resultado del escáner:',
+    returnToStart: 'Sala explorada. Regresa al INICIO para extraerte.',
     nodes: 'Nodos',
     combats: 'Combates',
     boss: 'Jefe',

@@ -1,6 +1,6 @@
 import { getDB } from './connection';
 
-const CURRENT_VERSION = 15;
+const CURRENT_VERSION = 16;
 
 const migrations: Record<number, string[]> = {
   1: [
@@ -230,6 +230,12 @@ const migrations: Record<number, string[]> = {
   // GAP-03 — kill_records for secret boss unlock evaluation
   15: [
     `ALTER TABLE saved_games ADD COLUMN kill_records TEXT DEFAULT NULL`,
+  ],
+
+  // BUG-04/05 — combat crash recovery: track active combat room
+  16: [
+    `ALTER TABLE saved_games ADD COLUMN combat_room_id TEXT DEFAULT NULL`,
+    `ALTER TABLE saved_games ADD COLUMN combat_room_type TEXT DEFAULT NULL`,
   ],
 };
 

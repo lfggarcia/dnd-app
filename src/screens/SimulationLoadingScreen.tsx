@@ -46,7 +46,7 @@ export const SimulationLoadingScreen = ({ navigation, route }: ScreenProps<'Simu
   useEffect(() => {
     if (lastSimEvents && lastSimEvents.length > 0) {
       const notable = lastSimEvents.find(e =>
-        e.type === 'AI_COMBAT_WIN' || e.type === 'AI_FLOOR_ADVANCE' || e.type === 'AI_ALLIANCE',
+        e.type === 'AI_COMBAT_WIN' || e.type === 'AI_FLOOR_ADVANCE' || e.type === 'ALLIANCE_FORMED',
       );
       if (notable) setHighlight(lang === 'es' ? notable.summary : (notable.summary_en ?? notable.summary));
     }

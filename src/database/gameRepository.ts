@@ -41,6 +41,8 @@ export type SavedGame = {
   id: string;
   seed: string;
   seedHash: string;
+  /** Visible party name shown in rankings. Set in PartyScreen. (NI-10) */
+  partyName: string | null;
   partyData: CharacterSave[];
   floor: number;
   /** Integer cycle (1–60). Use cycleRaw for fractional precision. */
@@ -102,6 +104,8 @@ export type AscensionPath = 'TITAN' | 'ARCHMAGE' | 'AVATAR_OF_WAR';
  */
 export type CharacterSave = {
   // ── CORE ────────────────────────────────────────────────
+  /** UUID unique to this character. Canonical identifier — never use `name` as key. (NI-09) */
+  characterId:     string;
   name:            string;
   race:            string;
   charClass:       string;
@@ -135,7 +139,7 @@ export type CharacterSave = {
 /** Default values when creating a new character. */
 export const CHARACTER_SAVE_DEFAULTS: Omit<
   CharacterSave,
-  'name' | 'race' | 'charClass' | 'subclass' | 'background' | 'alignment' |
+  'characterId' | 'name' | 'race' | 'charClass' | 'subclass' | 'background' | 'alignment' |
   'baseStats' | 'statMethod' | 'featureChoices' | 'hp' | 'maxHp' | 'portrait'
 > = {
   alive:             true,
@@ -170,7 +174,12 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
     id: row.id,
     seed: row.seed,
     seedHash: row.seed_hash,
-    partyData: JSON.parse(row.party_data) as CharacterSave[],
+    partyName: (row.party_name as string | null) ?? null,
+    partyData: (() => {
+      const parsed = JSON.parse(row.party_data) as CharacterSave[];
+      // Retrocompat: ensure every character has a characterId (NI-09)
+      return parsed.map(c => c.characterId ? c : { ...c, characterId: generateId() });
+    })(),
     floor: row.floor,
     cycle: row.cycle,
     cycleRaw: row.cycle_raw ?? row.cycle,
@@ -200,7 +209,7 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
   };
 }
 
-function generateId(): string {
+export function generateId(): string {
   const ts = Date.now().toString(36);
   const rand = Math.random().toString(36).substring(2, 8);
   return `${ts}-${rand}`;
@@ -282,6 +291,7 @@ export function updateSavedGame(
     | 'lastActionAt' | 'lastSimEvents'
     | 'partyOrigin' | 'killRecords'
     | 'combatRoomId' | 'combatRoomType'
+    | 'partyName'
   >>,
 ): void {
   const db = getDB();
@@ -367,6 +377,10 @@ export function updateSavedGame(
   if (updates.combatRoomType !== undefined) {
     sets.push('combat_room_type = ?');
     values.push(updates.combatRoomType ?? null as unknown as string);
+  }
+  if (updates.partyName !== undefined) {
+    sets.push('party_name = ?');
+    values.push(updates.partyName ?? null as unknown as string);
   }
 
   if (sets.length === 0) return;

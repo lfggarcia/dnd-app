@@ -437,14 +437,19 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
       </View>
 
       {/* Scrollable Map Canvas — pan through the dungeon */}
+      {/* Outer vertical scroll + inner horizontal scroll for Android bidirectional panning */}
       <ScrollView
         style={styles.mapScroll}
-        contentContainerStyle={{ width: CANVAS_W, height: CANVAS_H }}
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         maximumZoomScale={2}
         minimumZoomScale={0.6}
         bouncesZoom
+      >
+      <ScrollView
+        horizontal
+        contentContainerStyle={{ width: CANVAS_W, height: CANVAS_H }}
+        showsHorizontalScrollIndicator={false}
       >
         {/* Background grid texture */}
         <MapBackground />
@@ -589,6 +594,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
             </TouchableOpacity>
           );
         })}
+      </ScrollView>
       </ScrollView>
 
       {/* Boss cleared — advance floor (takes priority over room panel) */}

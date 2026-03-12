@@ -399,7 +399,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
                   const { cost, canAfford } = calculateReviveCost(c, gold);
                   return (
                   <View
-                    key={c.name}
+                    key={c.characterId}
                     style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,65,0.1)' }}
                   >
                     <View>
@@ -455,7 +455,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
               </Text>
               {partyData.filter(c => c.alive).map(c => (
                 <TouchableOpacity
-                  key={c.name}
+                  key={c.characterId}
                   onPress={() => { handleItemEquip(selectedItem, c.name); setSelectedItem(null); }}
                   style={{ borderWidth: 1, borderColor: 'rgba(0,229,255,0.3)', padding: 10, marginBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                 >

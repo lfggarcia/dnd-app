@@ -23,6 +23,8 @@ import { makePRNG, type PRNG } from '../utils/prng';
 // ─── Public types ─────────────────────────────────────────────────────────────
 
 export type CombatPartyMember = {
+  /** Canonical character identifier (NI-09). Use for matching, not `name`. */
+  characterId: string;
   name: string;
   charClass: string;
   hpBefore: number;
@@ -347,6 +349,7 @@ export function resolveCombat(
   const goldEarned = Math.round(totalXp * 0.15) + rng.next(5, 25);
 
   const partyAfter: CombatPartyMember[] = partyState.map(c => ({
+    characterId: c.characterId,
     name:     c.name,
     charClass: c.charClass,
     hpBefore: c.hpBefore,
@@ -382,6 +385,8 @@ export const CLASS_ABILITIES: Record<string, ClassAbility> = {
 };
 
 export type LivePartyMember = {
+  /** Canonical character identifier (NI-09). Never use `name` as semantic key. */
+  characterId: string;
   name: string;
   charClass: string;
   baseStats: CharacterSave['baseStats'];
@@ -439,6 +444,7 @@ export function initCombat(
   const partyState: LivePartyMember[] = party
     .filter(c => c.alive)
     .map(c => ({
+      characterId: c.characterId,
       name: c.name,
       charClass: c.charClass,
       baseStats: c.baseStats,
@@ -890,6 +896,7 @@ export function buildCombatResultFromLive(
   const goldEarned = Math.round(totalXp * 0.15) + rng.next(5, 25);
 
   const partyAfter: CombatPartyMember[] = state.partyState.map(c => ({
+    characterId: c.characterId,
     name: c.name,
     charClass: c.charClass,
     hpBefore: c.hpBefore,

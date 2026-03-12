@@ -167,7 +167,7 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
           const pending = char.pendingLevelUps ?? 0;
           const hCol = hpColor(char.hp, char.maxHp);
           return (
-            <View key={char.name} className="border border-primary/30 rounded p-3 mb-3">
+            <View key={char.characterId} className="border border-primary/30 rounded p-3 mb-3">
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
                   <Text className="text-primary font-robotomono text-sm font-bold">

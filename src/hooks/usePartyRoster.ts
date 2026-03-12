@@ -20,7 +20,7 @@ import { generateCharacterPortrait, generateCharacterExpressions } from '../serv
 import { useGameStore } from '../stores/gameStore';
 import { calcLvl1HP } from '../constants/dnd5eLevel1';
 import type { Stats, CharacterSave } from '../database/gameRepository';
-import { CHARACTER_SAVE_DEFAULTS } from '../database/gameRepository';
+import { CHARACTER_SAVE_DEFAULTS, generateId } from '../database/gameRepository';
 import type { Lang } from '../i18n';
 
 // ─── Types ────────────────────────────────────────────────
@@ -166,6 +166,7 @@ export function usePartyRoster(lang: Lang) {
       const hp = calcLvl1HP(c.charClass, fs.CON);
       return {
         ...CHARACTER_SAVE_DEFAULTS,
+        characterId: generateId(),
         name: c.name,
         race: c.race,
         charClass: c.charClass,

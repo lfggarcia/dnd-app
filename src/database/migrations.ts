@@ -1,6 +1,6 @@
 import { getDB } from './connection';
 
-const CURRENT_VERSION = 16;
+const CURRENT_VERSION = 17;
 
 const migrations: Record<number, string[]> = {
   1: [
@@ -236,6 +236,11 @@ const migrations: Record<number, string[]> = {
   16: [
     `ALTER TABLE saved_games ADD COLUMN combat_room_id TEXT DEFAULT NULL`,
     `ALTER TABLE saved_games ADD COLUMN combat_room_type TEXT DEFAULT NULL`,
+  ],
+
+  // FEAT-06 — party name: visible party name in rankings (NI-10)
+  17: [
+    `ALTER TABLE saved_games ADD COLUMN party_name TEXT DEFAULT NULL`,
   ],
 };
 

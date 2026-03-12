@@ -561,7 +561,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       // Build updated party: sync HP/alive, increment deathCount for newly-dead,
       // then award XP on victory.
       let updatedParty = partyData.map(c => {
-        const after = result.partyAfter.find(p => p.name === c.name);
+        const after = result.partyAfter.find(p => p.characterId === c.characterId);
         if (!after) return c;
         const diedInBattle = c.alive && !after.alive;
         return {
@@ -883,7 +883,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       <View style={S.partyStrip}>
         {cs.partyState.slice(0, 5).map((char, i) => (
           <PartyCard
-            key={`${char.name}-${i}`}
+            key={char.characterId}
             char={char}
             portrait={getPartyPortrait(i)}
             isCurrentTurn={currentPartyMember?.name === char.name}

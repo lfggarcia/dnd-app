@@ -8,6 +8,7 @@
 
 import { makePRNG } from '../utils/prng';
 import type { CharacterSave } from '../database/gameRepository';
+import { generateId } from '../database/gameRepository';
 
 // ─── Constantes ───────────────────────────────────────────
 
@@ -131,6 +132,7 @@ export function generateReplacementAdventurer(
 ): CharacterSave {
   return {
     ...abandonedChar,
+    characterId: generateId(),
     name: `RECRUIT_${cycle}`,
     alignment: 'True Neutral',
     morale: 60,

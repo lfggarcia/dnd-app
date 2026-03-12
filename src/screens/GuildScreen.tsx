@@ -164,7 +164,7 @@ const PartyGrid = memo(({ party, expressionsJson, portraitsJson, generatingForId
           null;
         return (
           <CharacterCard
-            key={`${char.name}-${i}`}
+            key={char.characterId}
             char={char}
             uri={uri}
             accent={STRIP_ACCENTS[i % STRIP_ACCENTS.length]}
@@ -334,7 +334,7 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
               ) : rankings.map((g, i) => (
                 <View key={g.id} style={{ flexDirection: 'row', paddingVertical: 4, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: '#ffffff22' }}>
                   <Text style={{ color: '#aaa', width: 24, fontSize: 12 }}>#{i + 1}</Text>
-                  <Text style={{ color: '#fff', flex: 1, fontSize: 12 }}>{g.seedHash}</Text>
+                  <Text style={{ color: '#fff', flex: 1, fontSize: 12 }}>{g.partyName ?? g.seedHash.slice(0, 8)}</Text>
                   <Text style={{ color: '#00FF41', fontSize: 12 }}>Floor {g.floor}</Text>
                 </View>
               ))}

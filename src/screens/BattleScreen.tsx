@@ -442,14 +442,21 @@ function deriveEventsFromLogLines(
   return events;
 }
 
+// Stable fallback references — must live outside the component so they never
+// change identity between renders. Using inline `?? []` / `?? {}` inside a
+// Zustand selector would create a new object on every call and cause
+// useSyncExternalStore to loop infinitely.
+const EMPTY_PARTY_DATA: import('../database/gameRepository').CharacterSave[] = [];
+const EMPTY_EXPRESSIONS_JSON: Record<number, Record<string, string>> = {};
+
 export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   const { roomId, roomType } = route.params;
   const { t } = useI18n();
 
   // ── Store selectors ─────────────────────────────────────────────────────────
-  const partyData       = useGameStore(s => s.activeGame?.partyData ?? []);
+  const partyData       = useGameStore(s => s.activeGame?.partyData ?? EMPTY_PARTY_DATA);
   const portraitsMap    = useGameStore(s => s.activeGame?.portraitsJson ?? null);
-  const expressionsJson = useGameStore(s => s.activeGame?.expressionsJson ?? {});
+  const expressionsJson = useGameStore(s => s.activeGame?.expressionsJson ?? EMPTY_EXPRESSIONS_JSON);
   const activeFloor     = useGameStore(s => s.activeGame?.floor ?? 1);
   const activeCycle     = useGameStore(s => s.activeGame?.cycle ?? 1);
   const seedHash        = useGameStore(s => s.activeGame?.seedHash ?? '');

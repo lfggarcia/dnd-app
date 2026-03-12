@@ -10,7 +10,7 @@ import { useI18n } from '../i18n';
 import { generateRivals } from '../services/rivalGenerator';
 import { calculateReviveCost } from '../services/economyService';
 import { getResourcesByEndpoint } from '../database';
-import { getItemsByGame } from '../database/itemRepository';
+import { getItemsByGame, equipItem } from '../database/itemRepository';
 import type { LootDrop } from '../services/lootService';
 import type { ScreenProps } from '../navigation/types';
 
@@ -47,6 +47,8 @@ const BUILDING_ICON_COMPONENTS: Record<string, React.FC<{ size?: number; color?:
 
 const BUILDING_NAV: Partial<Record<string, keyof import('../navigation/types').RootStackParamList>> = {
   guild: 'Guild',
+  market: 'Market',
+  blacksmith: 'Blacksmith',
 };
 
 export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
@@ -63,6 +65,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
   const [showExitModal, setShowExitModal] = useState(false);
   const [showChurch, setShowChurch] = useState(false);
   const [showArmory, setShowArmory] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<import('../services/lootService').LootDrop | null>(null);
 
   const activeGameId = useGameStore(s => s.activeGame?.id ?? null);
 
@@ -166,6 +169,13 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
     updateProgress({ partyData: updatedParty, gold: gold - cost });
   }, [partyData, gold, updateProgress]);
 
+  const handleItemEquip = useCallback((item: import('../services/lootService').LootDrop, charName: string) => {
+    if (!activeGameId) return;
+    try {
+      equipItem(item.id, charName);
+    } catch (e) { console.warn('Equip failed', e); }
+  }, [activeGameId]);
+
   const handleBuildingPress = useCallback((key: string) => {
     if (key === 'armory') { setShowArmory(v => !v); return; }
     if (key === 'church') { setShowChurch(true); return; }
@@ -253,8 +263,8 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
             {key === 'armory' && showArmory && (
               <InventoryGrid
                 items={inventoryItems}
-                onItemPress={() => {}}
-                onItemEquip={() => {}}
+                onItemPress={(item) => setSelectedItem(item)}
+                onItemEquip={handleItemEquip}
               />
             )}
           </React.Fragment>
@@ -421,6 +431,50 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
               <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 10, color: 'rgba(0,255,65,0.6)' }}>CERRAR</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* Item Detail Modal — Armería */}
+      <Modal
+        visible={selectedItem !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedItem(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20 }}>
+          {selectedItem && (
+            <View style={{ borderWidth: 1, borderColor: '#00E5FF', backgroundColor: '#0A0E0A', padding: 16 }}>
+              <Text style={{ fontFamily: 'RobotoMono-Bold', fontSize: 13, color: '#00E5FF', marginBottom: 4, letterSpacing: 1 }}>
+                {selectedItem.name.toUpperCase()}
+              </Text>
+              <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,229,255,0.5)', marginBottom: 4 }}>
+                {selectedItem.type.toUpperCase()} · {selectedItem.rarity.toUpperCase()} · {selectedItem.goldValue}G
+              </Text>
+              <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 9, color: 'rgba(0,255,65,0.4)', marginBottom: 14 }}>
+                {t('village.equipTo')}:
+              </Text>
+              {partyData.filter(c => c.alive).map(c => (
+                <TouchableOpacity
+                  key={c.name}
+                  onPress={() => { handleItemEquip(selectedItem, c.name); setSelectedItem(null); }}
+                  style={{ borderWidth: 1, borderColor: 'rgba(0,229,255,0.3)', padding: 10, marginBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <Text style={{ fontFamily: 'RobotoMono-Bold', fontSize: 10, color: '#00E5FF' }}>
+                    {c.name.toUpperCase()}
+                  </Text>
+                  <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 8, color: 'rgba(0,229,255,0.5)' }}>
+                    {c.charClass.toUpperCase()} · Lv{c.level}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                onPress={() => setSelectedItem(null)}
+                style={{ marginTop: 8, borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', padding: 10, alignItems: 'center' }}
+              >
+                <Text style={{ fontFamily: 'RobotoMono-Regular', fontSize: 10, color: 'rgba(0,255,65,0.6)' }}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </Modal>
 

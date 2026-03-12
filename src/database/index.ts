@@ -22,6 +22,7 @@ export {
   getItemById,
   getItemsByGame,
   getItemsByCharacter,
+  getRecentItems,
   isBossLootClaimed,
   equipItem,
   unequipItem,

@@ -48,6 +48,12 @@ const SettingsScreen = lazy(() =>
 const AscensionScreen = lazy(() =>
   import('../screens/AscensionScreen').then(m => ({ default: m.AscensionScreen }))
 );
+const MarketScreen = lazy(() =>
+  import('../screens/MarketScreen').then(m => ({ default: m.MarketScreen }))
+);
+const BlacksmithScreen = lazy(() =>
+  import('../screens/BlacksmithScreen').then(m => ({ default: m.BlacksmithScreen }))
+);
 
 const LazyFallback = () => (
   <View style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
@@ -87,6 +93,8 @@ export const AppNavigator = () => {
         <Stack.Screen name="SimulationLoading" component={SimulationLoadingScreen as React.ComponentType<object>} />
         <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType<object>} />
         <Stack.Screen name="Ascension" component={AscensionScreen as React.ComponentType<object>} />
+        <Stack.Screen name="Market" component={MarketScreen as React.ComponentType<object>} />
+        <Stack.Screen name="Blacksmith" component={BlacksmithScreen as React.ComponentType<object>} />
       </Stack.Navigator>
     </Suspense>
   );

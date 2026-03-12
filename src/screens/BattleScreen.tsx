@@ -656,7 +656,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     const { state: nextState, phase } = findNextLiveTurn(state);
     setCs(nextState);
     setUiPhase(phase);
-  }, [partyData, roomType, updateProgress, setCombatResult]);
+  }, [partyData, roomType, roomId, mapState, updateProgress, setCombatResult]);
 
   useEffect(() => {
     if (uiPhase !== 'INITIATIVE') return;

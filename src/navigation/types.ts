@@ -23,6 +23,8 @@ export type RootStackParamList = {
   Unification: { previousPartyNames: string[]; inheritedLevel: number };
   SimulationLoading: { fromCycle: number };
   Settings: undefined;
+  Market: undefined;
+  Blacksmith: undefined;
 };
 
 export type ScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<

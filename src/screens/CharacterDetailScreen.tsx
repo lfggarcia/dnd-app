@@ -27,6 +27,7 @@ import type { Item } from '../database/itemRepository';
 import { getEssencesByChar, equipEssence, unequipEssence, getEquippedCount } from '../database/essenceRepository';
 import type { SavedEssence } from '../database/essenceRepository';
 import { getEssenceSlots } from '../services/essenceService';
+import { ABANDON_THRESHOLD, isGoodOrLawful } from '../services/moralSystem';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { Stats } from '../database/gameRepository';
@@ -269,6 +270,10 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
   }, [selectedExpression, portraitOpacity]);
 
   const hpPct = char ? (char.maxHp > 0 ? char.hp / char.maxHp : 0) : 0;
+  // UI-GAP-03: moral risk badge
+  const isDeserterAtRisk = char
+    ? (char.morale ?? 80) < ABANDON_THRESHOLD && isGoodOrLawful(char.alignment ?? '')
+    : false;
   const hpColor = !char?.alive
     ? '#FF3E3E'
     : hpPct > 0.5
@@ -455,6 +460,16 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
 
           {activeTab === 'STATS' && (
             <View>
+          {/* UI-GAP-03: Desertion risk banner */}
+          {isDeserterAtRisk && (
+            <View style={S.moralRiskBanner}>
+              <Text style={S.moralRiskText}>
+                ⚠ {lang === 'es'
+                  ? `Moral crítica (${char.morale}). Riesgo de deserción en combate.`
+                  : `Critical morale (${char.morale}). Desertion risk in combat.`}
+              </Text>
+            </View>
+          )}
           <View style={S.metaRow}>
             <Text style={S.metaTag}>{char.background}</Text>
             <Text style={S.metaSep}>·</Text>
@@ -518,6 +533,37 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
                 : (lang === 'es' ? 'Tirada de dados' : 'Rolled Stats')}
             </Text>
           </View>
+
+          {/* ── Moral (UI-GAP-03) ── */}
+          {char.morale !== undefined && (
+            <View style={S.section}>
+              <View style={S.sectionHeader}>
+                <View style={S.sectionLine} />
+                <Text style={S.sectionLabel}>
+                  {lang === 'es' ? 'MORAL' : 'MORALE'}
+                </Text>
+                <View style={S.sectionLine} />
+              </View>
+              <View style={S.moraleRow}>
+                <View style={S.moraleBarBg}>
+                  <View
+                    style={[
+                      S.moraleBarFill,
+                      {
+                        width: `${Math.max(0, Math.min(100, char.morale))}%`,
+                        backgroundColor: (char.morale ?? 80) < 20
+                          ? '#FF3E3E'
+                          : (char.morale ?? 80) < 40
+                            ? '#FFB000'
+                            : '#00FF41',
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={S.moraleValue}>{char.morale}/100</Text>
+              </View>
+            </View>
+          )}
 
           </View>
           )}
@@ -1090,6 +1136,47 @@ const S = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(0,255,65,0.9)',
     letterSpacing: 1,
+  },
+
+  // ── Moral risk banner (UI-GAP-03) ──
+  moralRiskBanner: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,62,62,0.6)',
+    borderRadius: 3,
+    padding: 10,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  moralRiskText: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 11,
+    color: '#FF3E3E',
+    flexShrink: 1,
+  },
+  moraleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 4,
+  },
+  moraleBarBg: {
+    flex: 1,
+    height: 6,
+    backgroundColor: 'rgba(0,255,65,0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  moraleBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  moraleValue: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 11,
+    color: 'rgba(0,255,65,0.6)',
+    width: 48,
+    textAlign: 'right',
   },
 });
 

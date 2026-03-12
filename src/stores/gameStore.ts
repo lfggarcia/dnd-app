@@ -10,6 +10,7 @@ import {
   type SavedGame,
   type CharacterSave,
 } from '../database/gameRepository';
+import { saveRivals } from '../database/rivalRepository';
 import type { CombatResult } from '../services/combatEngine';
 
 // ─── Types ────────────────────────────────────────────────
@@ -181,6 +182,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         activeGame,
         prevCycleInt + 1, // only simulate new cycles, not from the beginning
       );
+      // GAP-01: persist updated rival states with memory
+      if (simResult.updatedRivals.length > 0) {
+        saveRivals(activeGame.seedHash, simResult.updatedRivals, newCycleInt);
+      }
     }
 
     const updates = {
@@ -209,6 +214,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const { newCycle } = advanceToEndOfSeason(activeGame.cycleRaw ?? activeGame.cycle);
 
     const simResult = await simulateWorld(activeGame.seedHash, newCycle, activeGame);
+
+    // GAP-01: persist updated rival states with memory
+    if (simResult.updatedRivals.length > 0) {
+      saveRivals(activeGame.seedHash, simResult.updatedRivals, newCycle as number);
+    }
 
     const updates = {
       cycleRaw: newCycle as number,

@@ -3,7 +3,7 @@ import React, {
 } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, BackHandler,
-  Image, Animated, StyleSheet, Dimensions, Platform,
+  Image, Animated, StyleSheet, Dimensions, Platform, Modal,
   type ImageSourcePropType,
 } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
@@ -39,7 +39,11 @@ import { NarrativeMomentPanel } from '../components/NarrativeMomentPanel';
 import { MONSTER_ILLUSTRATIONS } from '../constants/monsterIllustrations';
 import { awardXP } from '../services/progressionService';
 import type { XPRewardSource } from '../services/progressionService';
-import { applyMoralEvent } from '../services/moralSystem';
+import {
+  applyMoralEvent,
+  checkForAbandonment,
+  generateReplacementAdventurer,
+} from '../services/moralSystem';
 import { isBossLootClaimed } from '../database/itemRepository';
 import { recordPartyKill } from '../services/bountyService';
 import { resolveEssenceDrop } from '../services/essenceService';
@@ -465,6 +469,11 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     charName: string;
     emotion:  EmotionState;
   } | null>(null);
+  const [desertionEvent, setDesertionEvent] = useState<{
+    deserters: import('../database/gameRepository').CharacterSave[];
+    replacements: import('../database/gameRepository').CharacterSave[];
+    log: string[];
+  } | null>(null);
   const momentCountRef = useRef(0);
   const bossLootClaimedRef = useRef(false);
 
@@ -581,6 +590,22 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       ).length;
       for (let i = 0; i < diedThisCombat; i++) {
         updatedParty = applyMoralEvent(updatedParty, 'PARTY_MEMBER_DIED');
+      }
+
+      // GAP-02: check for desertion after moral events (defeat/death path)
+      if (outcome === 'DEFEAT' || diedThisCombat > 0) {
+        const abandonResult = checkForAbandonment(updatedParty, seedHash, activeCycle);
+        if (abandonResult.abandoned.length > 0) {
+          const replacements = abandonResult.abandoned.map(d =>
+            generateReplacementAdventurer(d, activeCycle)
+          );
+          updatedParty = [...abandonResult.remained, ...replacements];
+          setDesertionEvent({
+            deserters: abandonResult.abandoned,
+            replacements,
+            log: abandonResult.log,
+          });
+        }
       }
 
       // Reset narrative moment counter for next combat
@@ -804,6 +829,36 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
           />
         ))}
       </View>
+
+      {/* ── Desertion modal (UI-GAP-01) ── */}
+      {desertionEvent && (
+        <Modal transparent animationType="fade" visible>
+          <View style={S.desertionOverlay}>
+            <View style={S.desertionCard}>
+              <Text style={S.desertionTitle}>⚠ DESERCIÓN</Text>
+
+              {desertionEvent.log.map((line, i) => (
+                <Text key={i} style={S.desertionLog}>· {line}</Text>
+              ))}
+
+              <View style={S.desertionDivider} />
+              <Text style={S.desertionReplacementsLabel}>REEMPLAZOS:</Text>
+              {desertionEvent.replacements.map(r => (
+                <Text key={r.name} style={S.desertionReplacement}>
+                  + {r.name} · Lv {r.level} · {r.charClass}
+                </Text>
+              ))}
+
+              <TouchableOpacity
+                onPress={() => setDesertionEvent(null)}
+                style={S.desertionBtn}
+              >
+                <Text style={S.desertionBtnText}>[CONTINUAR]</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       {/* ── Action Panel ── */}
       <View style={S.actionPanel}>
@@ -1287,5 +1342,69 @@ const S = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.72)',
     zIndex: 10,
+  },
+
+  // ── Desertion modal (UI-GAP-01) ──
+  desertionOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.80)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  desertionCard: {
+    borderWidth: 1,
+    borderColor: '#FF3E3E',
+    borderRadius: 4,
+    padding: 20,
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#060A06',
+  },
+  desertionTitle: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 13,
+    color: '#FF3E3E',
+    letterSpacing: 2,
+    marginBottom: 12,
+  },
+  desertionLog: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 11,
+    color: 'rgba(0,255,65,0.7)',
+    marginBottom: 4,
+  },
+  desertionDivider: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,255,65,0.15)',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  desertionReplacementsLabel: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 10,
+    color: 'rgba(0,255,65,0.4)',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  desertionReplacement: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 11,
+    color: '#00CCFF',
+    marginBottom: 2,
+  },
+  desertionBtn: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.35)',
+    borderRadius: 3,
+    padding: 12,
+    alignItems: 'center',
+  },
+  desertionBtnText: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 12,
+    color: 'rgba(0,255,65,0.85)',
+    letterSpacing: 2,
   },
 });

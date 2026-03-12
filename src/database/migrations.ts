@@ -1,6 +1,6 @@
 import { getDB } from './connection';
 
-const CURRENT_VERSION = 13;
+const CURRENT_VERSION = 14;
 
 const migrations: Record<number, string[]> = {
   1: [
@@ -210,6 +210,21 @@ const migrations: Record<number, string[]> = {
       UNIQUE(game_id, char_name, monster_key)
     )`,
     `CREATE INDEX IF NOT EXISTS idx_monster_kills_game ON monster_kills(game_id)`,
+  ],
+
+  // Sprint 5C — Rival persistence (GAP-01)
+  14: [
+    `CREATE TABLE IF NOT EXISTS rival_states (
+      id          TEXT PRIMARY KEY,
+      seed_hash   TEXT NOT NULL,
+      floor       INTEGER NOT NULL,
+      rep         INTEGER DEFAULT 0,
+      profile     TEXT NOT NULL,
+      memory      TEXT NOT NULL,
+      last_cycle  INTEGER NOT NULL,
+      updated_at  TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_rival_states_seed ON rival_states (seed_hash)`,
   ],
 };
 

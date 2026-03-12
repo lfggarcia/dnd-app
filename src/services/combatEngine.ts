@@ -392,6 +392,9 @@ export type LivePartyMember = {
   rageActive: boolean;
   /** Bonus die sides for next attack roll (bard INSPIRE) */
   inspiredBonus: number;
+  /** RI-07: true when this character was revived this turn (Fénix essence).
+   *  Blocks active ability usage to prevent Fénix+Tiempo combo exploit. */
+  justRevived: boolean;
 };
 
 export type LiveEnemy = MonsterStats & {
@@ -441,6 +444,7 @@ export function initCombat(
       abilityUsed: false,
       rageActive: false,
       inspiredBonus: 0,
+      justRevived: false,
     }));
 
   const enemyState: LiveEnemy[] = enemies.map((e, i) => ({
@@ -496,7 +500,7 @@ export function advanceTurnLive(state: LiveCombatState): LiveCombatState {
     if (raw >= len && !wrappedOnce) {
       wrappedOnce = true;
       newRound += 1;
-      log.push(`\u2500\u2500 ROUND ${newRound} \u2500\u2500`);
+      log.push(`── ROUND ${newRound} ──`);
     }
     const nextIdx = raw % len;
     const actor = state.turnOrder[nextIdx];
@@ -505,7 +509,14 @@ export function advanceTurnLive(state: LiveCombatState): LiveCombatState {
         ? state.partyState[actor.idx].currentHp > 0
         : !state.enemyState[actor.idx].defeated;
     if (isAlive) {
-      return { ...state, currentTurnIdx: nextIdx, round: newRound, log };
+      // RI-07: clear justRevived when this actor's new turn begins
+      let partyState = state.partyState;
+      if (actor.type === 'party') {
+        partyState = state.partyState.map((m, idx) =>
+          idx === actor.idx && m.justRevived ? { ...m, justRevived: false } : m,
+        );
+      }
+      return { ...state, partyState, currentTurnIdx: nextIdx, round: newRound, log };
     }
   }
   return state;
@@ -615,6 +626,8 @@ export function resolvePlayerAbility(
   const enemyState = state.enemyState.map(e => ({ ...e }));
   const attacker = partyState[actorPartyIdx];
   if (!attacker || attacker.abilityUsed) return state;
+  // RI-07: a character who was just revived this turn cannot use active abilities
+  if (attacker.justRevived) return state;
 
   const charClass = attacker.charClass.toLowerCase();
   const log = [...state.log];

@@ -475,6 +475,8 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     log: string[];
   } | null>(null);
   const momentCountRef = useRef(0);
+  /** RI-08: track last round a narrative panel of each event type was shown */
+  const lastNarrativeRoundRef = useRef<Record<string, number>>({});
   const bossLootClaimedRef = useRef(false);
 
   // Check on mount if boss loot was already claimed for this room
@@ -508,13 +510,22 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
         const current = prev[char.name] ?? null;
         const newEmotion = resolveEmotion(event, char, current);
         if (isSignificantEvent(event.type) && momentCountRef.current < 3) {
-          momentCountRef.current += 1;
-          setActiveMoment({ charName: char.name, emotion: newEmotion });
+          // RI-08: enforce ≥2 round cooldown between panels of the same event type
+          const lastRound = lastNarrativeRoundRef.current[event.type] ?? -99;
+          const currentRound = cs.round;
+          if (currentRound - lastRound >= 2) {
+            momentCountRef.current += 1;
+            lastNarrativeRoundRef.current = {
+              ...lastNarrativeRoundRef.current,
+              [event.type]: currentRound,
+            };
+            setActiveMoment({ charName: char.name, emotion: newEmotion });
+          }
         }
         return { ...prev, [char.name]: newEmotion };
       });
     }
-  }, [partyData]);
+  }, [partyData, cs.round]);
 
   // ── Phase transitions ────────────────────────────────────────────────────────
   const goToNextTurn = useCallback((state: LiveCombatState) => {

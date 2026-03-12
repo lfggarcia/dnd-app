@@ -14,6 +14,9 @@ interface LogEntry {
   type: LogFilter;
   message_en: string;
   message_es: string;
+  /** UI-GAP-02: rival veteran data from SimulationEvent */
+  rivalAge?: number;
+  rivalProfile?: SimulationEvent['rivalProfile'];
 }
 
 /** Map SimulationEventType → LogFilter category */
@@ -42,6 +45,8 @@ function simEventsToLogEntries(events: SimulationEvent[]): LogEntry[] {
     type: simEventToLogType(e.type),
     message_en: e.summary_en,
     message_es: e.summary,
+    rivalAge: e.rivalAge,
+    rivalProfile: e.rivalProfile,
   }));
 }
 
@@ -146,6 +151,14 @@ export const WorldLogScreen = ({ navigation }: ScreenProps<'WorldLog'>) => {
                     <Text className={`font-robotomono text-[10px] ${typeColor}`}>
                       {lang === 'es' ? entry.message_es : entry.message_en}
                     </Text>
+                    {/* UI-GAP-02: veteran badge for rivals with >10 cycles */}
+                    {(entry.rivalAge ?? 0) > 10 && (
+                      <Text className="text-accent font-robotomono text-[9px] mt-0.5">
+                        ★ {lang === 'es'
+                          ? `Veterano · ${entry.rivalAge} ciclos${entry.rivalProfile ? ` · ${entry.rivalProfile}` : ''}`
+                          : `Veteran · ${entry.rivalAge} cycles${entry.rivalProfile ? ` · ${entry.rivalProfile}` : ''}`}
+                      </Text>
+                    )}
                   </View>
                 </View>
               );

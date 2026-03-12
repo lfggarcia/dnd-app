@@ -38,6 +38,10 @@ export type SimulationEvent = {
   targetName?: string;
   summary: string;
   summary_en: string;
+  /** UI-GAP-02: cycles this rival has been alive (for veteran badge in WorldLogScreen) */
+  rivalAge?: number;
+  /** UI-GAP-02: AI profile of the rival at time of event */
+  rivalProfile?: import('./aiProfileEngine').AIProfile;
 };
 
 export type SimulationResult = {
@@ -196,6 +200,8 @@ function executeAction(
           targetName: target.entry.name,
           summary: `${updated.entry.name} eliminó a ${target.entry.name} en Piso ${updated.entry.floor}`,
           summary_en: `${updated.entry.name} eliminated ${target.entry.name} on Floor ${updated.entry.floor}`,
+          rivalAge: cycle - Math.max(1, updated.entry.floor - 1),
+          rivalProfile: updated.profile,
         });
       } else {
         updated.hp = Math.max(5, updated.hp - 40);
@@ -233,6 +239,8 @@ function executeAction(
           partyName: updated.entry.name,
           summary: `${updated.entry.name} avanzó al Piso ${updated.entry.floor}`,
           summary_en: `${updated.entry.name} advanced to Floor ${updated.entry.floor}`,
+          rivalAge: cycle - Math.max(1, updated.entry.floor - 1),
+          rivalProfile: updated.profile,
         });
       }
       break;
@@ -302,6 +310,38 @@ export async function simulateWorld(
   for (let cycle = startCycle; cycle <= targetCycle; cycle++) {
     if (Date.now() - simStartTime > MAX_TOTAL_TIME_MS) break;
     const rng = makePRNG(`${seedHash}_world_${cycle}`);
+
+    // RI-02: decrement forced defensive timers
+    for (let i = 0; i < aiStates.length; i++) {
+      if (aiStates[i].forcedDefensiveCycles > 0) {
+        aiStates[i] = { ...aiStates[i], forcedDefensiveCycles: aiStates[i].forcedDefensiveCycles - 1 };
+      }
+    }
+
+    // RI-02: if fewer than 3 active parties, spawn a SYSTEM party
+    const activeCount = aiStates.filter(s => s.entry.status !== 'defeated').length;
+    if (activeCount < 3) {
+      const systemName = `SYSTEM_${seedHash.slice(0, 4)}_${cycle}`;
+      const spawnFloor = Math.max(1, Math.floor(activeCount + 1));
+      aiStates.push({
+        entry: { name: systemName, floor: spawnFloor, status: 'active', rep: 0 },
+        cycleProgress: 0,
+        hp: 80,
+        gold: spawnFloor * 30,
+        consecutiveLosses: 0,
+        profile: 'SURVIVALIST',
+        memory: createMemory(systemName),
+        forcedDefensiveCycles: 0,
+      });
+      events.push({
+        type: 'AI_PARTY_SPAWNED',
+        cycle,
+        floor: spawnFloor,
+        partyName: systemName,
+        summary: `Nueva party de sistema ${systemName} en Piso ${spawnFloor}`,
+        summary_en: `System party ${systemName} spawned on Floor ${spawnFloor}`,
+      });
+    }
 
     for (let i = 0; i < aiStates.length; i++) {
       const state = aiStates[i];

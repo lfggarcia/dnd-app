@@ -212,3 +212,19 @@ export type {
   EssenceEffect,
   EssenceEffectType,
 } from './essenceService';
+
+// ─── Sprint 6G — Seed Unification ────────────────────────
+export { checkSeedStatus, markAsIAInherited, applyInheritedLevel } from './seedUnificationService';
+export type { SeedStatus } from './seedUnificationService';
+
+// ─── Sprint 7 — AI Profile Engine ────────────────────────
+export { deriveBaseProfile, getActionWeights, maybeMutateProfile } from './aiProfileEngine';
+export type { AIProfile, AIAction } from './aiProfileEngine';
+
+// ─── Sprint 7 — Cultural Evolution ───────────────────────
+export {
+  calculateFitnessScore,
+  selectBestNeighborProfile,
+  rankPartiesByFitness,
+} from './culturalEvolution';
+

@@ -1,6 +1,6 @@
 import { getDB } from './connection';
 
-const CURRENT_VERSION = 12;
+const CURRENT_VERSION = 13;
 
 const migrations: Record<number, string[]> = {
   1: [
@@ -177,6 +177,39 @@ const migrations: Record<number, string[]> = {
     `ALTER TABLE saved_games ADD COLUMN predecessor_game_id TEXT`,
     `ALTER TABLE saved_games ADD COLUMN created_by_player INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE saved_games ADD COLUMN elimination_reason TEXT`,
+  ],
+
+  // Sprint 7 — Essence system + monster kills tracking (doc 13)
+  13: [
+    `CREATE TABLE IF NOT EXISTS essences (
+      id TEXT PRIMARY KEY,
+      seed_hash TEXT NOT NULL,
+      owner_game_id TEXT NOT NULL,
+      owner_char_name TEXT NOT NULL,
+      definition_id TEXT NOT NULL,
+      rank INTEGER NOT NULL,
+      evolution_level INTEGER NOT NULL DEFAULT 1,
+      kills_on_type INTEGER NOT NULL DEFAULT 0,
+      equipped INTEGER NOT NULL DEFAULT 0,
+      obtained_cycle INTEGER NOT NULL,
+      obtained_floor INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_essences_game ON essences(owner_game_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_essences_char ON essences(owner_char_name)`,
+
+    `CREATE TABLE IF NOT EXISTS monster_kills (
+      id TEXT PRIMARY KEY,
+      seed_hash TEXT NOT NULL,
+      game_id TEXT NOT NULL,
+      char_name TEXT NOT NULL,
+      monster_key TEXT NOT NULL,
+      kill_count INTEGER NOT NULL DEFAULT 0,
+      last_kill_cycle INTEGER NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(game_id, char_name, monster_key)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_monster_kills_game ON monster_kills(game_id)`,
   ],
 };
 

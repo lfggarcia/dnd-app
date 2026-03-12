@@ -41,6 +41,9 @@ import { awardXP } from '../services/progressionService';
 import type { XPRewardSource } from '../services/progressionService';
 import { applyMoralEvent } from '../services/moralSystem';
 import { isBossLootClaimed } from '../database/itemRepository';
+import { recordPartyKill } from '../services/bountyService';
+import { resolveEssenceDrop } from '../services/essenceService';
+import { saveEssenceDrop, incrementMonsterKills } from '../database/essenceRepository';
 import type { ScreenProps } from '../navigation/types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -446,6 +449,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   const activeFloor     = useGameStore(s => s.activeGame?.floor ?? 1);
   const activeCycle     = useGameStore(s => s.activeGame?.cycle ?? 1);
   const seedHash        = useGameStore(s => s.activeGame?.seedHash ?? '');
+  const activeGameId    = useGameStore(s => s.activeGame?.id ?? '');
   const setCombatResult = useGameStore(s => s.setCombatResult);
   const updateProgress  = useGameStore(s => s.updateProgress);
 
@@ -539,6 +543,34 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       if (outcome === 'VICTORY') {
         updatedParty = awardXP(updatedParty, xpSource);
         updatedParty = applyMoralEvent(updatedParty, roomType === 'BOSS' ? 'BOSS_DEFEATED' : 'KILL_MONSTER');
+
+        // Record a kill if this was a rival party room (RT-04 / FIX-04)
+        if (roomId.startsWith('rival_') && activeGameId && seedHash) {
+          const rivalName = roomId.replace('rival_', '');
+          recordPartyKill(activeGameId, seedHash, rivalName, activeCycle, activeFloor);
+        }
+
+        // Essence drops for each defeated monster (Sprint 7 / Paso 7-06)
+        if (activeGameId && seedHash) {
+          for (const enemy of result.enemiesDefeated) {
+            const monsterKey = enemy.name;
+            for (const aliveChar of updatedParty.filter(c => c.alive)) {
+              incrementMonsterKills(activeGameId, aliveChar.name, monsterKey, activeCycle, seedHash);
+              const drop = resolveEssenceDrop(monsterKey, monsterKey, roomId, seedHash, activeCycle);
+              if (drop) {
+                saveEssenceDrop({
+                  ...drop,
+                  killsOnThisType: drop.killsOnThisType,
+                  ownerGameId: activeGameId,
+                  ownerCharName: aliveChar.name,
+                  obtainedCycle: activeCycle,
+                  obtainedFloor: activeFloor,
+                  seedHash,
+                });
+              }
+            }
+          }
+        }
       } else {
         updatedParty = applyMoralEvent(updatedParty, 'DEFEAT_IN_COMBAT');
       }

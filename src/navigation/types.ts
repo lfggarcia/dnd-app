@@ -4,11 +4,11 @@ import type { RoomType } from '../services/dungeonGraphService';
 export type RootStackParamList = {
   Main: undefined;
   Seed: undefined;
-  Party: { seed: string; seedHash: string };
+  Party: { seed: string; seedHash: string; inheritedLevel?: number };
   Village: undefined;
   Guild: undefined;
   CharacterDetail: { charIndex: number };
-  Ascension: { charIndex: number };
+  Ascension: { charIndex: number; bountyLevel?: number; epicEssences?: number };
   Map: undefined;
   Battle: { roomId: string; roomType: RoomType };
   Report: { roomId: string; roomWasCleared: boolean; roomType?: string; bossLootAlreadyClaimed?: boolean };

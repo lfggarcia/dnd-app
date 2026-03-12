@@ -256,7 +256,14 @@ export function createSavedGame(
 
 export function updateSavedGame(
   id: string,
-  updates: Partial<Pick<SavedGame, 'partyData' | 'floor' | 'cycle' | 'phase' | 'gold' | 'status' | 'location' | 'mapState' | 'partyPortrait' | 'portraitsJson' | 'expressionsJson' | 'inSafeZone' | 'safeZoneRoomId'>>,
+  updates: Partial<Pick<SavedGame,
+    | 'partyData' | 'floor' | 'cycle' | 'cycleRaw'
+    | 'phase' | 'gold' | 'status' | 'location' | 'mapState'
+    | 'partyPortrait' | 'portraitsJson' | 'expressionsJson'
+    | 'inSafeZone' | 'safeZoneRoomId'
+    | 'lastActionAt' | 'lastSimEvents'
+    | 'partyOrigin'
+  >>,
 ): void {
   const db = getDB();
   const sets: string[] = [];
@@ -313,6 +320,22 @@ export function updateSavedGame(
   if (updates.safeZoneRoomId !== undefined) {
     sets.push('safe_zone_room_id = ?');
     values.push(updates.safeZoneRoomId ?? null as unknown as string);
+  }
+  if (updates.cycleRaw !== undefined) {
+    sets.push('cycle_raw = ?');
+    values.push(updates.cycleRaw);
+  }
+  if (updates.lastActionAt !== undefined) {
+    sets.push('last_action_at = ?');
+    values.push(updates.lastActionAt ?? null as unknown as string);
+  }
+  if (updates.lastSimEvents !== undefined) {
+    sets.push('last_sim_events = ?');
+    values.push(updates.lastSimEvents ?? null as unknown as string);
+  }
+  if (updates.partyOrigin !== undefined) {
+    sets.push('party_origin = ?');
+    values.push(updates.partyOrigin);
   }
 
   if (sets.length === 0) return;

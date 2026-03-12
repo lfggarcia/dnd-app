@@ -11,9 +11,12 @@ import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import { cyclesRemaining } from '../services/timeService';
 import { confirmLevelUps } from '../services/progressionService';
+import { checkForAbandonment } from '../services/moralSystem';
+import { InventoryGrid } from '../components/InventoryGrid';
+import { getItemsByGame } from '../database/itemRepository';
 import type { ScreenProps } from '../navigation/types';
 
-type CampTab = 'PARTY' | 'REST';
+type CampTab = 'PARTY' | 'REST' | 'INVENTORY';
 
 export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
   const { lang } = useI18n();
@@ -60,14 +63,34 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
   const handleLongRest = useCallback(async () => {
     // Long rest: full HP restore — costs 1 cycle
     const healed = partyData.map(c => ({ ...c, hp: c.alive ? c.maxHp : c.hp }));
-    updateProgress({ partyData: healed });
+
+    // Check for abandonment before committing the rest
+    if (activeGame) {
+      const { abandoned, remained, log } = checkForAbandonment(
+        healed,
+        activeGame.seedHash,
+        cycle,
+      );
+      if (abandoned.length > 0) {
+        updateProgress({ partyData: remained });
+        Alert.alert(
+          lang === 'es' ? '⚠ Deserción' : '⚠ Desertion',
+          log.join('\n'),
+        );
+      } else {
+        updateProgress({ partyData: healed });
+      }
+    } else {
+      updateProgress({ partyData: healed });
+    }
+
     await advanceCycle('REST_LONG');
     navigation.navigate('CycleTransition', {
       from: 'DAY',
       to: 'NIGHT',
       cycle: (cycle ?? 1) + LONG_REST_CYCLE_COST,
     });
-  }, [partyData, updateProgress, advanceCycle, navigation, cycle]);
+  }, [partyData, updateProgress, advanceCycle, navigation, cycle, activeGame, lang]);
 
   const handleWaitEndOfSeason = useCallback(async () => {
     const remaining = cyclesRemaining(cycle);
@@ -94,8 +117,9 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
 
   // ── Tab labels ───────────────────────────────────────────────────────────────
   const TABS: { key: CampTab; label: string }[] = [
-    { key: 'PARTY',   label: lang === 'es' ? 'PARTY'     : 'PARTY'  },
-    { key: 'REST',    label: lang === 'es' ? 'DESCANSO'  : 'REST'   },
+    { key: 'PARTY',     label: lang === 'es' ? 'PARTY'     : 'PARTY'     },
+    { key: 'REST',      label: lang === 'es' ? 'DESCANSO'  : 'REST'      },
+    { key: 'INVENTORY', label: lang === 'es' ? 'INVENTARIO': 'INVENTORY' },
   ];
 
   const partyWithPending = useMemo(
@@ -286,6 +310,29 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
                 </TouchableOpacity>
               </View>
             )}
+          </View>
+        )}
+
+        {/* INVENTORY TAB */}
+        {tab === 'INVENTORY' && activeGame && (
+          <View>
+            <Text className="text-primary/40 font-robotomono text-xs mb-3 px-1">
+              {lang === 'es' ? 'OBJETOS RECOGIDOS' : 'COLLECTED ITEMS'}
+            </Text>
+            <InventoryGrid
+              items={getItemsByGame(activeGame.id).map(item => ({
+                id: item.id,
+                name: item.name,
+                type: item.type,
+                rarity: item.rarity,
+                goldValue: item.goldValue,
+                data: item.data,
+              }))}
+              onItemPress={(item) => {
+                Alert.alert(item.name, `${item.rarity.toUpperCase()} · ${item.goldValue}G`);
+              }}
+              onItemEquip={() => {/* Equip in Sprint 7 with essenceService */}}
+            />
           </View>
         )}
       </ScrollView>

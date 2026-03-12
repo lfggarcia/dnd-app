@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
+import { updateSavedGame } from '../database/gameRepository';
 import type { ScreenProps } from '../navigation/types';
 
 export const UnificationScreen = ({ navigation, route }: ScreenProps<'Unification'>) => {
@@ -11,7 +12,6 @@ export const UnificationScreen = ({ navigation, route }: ScreenProps<'Unificatio
 
   const startNewGame  = useGameStore(s => s.startNewGame);
   const activeGame    = useGameStore(s => s.activeGame);
-  const updateProgress = useGameStore(s => s.updateProgress);
   const endGame       = useGameStore(s => s.endGame);
 
   const handleContinue = useCallback(() => {
@@ -28,17 +28,18 @@ export const UnificationScreen = ({ navigation, route }: ScreenProps<'Unificatio
           onPress: () => {
             // Mark the current game as IA-inherited so worldSimulator picks it up
             if (activeGame) {
-              updateProgress({ status: 'active' });
+              updateSavedGame(activeGame.id, { partyOrigin: 'IA_INHERITED' });
+              endGame('completed');
             }
-            // Navigate to Party creation for new party
+            // Navigate to Party creation for new party with inherited level
             const seed     = activeGame?.seed ?? '';
             const seedHash = activeGame?.seedHash ?? '';
-            navigation.navigate('Party', { seed, seedHash });
+            navigation.navigate('Party', { seed, seedHash, inheritedLevel });
           },
         },
       ],
     );
-  }, [lang, activeGame, updateProgress, navigation]);
+  }, [lang, activeGame, endGame, navigation]);
 
   const handleCancel = useCallback(() => {
     navigation.goBack();

@@ -43,3 +43,16 @@ export {
   escalateBounty,
 } from './eventRepository';
 export type { WorldEvent, WorldEventType, Bounty, CreateWorldEventInput, CreateBountyInput } from './eventRepository';
+
+// ─── Sprint 7 — Essence Repository ───────────────────────
+export {
+  saveEssenceDrop,
+  getEssencesByChar,
+  getEquippedCount,
+  equipEssence,
+  unequipEssence,
+  incrementMonsterKills,
+  getMonsterKills,
+} from './essenceRepository';
+export type { SavedEssence, EssenceSaveInput } from './essenceRepository';
+

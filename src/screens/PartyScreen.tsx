@@ -188,7 +188,7 @@ const SubclassAbilitiesPanel = memo(({
 
 export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   const { t, lang } = useI18n();
-  const { seed, seedHash } = route.params;
+  const { seed, seedHash, inheritedLevel } = route.params;
   const startNewGame = useGameStore(s => s.startNewGame);
   const tutorial = useTutorial(PARTY_TUTORIAL_STEPS);
 
@@ -241,7 +241,11 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
       setLaunchSubStep(null);
       try {
         const party = buildPartySaves();
-        startNewGame(seed, seedHash, party);
+        // R5: Apply inherited level if this seed had a previous party
+        const finalParty = inheritedLevel
+          ? party.map(c => ({ ...c, level: Math.max(c.level, inheritedLevel) }))
+          : party;
+        startNewGame(seed, seedHash, finalParty);
 
         const newPortraits: Record<string, string> = {};
         const totalMissing = party.filter(c => !c.portrait).length;

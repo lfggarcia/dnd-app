@@ -14,20 +14,18 @@ const DISMISS_DELAY_MS = 3500;
 
 function makeEmotion(overrides: Partial<EmotionState> = {}): EmotionState {
   return {
-    expression: 'DETERMINED',
+    expression: 'determined',
     family: 'RESOLUCION',
     intensity: 2,
     durationTurns: 3,
-    sourceEvent: 'ALLY_DIED',
+    sourceEvent: 'ALLY_DOWN',
     narrativeText: {
       narrator: 'The warrior steels themselves.',
       dialogue: 'We fight on!',
     },
     modifier: {
-      damageBonus: 0,
-      hitBonus: 0,
-      armorBonus: 0,
-      label: 'Resolved',
+      damageMult: 1.0,
+      accuracyMult: 1.0,
     },
     ...overrides,
   };

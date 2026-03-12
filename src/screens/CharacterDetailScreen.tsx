@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Alert,
   Image,
   Dimensions,
 } from 'react-native';
@@ -23,6 +24,9 @@ import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
 import { EXPRESSION_PRESETS } from '../services/geminiImageService';
 import { getItemsByGame } from '../database/itemRepository';
 import type { Item } from '../database/itemRepository';
+import { getEssencesByChar, equipEssence, unequipEssence, getEquippedCount } from '../database/essenceRepository';
+import type { SavedEssence } from '../database/essenceRepository';
+import { getEssenceSlots } from '../services/essenceService';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { Stats } from '../database/gameRepository';
@@ -220,8 +224,9 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
 
   const [selectedExpression, setSelectedExpression] = useState('neutral');
   const [fullscreenUri, setFullscreenUri] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'STATS' | 'EQUIPO'>('STATS');
+  const [activeTab, setActiveTab] = useState<'STATS' | 'EQUIPO' | 'ESENCIAS'>('STATS');
   const [charItems, setCharItems] = useState<Item[]>([]);
+  const [essenceList, setEssenceList] = useState<SavedEssence[]>([]);
 
   const char = party[charIndex];
   const expressions = expressionsJson[charIndex] ?? null;
@@ -236,6 +241,19 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
       setCharItems([]);
     }
   }, [activeGameId, char]);
+
+  const refreshEssences = useCallback(() => {
+    if (!activeGameId || !char) return;
+    try {
+      setEssenceList(getEssencesByChar(activeGameId, char.name));
+    } catch {
+      setEssenceList([]);
+    }
+  }, [activeGameId, char]);
+
+  useEffect(() => {
+    if (activeTab === 'ESENCIAS') refreshEssences();
+  }, [activeTab, refreshEssences]);
 
   // Portrait fade on expression change
   const portraitOpacity = useSharedValue(1);
@@ -419,7 +437,7 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
 
         {/* ── Tab Switcher ── */}
         <View style={S.tabRow}>
-          {(['STATS', 'EQUIPO'] as const).map(tab => (
+          {(['STATS', 'EQUIPO', 'ESENCIAS'] as const).map(tab => (
             <TouchableOpacity
               key={tab}
               style={[S.tabBtn, activeTab === tab && S.tabBtnActive]}
@@ -534,6 +552,81 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
                       )}
                     </View>
                   ))
+                )}
+              </View>
+            </View>
+          )}
+
+          {activeTab === 'ESENCIAS' && activeGameId && (
+            <View>
+              <View style={S.section}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionLine} />
+                  <Text style={S.sectionLabel}>
+                    {lang === 'es' ? 'ESENCIAS' : 'ESSENCES'}
+                  </Text>
+                  <View style={S.sectionLine} />
+                </View>
+
+                {/* Slot counter */}
+                <View style={S.essenceSlotRow}>
+                  <Text style={S.essenceSlotLabel}>
+                    {lang === 'es' ? 'SLOTS DISPONIBLES' : 'AVAILABLE SLOTS'}
+                  </Text>
+                  <Text style={S.essenceSlotValue}>
+                    {getEquippedCount(activeGameId, char.name)}/{getEssenceSlots(char.level, char.isAscended ?? false)}
+                    {char.isAscended ? ' (+1)' : ''}
+                  </Text>
+                </View>
+
+                {essenceList.length === 0 ? (
+                  <Text style={S.emptyEquip}>
+                    {lang === 'es' ? 'Sin esencias — derrota monstruos' : 'No essences — defeat monsters'}
+                  </Text>
+                ) : (
+                  essenceList.map(e => {
+                    const essenceColor =
+                      e.rank === 1 ? '#FFB000'
+                      : e.rank === 2 ? '#AAFF00'
+                      : 'rgba(0,255,65,0.8)';
+                    return (
+                      <View key={e.id} style={S.itemRow}>
+                        <View style={S.itemInfo}>
+                          <Text style={[S.itemName, { color: essenceColor }]}>
+                            {e.definitionId} · Rk{e.rank}
+                          </Text>
+                          <Text style={S.itemMeta}>
+                            {lang === 'es' ? `Evolución ${e.evolutionLevel}/3` : `Evolution ${e.evolutionLevel}/3`}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (e.equipped) {
+                              unequipEssence(e.id);
+                            } else {
+                              const slots = getEssenceSlots(char.level, char.isAscended ?? false);
+                              const equipped = getEquippedCount(activeGameId, char.name);
+                              if (equipped >= slots) {
+                                Alert.alert(
+                                  lang === 'es' ? 'Sin slots' : 'No slots',
+                                  lang === 'es' ? 'No hay slots disponibles' : 'No available slots',
+                                );
+                                return;
+                              }
+                              equipEssence(e.id, char.name, activeGameId);
+                            }
+                            refreshEssences();
+                          }}
+                        >
+                          <Text style={e.equipped ? S.equippedBadge : S.equipBtn}>
+                            {e.equipped
+                              ? (lang === 'es' ? 'DESEQUIPAR' : 'UNEQUIP')
+                              : (lang === 'es' ? 'EQUIPAR' : 'EQUIP')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })
                 )}
               </View>
             </View>
@@ -969,4 +1062,34 @@ const S = StyleSheet.create({
     paddingVertical: 2,
     letterSpacing: 1,
   },
+  equipBtn: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 9,
+    color: 'rgba(0,255,65,0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,65,0.35)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    letterSpacing: 1,
+  },
+  essenceSlotRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  essenceSlotLabel: {
+    fontFamily: 'RobotoMono-Regular',
+    fontSize: 10,
+    color: 'rgba(0,255,65,0.5)',
+    letterSpacing: 1,
+  },
+  essenceSlotValue: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 12,
+    color: 'rgba(0,255,65,0.9)',
+    letterSpacing: 1,
+  },
 });
+

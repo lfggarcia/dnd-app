@@ -10,6 +10,10 @@
  */
 
 import { makePRNG } from '../utils/prng';
+import { deriveBaseProfile, getActionWeights, maybeMutateProfile } from './aiProfileEngine';
+import type { AIProfile, AIAction } from './aiProfileEngine';
+import { createMemory, recordDecision, recordCombat, MUTATION_INTERVAL } from './aiMemoryService';
+import type { AIMemoryState } from './aiMemoryService';
 import type { RivalEntry } from './rivalGenerator';
 import type { SavedGame } from '../database/gameRepository';
 
@@ -43,8 +47,6 @@ export type SimulationResult = {
 
 // ─── Estado interno por party IA ──────────────────────────
 
-type AIProfile = 'AGGRESSIVE' | 'DEFENSIVE' | 'OPPORTUNISTIC' | 'EXPANSIONIST' | 'SURVIVALIST';
-
 type AIPartyState = {
   entry: RivalEntry;
   cycleProgress: number;
@@ -52,64 +54,20 @@ type AIPartyState = {
   gold: number;
   consecutiveLosses: number;
   profile: AIProfile;
+  memory: AIMemoryState;
 };
-
-type AIAction = 'explore' | 'fightMonster' | 'huntParty' | 'avoidCombat' | 'rest' | 'advanceFloor';
-
-// ─── Perfil estratégico ────────────────────────────────────
-
-/**
- * Perfil fijo derivado del nombre de la party (seed-based).
- * SYSTEMS.MD: "Perfil base generado al inicio: Aggressive, Defensive, Opportunistic..."
- */
-function deriveProfile(partyName: string, seedHash: string): AIProfile {
-  const rng = makePRNG(`${seedHash}_profile_${partyName}`);
-  const profiles: AIProfile[] = ['AGGRESSIVE', 'DEFENSIVE', 'OPPORTUNISTIC', 'EXPANSIONIST', 'SURVIVALIST'];
-  return profiles[Math.floor(rng.float() * profiles.length)];
-}
-
-/**
- * Pesos de decisión según perfil.
- * SYSTEMS.MD: "Aggressive: WeightHunt += 30%, WeightRest -= 20%"
- */
-function getProfileWeights(profile: AIProfile): Record<AIAction, number> {
-  const base: Record<AIAction, number> = {
-    explore:      0.30,
-    fightMonster: 0.25,
-    huntParty:    0.10,
-    avoidCombat:  0.15,
-    rest:         0.10,
-    advanceFloor: 0.10,
-  };
-
-  switch (profile) {
-    case 'AGGRESSIVE':
-      return { ...base, huntParty: 0.25, rest: 0.05, fightMonster: 0.35, avoidCombat: 0.05 };
-    case 'DEFENSIVE':
-      return { ...base, rest: 0.20, avoidCombat: 0.25, huntParty: 0.02, explore: 0.25 };
-    case 'OPPORTUNISTIC':
-      return { ...base, huntParty: 0.15, fightMonster: 0.30, advanceFloor: 0.20 };
-    case 'EXPANSIONIST':
-      return { ...base, advanceFloor: 0.30, explore: 0.25, huntParty: 0.05, rest: 0.05 };
-    case 'SURVIVALIST':
-      return { ...base, rest: 0.25, avoidCombat: 0.30, huntParty: 0.00, explore: 0.20 };
-    default:
-      return base;
-  }
-}
-
-// ─── Motor de decisión ────────────────────────────────────
 
 /**
  * SYSTEMS.MD: "UtilityScore = (ExpectedReward × WeightReward) - (ExpectedRisk × WeightRisk)"
  * Decide la próxima acción para este ciclo usando pesos ponderados + ruido.
+ * Now uses aiProfileEngine.getActionWeights() which integrates memory adaptation.
  */
 function decideAction(
   state: AIPartyState,
   nearbyRivals: AIPartyState[],
   rng: ReturnType<typeof makePRNG>,
 ): AIAction {
-  const weights = getProfileWeights(state.profile);
+  const weights = getActionWeights(state.profile, state.memory);
   const adjusted = { ...weights };
 
   // HP baja → priorizar descanso, evitar combate
@@ -321,7 +279,8 @@ export async function simulateWorld(
     hp: Math.max(10, 100 - rival.floor * 2),
     gold: rival.floor * 50,
     consecutiveLosses: 0,
-    profile: deriveProfile(rival.name, seedHash),
+    profile: deriveBaseProfile(rival.name, seedHash),
+    memory: createMemory(rival.name),
   }));
 
   // Simular ciclo por ciclo
@@ -341,7 +300,42 @@ export async function simulateWorld(
       );
 
       const action = decideAction(state, nearbyRivals, rng);
+      const prevHp = aiStates[i].hp;
       aiStates[i] = executeAction(state, action, nearbyRivals, rng, cycle, events);
+      const hpLost = Math.max(0, prevHp - aiStates[i].hp);
+
+      // Record decision + combat outcome into memory
+      const reward = aiStates[i].gold - state.gold;
+      aiStates[i].memory = recordDecision(
+        aiStates[i].memory,
+        action,
+        Math.max(0, reward),
+        hpLost,
+        cycle,
+      );
+      if (action === 'fightMonster' || action === 'huntParty') {
+        const outcome = hpLost < 30 ? 'WIN' : 'LOSS';
+        aiStates[i].memory = recordCombat(
+          aiStates[i].memory,
+          cycle,
+          state.entry.floor,
+          outcome,
+          hpLost,
+          Math.max(0, reward),
+        );
+      }
+
+      // Cultural mutation every MUTATION_INTERVAL cycles
+      if (cycle % MUTATION_INTERVAL === 0 && nearbyRivals.length > 0) {
+        aiStates[i].profile = maybeMutateProfile(
+          aiStates[i].profile,
+          aiStates[i].memory,
+          cycle,
+          seedHash,
+          nearbyRivals.map(r => r.profile),
+          nearbyRivals.map(r => r.memory),
+        );
+      }
     }
   }
 

@@ -11,8 +11,7 @@ import Animated, {
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { useI18n } from '../i18n';
-import { getLatestGameBySeedHash } from '../database/gameRepository';
-import { getInheritedLevel } from '../services/progressionService';
+import { checkSeedStatus } from '../services/seedUnificationService';
 
 // ─── Matrix rain — un solo intervalo en lugar de 12 ──────────────────────────
 const CHAR_LIST = '0123456789ABCDEF#!@$%&*';
@@ -71,12 +70,11 @@ export const SeedScreen = ({ navigation }: ScreenProps<'Seed'>) => {
     const hash = seed.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0).toString(16).toUpperCase();
     const navToDestination = () => {
       try {
-        const existing = getLatestGameBySeedHash(hash);
-        if (existing) {
-          const inheritedLevel = getInheritedLevel(existing.partyData);
+        const status = checkSeedStatus(hash);
+        if (status.type === 'EXISTING') {
           navigation.navigate('Unification', {
-            previousPartyNames: existing.partyData.map((c: { name: string }) => c.name),
-            inheritedLevel,
+            previousPartyNames: status.previousPartyNames,
+            inheritedLevel: status.inheritedLevel,
           });
         } else {
           navigation.navigate('Party', { seed, seedHash: hash });

@@ -9,7 +9,7 @@
  * and "Dungeon Graph Generator" design docs.
  */
 
-import { makePRNG as makeBasePRNG } from '../utils/prng';
+import { makePRNG } from '../utils/prng';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,8 +67,8 @@ export interface FloorExplorationState {
  * Floor-level PRNG adapter — wraps the shared makePRNG with extended API.
  * Uses string seed directly for proper namespace (RT-02).
  */
-function makePRNG(seedKey: string) {
-  const base = makeBasePRNG(seedKey);
+function makeDungeonRNG(seedKey: string) {
+  const base = makePRNG(seedKey);
   return {
     next(): number {
       return base.float();
@@ -129,7 +129,7 @@ function buildRoomTypePool(roomCount: number): RoomType[] {
 function buildRoomGraph(
   roomCount: number,
   secretCount: number,
-  rng: ReturnType<typeof makePRNG>,
+  rng: ReturnType<typeof makeDungeonRNG>,
 ): { rooms: Omit<DungeonRoom, 'label' | 'visited' | 'revealed' | 'mutated'>[]; secretIds: number[]; bossId: number; startId: number } {
   const rooms: Omit<DungeonRoom, 'label' | 'visited' | 'revealed' | 'mutated'>[] = [];
 
@@ -229,7 +229,7 @@ function buildRoomGraph(
  * - Called once per floor entry; subsequent entries re-use saved layout.
  */
 export function generateDungeonFloor(seedHash: string, floorIndex: number): DungeonFloor {
-  const rng = makePRNG(`${seedHash}_dungeon_${floorIndex}`);
+  const rng = makeDungeonRNG(`${seedHash}_dungeon_${floorIndex}`);
 
   const roomCount = rng.int(12, 20);
   const secretCount = rng.int(0, 3);
@@ -309,7 +309,7 @@ export function applyFloorMutations(
 ): DungeonFloor {
   if (cycle <= 1) return floor; // No mutations on first cycle
 
-  const rng = makePRNG(`${floor.seedHash}_mutations_${floor.floorIndex}_c${cycle}`);
+  const rng = makeDungeonRNG(`${floor.seedHash}_mutations_${floor.floorIndex}_c${cycle}`);
   const mutationChance = Math.min(0.1 * (cycle - 1), 0.6); // Up to 60% chance
 
   const updatedRooms = floor.rooms.map(r => {

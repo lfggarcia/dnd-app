@@ -18,8 +18,8 @@
  *   node scripts/generate-character-catalog.js --class fighter
  *   node scripts/generate-character-catalog.js --class fighter --race elf
  *
- * To fill 13 parties (52 characters) the script generates:
- *   12 classes × 4 race variants + 4 extra bonus entries = 52 entries minimum.
+ * To fill 14 parties (56 characters) the script generates:
+ *   12 classes × 4 race variants + 8 extra entries = 56 entries minimum.
  *
  * Requirements: Node 18+, ComfyUI at COMFY_URL with PerfectDeliberate v8 + LoRAs.
  */
@@ -125,9 +125,9 @@ const SUBCLASS_FLAVOR = {
 
 // ---------------------------------------------------------------------------
 // Catalog entries — 4+ variants per class covering different races/subclasses
-// Total: 52 entries which fills 13 parties (13 × 4 = 52)
+// Total: 56 entries which fills 14 parties (14 × 4 = 56)
 //
-// Key format: <charClass>_<race>_<n>  (n = 1..4)
+// Key format: <charClass>_<race>_<n>  (n = 1..5)
 // ---------------------------------------------------------------------------
 const CATALOG_ENTRIES = [
   // ── BARBARIAN (4 variants) ────────────────────────────────────────────────
@@ -403,6 +403,40 @@ const CATALOG_ENTRIES = [
     skin: 'warm scholar mixed-heritage skin', desc: 'half-elf abjuration wizard, protective rune field, defensive magical barriers',
     pose: 'cowboy shot, abjuration ward shield deployed, runic barrier glowing',
     bg:   'magical nexus ward, layered protective fields visible' },
+
+  // ── EXTRA ENTRIES — fills party #14 (entries 53–56) ──────────────────────
+  { key: 'barbarian_halfling_5', charClass: 'barbarian', race: 'halfling', subclass: 'berserker',
+    hair: 'curly wild auburn hair with bone beads', eyes: 'wild fearless green eyes',
+    skin: 'tanned nimble halfling skin', desc: 'halfling berserker, deceptively tiny frame, oversized greataxe, berserker rage face paint, primal ferocity',
+    pose: 'cowboy shot, leaping rage attack, axe raised overhead, battle cry',
+    bg:   'burning battlefield, fires all around, chaotic energy' },
+  { key: 'fighter_tiefling_5',  charClass: 'fighter', race: 'tiefling', subclass: 'battlemaster',
+    hair: 'short swept-back white hair, curved horns', eyes: 'sharp calculating crimson eyes',
+    skin: 'pale violet tiefling skin, infernal brand scar on cheek', desc: 'tiefling battle master, dark layered plate with gold trim, command presence, tactical greatspear',
+    pose: 'cowboy shot, parrying stance, tactical ready posture, battle map scroll at hip',
+    bg:   'dark military fortress, banners of war, torchlight' },
+  { key: 'ranger_dragonborn_5', charClass: 'ranger', race: 'dragonborn', subclass: 'hunter',
+    hair: 'no hair, dark scaled draconic head', eyes: 'sharp amber dragon eyes, hunter focus',
+    skin: 'dark forest-green dragon scales, lithe draconic build', desc: 'dragonborn ranger hunter, camouflage forest leather, twin recurve shortbows, apex predator presence',
+    pose: 'cowboy shot, crouched ambush stance, two arrows nocked simultaneously',
+    bg:   'dense tropical jungle, dappled emerald light, hidden predator shadows' },
+  { key: 'wizard_tiefling_5',   charClass: 'wizard', race: 'tiefling', subclass: 'abjuration',
+    hair: 'elegant silver upswept hair, small curved horns wrapped in silver wire', eyes: 'glowing arcane cyan eyes',
+    skin: 'midnight blue tiefling skin, arcane sigils self-tattooed', desc: 'tiefling abjuration wizard, pact-ward robes weaving infernal and arcane traditions, protective rune shields orbiting',
+    pose: 'cowboy shot, layered abjuration wards deployed, controlled powerful stance',
+    bg:   'ancient eldritch library, protective wards on every shelf, ward-light glow' },
+
+  // ── FINAL 2 ENTRIES — reaches 56 total (14 full parties of 4) ─────────────
+  { key: 'monk_tiefling_5',     charClass: 'monk', race: 'tiefling', subclass: 'open-hand',
+    hair: 'sleek dark hair pulled tight, small curved horns wrapped in dark cloth bindings', eyes: 'focused amber calm eyes',
+    skin: 'deep crimson tiefling skin, ki energy faint glow at knuckles', desc: 'tiefling open-hand monk, meditative calm contradicting infernal heritage, flowing wraps and bindings',
+    pose: 'cowboy shot, open-hand combat stance, ki energy shimmering around fists',
+    bg:   'twilight monastery courtyard, incense smoke, koi pond reflection' },
+  { key: 'druid_tiefling_6',    charClass: 'druid', race: 'tiefling', subclass: 'moon',
+    hair: 'wild unruly dark hair woven with forest flowers and vines, small curved horns', eyes: 'luminous silver moon eyes',
+    skin: 'deep violet tiefling skin, leaf and bark nature markings growing up arms', desc: 'tiefling moon druid, nature reclaiming infernal form, bioluminescent druidic tattoos, wild and serene',
+    pose: 'cowboy shot, wild shape initiation mid-transformation, moonlight pouring through',
+    bg:   'moonlit glade, wild shape wolf silhouette merging behind, aurora light' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -592,7 +626,7 @@ async function main() {
   const classes = [...new Set(CATALOG_ENTRIES.map(e => e.charClass))];
 
   console.log('\n=== TORRE · Character Catalog Generator ===');
-  console.log(`  Entries   : ${total} (${Math.ceil(total / 4)} full parties)`);
+  console.log(`  Entries   : ${total} (${Math.floor(total / 4)} full parties of 4)`);
   console.log(`  Classes   : ${classes.join(', ')}`);
   console.log(`  Resume    : ${resume ? 'ON' : 'OFF'}`);
   console.log(`  Filter    : ${filterClass ? `class=${filterClass}` : 'all'}${filterRace ? ` race=${filterRace}` : ''}`);

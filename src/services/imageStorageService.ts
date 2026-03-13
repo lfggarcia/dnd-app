@@ -6,8 +6,12 @@
  *
  * Without this service: 4 chars × 23 images × ~3 MB ≈ 276 MB in DB → crash.
  * With this service:    file URIs in DB + ~18 MB in RNFS.DocumentDirectoryPath.
+ *
+ * PF-01 compression: images are resized to 512px wide at 70% JPEG quality
+ * using react-native-image-manipulator → reduces ~3 MB originals to ~150 KB.
  */
 import RNFS from 'react-native-fs';
+import RNImageManipulator from 'react-native-image-manipulator';
 
 const PORTRAITS_DIR   = `${RNFS.DocumentDirectoryPath}/portraits`;
 const EXPRESSIONS_DIR = `${RNFS.DocumentDirectoryPath}/expressions`;
@@ -47,7 +51,27 @@ export async function savePortraitToFS(
     : `${characterId}_base.jpg`;
   const filePath = `${dir}/${filename}`;
 
-  await RNFS.writeFile(filePath, cleanBase64(base64Data), 'base64');
+  // Write original to a temp file first so the manipulator can read it
+  const tempPath = `${dir}/${characterId}_tmp_${Date.now()}.jpg`;
+  await RNFS.writeFile(tempPath, cleanBase64(base64Data), 'base64');
+
+  // Compress to 512px wide, 70% JPEG (PF-01: ~3 MB → ~150 KB, 15× reduction)
+  try {
+    const result = await RNImageManipulator.manipulate(
+      `file://${tempPath}`,
+      [{ resize: { width: 512 } }],
+      { compress: 0.7, format: 'jpeg' },
+    );
+    const compressedBase64 = await RNFS.readFile(result.uri.replace('file://', ''), 'base64');
+    await RNFS.writeFile(filePath, compressedBase64, 'base64');
+  } catch {
+    // Compression unavailable — fall back to original (still saves to FS, not DB)
+    await RNFS.moveFile(tempPath, filePath);
+    return `file://${filePath}`;
+  } finally {
+    RNFS.unlink(tempPath).catch(() => undefined);
+  }
+
   return `file://${filePath}`;
 }
 

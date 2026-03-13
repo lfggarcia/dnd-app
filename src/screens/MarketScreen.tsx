@@ -30,11 +30,11 @@ function generateMarketStock(seedHash: string, cycle: number, maxFloor: number):
   const used = new Set<number>();
 
   while (items.length < count && items.length < equipmentNames.length) {
-    const idx = rng.int(0, equipmentNames.length - 1);
+    const idx = rng.next(0, equipmentNames.length - 1);
     if (used.has(idx)) continue;
     used.add(idx);
 
-    const rarityRoll = rng.int(1, 100);
+    const rarityRoll = rng.next(1, 100);
     const rarity: 'common' | 'uncommon' | 'rare' =
       rarityRoll <= 60 ? 'common' : rarityRoll <= 90 ? 'uncommon' : 'rare';
 

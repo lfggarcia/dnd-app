@@ -38,7 +38,7 @@ export type AbandonCheckResult = {
 
 // ─── Helpers de alineamiento ──────────────────────────────
 
-function isGoodOrLawful(alignment: string): boolean {
+export function isGoodOrLawful(alignment: string): boolean {
   const l = alignment.toLowerCase();
   return l.includes('good') || l.includes('lawful') ||
          l.includes('bueno') || l.includes('legal');

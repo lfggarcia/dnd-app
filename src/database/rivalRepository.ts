@@ -2,6 +2,7 @@ import { getDB } from './connection';
 import type { RivalEntry } from '../services/rivalGenerator';
 import type { AIProfile } from '../services/aiProfileEngine';
 import type { AIMemoryState } from '../services/aiMemoryService';
+import type { Scalar } from '@op-engineering/op-sqlite';
 
 export interface PersistedRival {
   id: string;
@@ -17,24 +18,22 @@ export function saveRivals(seedHash: string, rivals: RivalEntry[], cycle: number
   if (rivals.length === 0) return;
   const db = getDB();
   const now = new Date().toISOString();
-  // op-sqlite: use executeBatch for multiple INSERTs — one native call vs N calls
-  db.executeBatch(
-    rivals.map(r => [
-      `INSERT OR REPLACE INTO rival_states
-       (id, seed_hash, floor, rep, profile, memory, last_cycle, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        `${seedHash}_${r.name}`,
-        seedHash,
-        r.floor,
-        r.rep ?? 0,
-        JSON.stringify('OPPORTUNISTIC' as AIProfile),
-        JSON.stringify({}),
-        cycle,
-        now,
-      ],
-    ] as [string, unknown[]]),
-  );
+  const sql = `INSERT OR REPLACE INTO rival_states
+     (id, seed_hash, floor, rep, profile, memory, last_cycle, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  for (const r of rivals) {
+    const params: Scalar[] = [
+      `${seedHash}_${r.name}`,
+      seedHash,
+      r.floor,
+      r.rep ?? 0,
+      JSON.stringify('OPPORTUNISTIC' as AIProfile),
+      JSON.stringify({}),
+      cycle,
+      now,
+    ];
+    db.executeSync(sql, params);
+  }
 }
 
 export function saveRivalsWithState(
@@ -47,37 +46,33 @@ export function saveRivalsWithState(
   if (rivals.length === 0) return;
   const db = getDB();
   const now = new Date().toISOString();
-  // op-sqlite: use executeBatch — one native call vs N calls (Best Practices § 6.3)
-  db.executeBatch(
-    rivals.map(r => {
-      const profile = profiles[r.name] ?? 'OPPORTUNISTIC';
-      const memory = memories[r.name] ?? {};
-      return [
-        `INSERT OR REPLACE INTO rival_states
-         (id, seed_hash, floor, rep, profile, memory, last_cycle, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          `${seedHash}_${r.name}`,
-          seedHash,
-          r.floor,
-          r.rep ?? 0,
-          JSON.stringify(profile),
-          JSON.stringify(memory),
-          cycle,
-          now,
-        ],
-      ] as [string, unknown[]];
-    }),
-  );
+  const sql = `INSERT OR REPLACE INTO rival_states
+       (id, seed_hash, floor, rep, profile, memory, last_cycle, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  for (const r of rivals) {
+    const profile = profiles[r.name] ?? 'OPPORTUNISTIC';
+    const memory = memories[r.name] ?? {};
+    const params: Scalar[] = [
+      `${seedHash}_${r.name}`,
+      seedHash,
+      r.floor,
+      r.rep ?? 0,
+      JSON.stringify(profile),
+      JSON.stringify(memory),
+      cycle,
+      now,
+    ];
+    db.executeSync(sql, params);
+  }
 }
 
 export function loadRivals(seedHash: string, limit = 15): PersistedRival[] {
   const db = getDB();
-  const rows = db.execute(
+  const result = db.executeSync(
     'SELECT * FROM rival_states WHERE seed_hash = ? ORDER BY floor DESC LIMIT ?',
     [seedHash, limit],
-  ).rows;
-  return rows.map(r => ({
+  );
+  return result.rows.map(r => ({
     id: r.id as string,
     seedHash: r.seed_hash as string,
     floor: r.floor as number,

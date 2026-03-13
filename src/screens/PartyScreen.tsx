@@ -33,7 +33,7 @@ import {
 } from '../constants/dnd5eLevel1';
 import { useGameStore } from '../stores/gameStore';
 import { generateCharacterPortrait, generateCharacterExpressions } from '../services/geminiImageService';
-import { hasCatalogPortraits } from '../services/characterCatalogService';
+import { hasCatalogPortraits, getCatalogPortrait, requireCatalogPortrait } from '../services/characterCatalogService';
 import type { Stats } from '../database/gameRepository';
 
 
@@ -270,21 +270,33 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
                 : `${remaining} of ${totalMissing} portraits remaining`,
             );
             try {
-              const uri = await generateCharacterPortrait(party[i]);
-              setCharPortraits(prev => ({ ...prev, [i]: uri }));
-              newPortraits[String(i)] = uri;
+              // Catalog-first: use prebuilt portrait if available (avoids runtime AI generation)
+              const catalogEntry = getCatalogPortrait(party[i].charClass, party[i].race ?? undefined);
+              if (catalogEntry && requireCatalogPortrait(catalogEntry) !== null) {
+                const uri = catalogEntry.portraitPath;
+                setCharPortraits(prev => ({ ...prev, [i]: uri }));
+                newPortraits[String(i)] = uri;
+                if (catalogEntry.expressions && Object.keys(catalogEntry.expressions).length > 0) {
+                  useGameStore.getState().saveCharacterExpressions({ [String(i)]: catalogEntry.expressions });
+                }
+              } else {
+                // Fallback: live generation via Gemini/ComfyUI
+                const uri = await generateCharacterPortrait(party[i]);
+                setCharPortraits(prev => ({ ...prev, [i]: uri }));
+                newPortraits[String(i)] = uri;
 
-              // Auto-generate expression variants (neutral, happy, angry, sad, surprised, wounded)
-              setLaunchStep(
-                lang === 'es'
-                  ? `Generando expresiones para ${party[i].name}`
-                  : `Generating expressions for ${party[i].name}`,
-              );
-              try {
-                const expressions = await generateCharacterExpressions(party[i], uri);
-                useGameStore.getState().saveCharacterExpressions({ [String(i)]: expressions });
-              } catch {
-                // Expression generation is non-blocking
+                // Auto-generate expression variants
+                setLaunchStep(
+                  lang === 'es'
+                    ? `Generando expresiones para ${party[i].name}`
+                    : `Generating expressions for ${party[i].name}`,
+                );
+                try {
+                  const expressions = await generateCharacterExpressions(party[i], uri);
+                  useGameStore.getState().saveCharacterExpressions({ [String(i)]: expressions });
+                } catch {
+                  // Expression generation is non-blocking
+                }
               }
             } catch {
               // Portrait failure is non-blocking

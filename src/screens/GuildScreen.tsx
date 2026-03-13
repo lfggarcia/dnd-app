@@ -1,4 +1,4 @@
-import React, { useMemo, memo, useState, useCallback } from 'react';
+import React, { useMemo, memo, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -226,6 +226,47 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
   const handleCharLongPress = useCallback((uri: string) => {
     setModalUri(uri);
   }, []);
+
+  // Auto-assign catalog portraits on mount for characters without a portrait.
+  // This ensures that when world creation skips illustration selection,
+  // the guild screen immediately shows prebuilt catalog portraits rather than
+  // showing a blank placeholder until the user manually long-presses.
+  useEffect(() => {
+    if (party.length === 0 || !activeGame) return;
+    const newPortraits: Record<string, string>              = {};
+    const newExpressions: Record<string, Record<string, string>> = {};
+
+    party.forEach((char, idx) => {
+      const alreadyHasPortrait =
+        !!char.portrait ||
+        !!(portraitsJson?.[String(idx)]);
+      if (alreadyHasPortrait) return;
+      if (!hasCatalogPortraits(char.charClass)) return;
+
+      const entry = getCatalogPortraitForNPC(
+        char.charClass,
+        char.race ?? 'human',
+        char.characterId ?? char.name,
+      );
+      if (!entry) return;
+      if (requireCatalogPortrait(entry) === null) return;
+
+      newPortraits[String(idx)] = entry.portraitPath;
+      if (entry.expressions && Object.keys(entry.expressions).length > 0) {
+        newExpressions[String(idx)] = entry.expressions as Record<string, string>;
+      }
+    });
+
+    if (Object.keys(newPortraits).length > 0) {
+      saveCharacterPortraits(newPortraits);
+    }
+    if (Object.keys(newExpressions).length > 0) {
+      Object.entries(newExpressions).forEach(([idx, exprs]) => {
+        useGameStore.getState().saveCharacterExpressions({ [idx]: exprs });
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentional: run only once on mount
 
   const handleGeneratePortrait = useCallback(async (idx: number) => {
     if (generatingForIdx !== null) return;

@@ -141,11 +141,69 @@ export function getCatalogExpressionKeys(entry: CatalogEntry): string[] {
 // ---------------------------------------------------------------------------
 
 const PORTRAIT_REQUIRE_MAP: Record<string, number> = {
-  // populated automatically when portraits are present in the bundle
   // ── BARBARIAN ──────────────────────────────────────────────────────────────
-  // barbarian_human_1:    require('../../assets/images/characters/barbarian/barbarian_human_1/portrait.png'),
-  // barbarian_half-orc_2: require('../../assets/images/characters/barbarian/barbarian_half-orc_2/portrait.png'),
-  // ... (uncomment after running generate-character-catalog.js)
+  'barbarian_human_1':      require('../../assets/images/characters/barbarian/barbarian_human_1/portrait.png'),
+  'barbarian_half-orc_2':   require('../../assets/images/characters/barbarian/barbarian_half-orc_2/portrait.png'),
+  'barbarian_dwarf_3':      require('../../assets/images/characters/barbarian/barbarian_dwarf_3/portrait.png'),
+  'barbarian_elf_4':        require('../../assets/images/characters/barbarian/barbarian_elf_4/portrait.png'),
+  // ── BARD ───────────────────────────────────────────────────────────────────
+  'bard_half-elf_1':        require('../../assets/images/characters/bard/bard_half-elf_1/portrait.png'),
+  'bard_human_2':           require('../../assets/images/characters/bard/bard_human_2/portrait.png'),
+  'bard_tiefling_3':        require('../../assets/images/characters/bard/bard_tiefling_3/portrait.png'),
+  'bard_gnome_4':           require('../../assets/images/characters/bard/bard_gnome_4/portrait.png'),
+  // ── CLERIC ─────────────────────────────────────────────────────────────────
+  'cleric_human_1':         require('../../assets/images/characters/cleric/cleric_human_1/portrait.png'),
+  'cleric_dwarf_2':         require('../../assets/images/characters/cleric/cleric_dwarf_2/portrait.png'),
+  'cleric_elf_3':           require('../../assets/images/characters/cleric/cleric_elf_3/portrait.png'),
+  'cleric_half-elf_4':      require('../../assets/images/characters/cleric/cleric_half-elf_4/portrait.png'),
+  'cleric_dragonborn_5':    require('../../assets/images/characters/cleric/cleric_dragonborn_5/portrait.png'),
+  // ── DRUID ──────────────────────────────────────────────────────────────────
+  'druid_elf_1':            require('../../assets/images/characters/druid/druid_elf_1/portrait.png'),
+  'druid_human_2':          require('../../assets/images/characters/druid/druid_human_2/portrait.png'),
+  'druid_gnome_3':          require('../../assets/images/characters/druid/druid_gnome_3/portrait.png'),
+  'druid_half-elf_4':       require('../../assets/images/characters/druid/druid_half-elf_4/portrait.png'),
+  // ── FIGHTER ────────────────────────────────────────────────────────────────
+  'fighter_human_1':        require('../../assets/images/characters/fighter/fighter_human_1/portrait.png'),
+  'fighter_elf_2':          require('../../assets/images/characters/fighter/fighter_elf_2/portrait.png'),
+  'fighter_dwarf_3':        require('../../assets/images/characters/fighter/fighter_dwarf_3/portrait.png'),
+  'fighter_half-orc_4':     require('../../assets/images/characters/fighter/fighter_half-orc_4/portrait.png'),
+  // ── MONK ───────────────────────────────────────────────────────────────────
+  'monk_human_1':           require('../../assets/images/characters/monk/monk_human_1/portrait.png'),
+  'monk_elf_2':             require('../../assets/images/characters/monk/monk_elf_2/portrait.png'),
+  'monk_halfling_3':        require('../../assets/images/characters/monk/monk_halfling_3/portrait.png'),
+  'monk_half-elf_4':        require('../../assets/images/characters/monk/monk_half-elf_4/portrait.png'),
+  // ── PALADIN ────────────────────────────────────────────────────────────────
+  'paladin_human_1':        require('../../assets/images/characters/paladin/paladin_human_1/portrait.png'),
+  'paladin_dwarf_2':        require('../../assets/images/characters/paladin/paladin_dwarf_2/portrait.png'),
+  'paladin_half-elf_3':     require('../../assets/images/characters/paladin/paladin_half-elf_3/portrait.png'),
+  'paladin_tiefling_4':     require('../../assets/images/characters/paladin/paladin_tiefling_4/portrait.png'),
+  'paladin_dragonborn_5':   require('../../assets/images/characters/paladin/paladin_dragonborn_5/portrait.png'),
+  // ── RANGER ─────────────────────────────────────────────────────────────────
+  'ranger_elf_1':           require('../../assets/images/characters/ranger/ranger_elf_1/portrait.png'),
+  'ranger_human_2':         require('../../assets/images/characters/ranger/ranger_human_2/portrait.png'),
+  'ranger_halfling_3':      require('../../assets/images/characters/ranger/ranger_halfling_3/portrait.png'),
+  'ranger_half-elf_4':      require('../../assets/images/characters/ranger/ranger_half-elf_4/portrait.png'),
+  // ── ROGUE ──────────────────────────────────────────────────────────────────
+  'rogue_halfling_1':       require('../../assets/images/characters/rogue/rogue_halfling_1/portrait.png'),
+  'rogue_human_2':          require('../../assets/images/characters/rogue/rogue_human_2/portrait.png'),
+  'rogue_tiefling_3':       require('../../assets/images/characters/rogue/rogue_tiefling_3/portrait.png'),
+  'rogue_half-elf_4':       require('../../assets/images/characters/rogue/rogue_half-elf_4/portrait.png'),
+  // ── SORCERER ───────────────────────────────────────────────────────────────
+  'sorcerer_human_1':       require('../../assets/images/characters/sorcerer/sorcerer_human_1/portrait.png'),
+  'sorcerer_tiefling_2':    require('../../assets/images/characters/sorcerer/sorcerer_tiefling_2/portrait.png'),
+  'sorcerer_elf_3':         require('../../assets/images/characters/sorcerer/sorcerer_elf_3/portrait.png'),
+  'sorcerer_half-elf_4':    require('../../assets/images/characters/sorcerer/sorcerer_half-elf_4/portrait.png'),
+  // ── WARLOCK ────────────────────────────────────────────────────────────────
+  'warlock_tiefling_1':     require('../../assets/images/characters/warlock/warlock_tiefling_1/portrait.png'),
+  'warlock_human_2':        require('../../assets/images/characters/warlock/warlock_human_2/portrait.png'),
+  'warlock_elf_3':          require('../../assets/images/characters/warlock/warlock_elf_3/portrait.png'),
+  'warlock_half-orc_4':     require('../../assets/images/characters/warlock/warlock_half-orc_4/portrait.png'),
+  // ── WIZARD — generate with: node scripts/generate-character-catalog.js --class wizard ──
+  // wizard_human_1:       require('../../assets/images/characters/wizard/wizard_human_1/portrait.png'),
+  // wizard_gnome_2:       require('../../assets/images/characters/wizard/wizard_gnome_2/portrait.png'),
+  // wizard_elf_3:         require('../../assets/images/characters/wizard/wizard_elf_3/portrait.png'),
+  // wizard_half-elf_4:    require('../../assets/images/characters/wizard/wizard_half-elf_4/portrait.png'),
+  // wizard_tiefling_5:    require('../../assets/images/characters/wizard/wizard_tiefling_5/portrait.png'),
 };
 
 const EXPRESSION_REQUIRE_MAP: Record<string, Record<string, number>> = {

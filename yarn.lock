@@ -1434,6 +1434,11 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@oguzhnatly/react-native-image-manipulator@^1.0.17":
+  version "1.0.17"
+  resolved "https://registry.yarnpkg.com/@oguzhnatly/react-native-image-manipulator/-/react-native-image-manipulator-1.0.17.tgz#deb98f2fc47f49d5195cd418d51d309c6b88d910"
+  integrity sha512-F6qJskKbPBe4adKv0+yL21UXm00jQuBI+qTtlpGvZfDaVhK81AbGqjCLV6PXWNo+rz2zxn30t2gm5X/5ssqlrw==
+
 "@op-engineering/op-sqlite@^15.2.5":
   version "15.2.5"
   resolved "https://registry.npmjs.org/@op-engineering/op-sqlite/-/op-sqlite-15.2.5.tgz"
@@ -6156,11 +6161,6 @@ react-native-gesture-handler@^2.30.0:
     "@egjs/hammerjs" "^2.0.17"
     hoist-non-react-statics "^3.3.0"
     invariant "^2.2.4"
-
-react-native-image-manipulator@^1.0.6:
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/react-native-image-manipulator/-/react-native-image-manipulator-1.0.6.tgz#704291184de3ebccf5eaccfbf2e250ef5abe1df5"
-  integrity sha512-MdbSlD144STW6iQThlg2WKyopTJYbWDDs19nng7QGlNO60nz7UGRZWNRuFL8LOURUnWn7Fa0zp5VLOSEOqyrnQ==
 
 react-native-is-edge-to-edge@1.2.1:
   version "1.2.1"

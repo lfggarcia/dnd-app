@@ -8,10 +8,10 @@
  * With this service:    file URIs in DB + ~18 MB in RNFS.DocumentDirectoryPath.
  *
  * PF-01 compression: images are resized to 512px wide at 70% JPEG quality
- * using react-native-image-manipulator → reduces ~3 MB originals to ~150 KB.
+ * using @oguzhnatly/react-native-image-manipulator → reduces ~3 MB originals to ~150 KB.
  */
 import RNFS from 'react-native-fs';
-import RNImageManipulator from 'react-native-image-manipulator';
+import RNImageManipulator from '@oguzhnatly/react-native-image-manipulator';
 
 const PORTRAITS_DIR   = `${RNFS.DocumentDirectoryPath}/portraits`;
 const EXPRESSIONS_DIR = `${RNFS.DocumentDirectoryPath}/expressions`;

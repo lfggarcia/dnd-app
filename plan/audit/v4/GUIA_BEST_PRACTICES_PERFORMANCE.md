@@ -176,8 +176,8 @@ El tamaño de 3MB por imagen es un problema de origen. La generación debe compr
 // geminiImageService.ts o donde se genera/recibe la imagen
 // Al recibir el base64 de la API:
 
-// Con react-native-image-manipulator (o similar)
-import ImageManipulator from 'react-native-image-manipulator';
+// Con @oguzhnatly/react-native-image-manipulator (o similar)
+import ImageManipulator from '@oguzhnatly/react-native-image-manipulator';
 
 const compressed = await ImageManipulator.manipulateAsync(
   tempUri,

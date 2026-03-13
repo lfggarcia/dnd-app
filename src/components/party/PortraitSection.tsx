@@ -15,6 +15,9 @@ type Props = {
   onToggleExpand: () => void;
   onGenerate: () => void;
   onView: () => void;
+  // Catalog picker
+  catalogAvailable?: boolean;
+  onSelectFromCatalog?: () => void;
 };
 
 const S = StyleSheet.create({
@@ -50,11 +53,19 @@ const S = StyleSheet.create({
   regenBtnText: { color: 'rgba(255,176,0,0.9)', fontFamily: 'RobotoMono-Bold', fontSize: 11, textAlign: 'center' },
   maxLabel: { color: 'rgba(0,255,65,0.35)', fontFamily: 'RobotoMono-Regular', fontSize: 9, textAlign: 'center', marginTop: 2 },
   errorText: { color: 'rgba(255,62,62,0.75)', fontFamily: 'RobotoMono-Regular', fontSize: 8, marginTop: 4 },
+  catalogBtn: {
+    borderWidth: 1, borderColor: 'rgba(0,255,65,0.55)', borderRadius: 4,
+    paddingVertical: 10, paddingHorizontal: 10,
+    backgroundColor: 'rgba(0,255,65,0.08)',
+    marginBottom: 5,
+  },
+  catalogBtnText: { color: 'rgba(0,255,65,0.95)', fontFamily: 'RobotoMono-Bold', fontSize: 11, textAlign: 'center' },
 });
 
 export const PortraitSection = memo(({
   lang, portrait, portraitRolls, generating, error,
   expanded, maxRolls, onToggleExpand, onGenerate, onView,
+  catalogAvailable, onSelectFromCatalog,
 }: Props) => (
   <>
     <TouchableOpacity onPress={onToggleExpand} activeOpacity={0.7} style={S.headerRow}>
@@ -80,13 +91,26 @@ export const PortraitSection = memo(({
 
         <View className="flex-1 ml-3">
           {!portrait ? (
-            <TouchableOpacity onPress={onGenerate} disabled={generating} style={[S.genBtn, { opacity: generating ? 0.5 : 1 }]}>
-              <Text style={S.genBtnText}>
-                {generating
-                  ? (lang === 'es' ? '⏳ GENERANDO...' : '⏳ GENERATING...')
-                  : (lang === 'es' ? '⚡ GENERAR RETRATO' : '⚡ GENERATE PORTRAIT')}
-              </Text>
-            </TouchableOpacity>
+            <View>
+              {catalogAvailable && onSelectFromCatalog && (
+                <TouchableOpacity
+                  onPress={onSelectFromCatalog}
+                  disabled={generating}
+                  style={[S.catalogBtn, { opacity: generating ? 0.5 : 1 }]}
+                >
+                  <Text style={S.catalogBtnText}>
+                    {lang === 'es' ? '🖼 SELECCIONAR RETRATO' : '🖼 SELECT PORTRAIT'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={onGenerate} disabled={generating} style={[S.genBtn, { opacity: generating ? 0.5 : 1 }]}>
+                <Text style={S.genBtnText}>
+                  {generating
+                    ? (lang === 'es' ? '⏳ GENERANDO...' : '⏳ GENERATING...')
+                    : (lang === 'es' ? '⚡ GENERAR (IA)' : '⚡ GENERATE (AI)')}
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <View>
               <TouchableOpacity onPress={onView} style={S.viewBtn}>

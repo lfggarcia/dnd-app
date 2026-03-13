@@ -191,9 +191,9 @@ export function deleteItemsByGame(gameId: string): void {
 /** Returns items obtained in the last session (since `sinceCycle`), capped at 50. */
 export function getRecentItems(gameId: string, sinceCycle: number): Item[] {
   const db = getDB();
-  const rows = db.execute(
+  const result = db.executeSync(
     'SELECT * FROM items WHERE owner_game_id = ? AND obtained_cycle >= ? ORDER BY obtained_cycle DESC LIMIT 50',
     [gameId, sinceCycle],
-  ).rows;
-  return (rows ?? []).map(rowToItem);
+  );
+  return (result.rows ?? []).map(rowToItem);
 }

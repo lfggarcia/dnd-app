@@ -77,4 +77,4 @@ yarn-error.log
 # Environment variables
 .env*
 
-./assets/*
+/assets/*

@@ -23,6 +23,7 @@ import Animated, {
 import { CRTOverlay } from '../components/CRTOverlay';
 import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
 import { EXPRESSION_PRESETS, generateCharacterPortrait, generateCharacterExpressions } from '../services/geminiImageService';
+import { getCatalogPortrait, hasCatalogPortraits, requireCatalogPortrait } from '../services/characterCatalogService';
 import { getItemsByGame } from '../database/itemRepository';
 import type { Item } from '../database/itemRepository';
 import { getEssencesByChar, equipEssence, unequipEssence, getEquippedCount } from '../database/essenceRepository';
@@ -266,6 +267,18 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
     if (!char || generatingPortrait) return;
     setGeneratingPortrait(true);
     try {
+      // Catalog-first: use prebuilt static portrait if available (avoids runtime AI generation)
+      if (hasCatalogPortraits(char.charClass)) {
+        const catalogEntry = getCatalogPortrait(char.charClass, char.race ?? undefined);
+        if (catalogEntry && requireCatalogPortrait(catalogEntry) !== null) {
+          saveCharacterPortraits({ [String(charIndex)]: catalogEntry.portraitPath });
+          if (catalogEntry.expressions && Object.keys(catalogEntry.expressions).length > 0) {
+            useGameStore.getState().saveCharacterExpressions({ [String(charIndex)]: catalogEntry.expressions });
+          }
+          return;
+        }
+      }
+      // Fallback: live generation via ComfyUI
       const uri = await generateCharacterPortrait(char);
       saveCharacterPortraits({ [String(charIndex)]: uri });
       // Also generate expression variants (non-blocking)

@@ -260,19 +260,21 @@ export function createSavedGame(
   seed: string,
   seedHash: string,
   partyData: CharacterSave[],
+  partyName: string | null = null,
 ): SavedGame {
   const db = getDB();
   const id = generateId();
   const now = new Date().toISOString();
 
   db.executeSync(
-    `INSERT INTO saved_games (id, seed, seed_hash, party_data, floor, cycle, cycle_raw, phase, gold, status, location, map_state, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 1, 1, 1.0, 'DAY', 0, 'active', 'village', NULL, ?, ?)`,
-    [id, seed, seedHash, JSON.stringify(leanParty(partyData)), now, now],
+    `INSERT INTO saved_games (id, seed, seed_hash, party_data, party_name, floor, cycle, cycle_raw, phase, gold, status, location, map_state, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 1, 1, 1.0, 'DAY', 0, 'active', 'village', NULL, ?, ?)`,
+    [id, seed, seedHash, JSON.stringify(leanParty(partyData)), partyName, now, now],
   );
 
   return {
     id, seed, seedHash, partyData,
+    partyName,
     floor: 1, cycle: 1, cycleRaw: 1.0, lastActionAt: null, lastSimEvents: null,
     phase: 'DAY', gold: 0, status: 'active',
     location: 'village', mapState: null, partyPortrait: null, portraitsJson: null, expressionsJson: null,

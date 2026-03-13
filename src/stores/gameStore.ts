@@ -32,7 +32,7 @@ type GameActions = {
   /** Load all saved games + last active into store */
   hydrate: () => void;
   /** Create a new game from seed + party, set as active */
-  startNewGame: (seed: string, seedHash: string, party: CharacterSave[]) => SavedGame;
+  startNewGame: (seed: string, seedHash: string, party: CharacterSave[], partyName?: string | null) => SavedGame;
   /** Resume a saved game by id */
   loadGame: (id: string) => boolean;
   /** Update current game progress (floor, cycle, phase, gold, party, location, mapState, safeZone, combatRoom) */
@@ -76,8 +76,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({ savedGames, activeGame, loading: false });
   },
 
-  startNewGame: (seed, seedHash, party) => {
-    const game = createSavedGame(seed, seedHash, party);
+  startNewGame: (seed, seedHash, party, partyName = null) => {
+    const game = createSavedGame(seed, seedHash, party, partyName);
     set(state => ({
       activeGame: game,
       savedGames: [game, ...state.savedGames],

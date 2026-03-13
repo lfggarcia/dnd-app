@@ -20,6 +20,8 @@ import { getActiveAlliances, terminateAlliance } from '../services/allianceServi
 import type { Alliance } from '../services/allianceService';
 import { getAllSavedGames } from '../database/gameRepository';
 import { generateCharacterPortrait, generateCharacterExpressions } from '../services/geminiImageService';
+import { savePortraitToFS, saveExpressionsToFS } from '../services/imageStorageService';
+import { getCatalogPortraitForNPC, requireCatalogPortrait, hasCatalogPortraits } from '../services/characterCatalogService';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { CharacterSave } from '../database/gameRepository';
@@ -231,11 +233,34 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
     if (!char) return;
     setGeneratingForIdx(idx);
     try {
-      const uri = await generateCharacterPortrait(char);
-      saveCharacterPortraits({ [String(idx)]: uri });
+      // Catalog-first: use local portrait if available and character has no portrait
+      if (!char.portrait && hasCatalogPortraits(char.charClass)) {
+        const entry = getCatalogPortraitForNPC(
+          char.charClass,
+          char.race ?? 'human',
+          char.characterId ?? char.name,
+        );
+        if (entry) {
+          const source = requireCatalogPortrait(entry);
+          if (source !== null) {
+            saveCharacterPortraits({ [String(idx)]: entry.portraitPath });
+            if (entry.expressions && Object.keys(entry.expressions).length > 0) {
+              useGameStore.getState().saveCharacterExpressions({ [String(idx)]: entry.expressions });
+            }
+            setGeneratingForIdx(null);
+            return;
+          }
+        }
+      }
+      // Fallback: ComfyUI live generation
+      const base64Uri = await generateCharacterPortrait(char);
+      // PF-01: persist file URI, not base64
+      const localUri = await savePortraitToFS(char.characterId, base64Uri);
+      saveCharacterPortraits({ [String(idx)]: localUri });
       try {
-        const expressions = await generateCharacterExpressions(char, uri);
-        useGameStore.getState().saveCharacterExpressions({ [String(idx)]: expressions });
+        const expressions = await generateCharacterExpressions(char, base64Uri);
+        const localExpressions = await saveExpressionsToFS(char.characterId, expressions);
+        useGameStore.getState().saveCharacterExpressions({ [String(idx)]: localExpressions });
       } catch { /* non-blocking */ }
     } catch (err) {
       __DEV__ && console.error('[Guild] portrait generation error:', err);

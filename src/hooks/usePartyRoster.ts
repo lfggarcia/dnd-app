@@ -17,6 +17,9 @@ import {
   pickRaceName,
 } from '../services/characterStats';
 import { generateCharacterPortrait, generateCharacterExpressions } from '../services/geminiImageService';
+import { savePortraitToFS, saveExpressionsToFS } from '../services/imageStorageService';
+import { requireCatalogPortrait } from '../services/characterCatalogService';
+import type { CatalogEntry } from '../services/characterCatalogService';
 import { useGameStore } from '../stores/gameStore';
 import { calcLvl1HP } from '../constants/dnd5eLevel1';
 import type { Stats, CharacterSave } from '../database/gameRepository';
@@ -86,6 +89,7 @@ export function usePartyRoster(lang: Lang) {
   const [portraitConfirmVisible, setPortraitConfirmVisible] = useState(false);
   const [portraitMissingCount, setPortraitMissingCount] = useState(0);
   const pendingLaunch = useRef<(() => void) | null>(null);
+  const [showCatalogPicker, setShowCatalogPicker] = useState(false);
 
   const current = roster[activeSlot];
 
@@ -202,14 +206,17 @@ export function usePartyRoster(lang: Lang) {
     setPortraitError(null);
     try {
       const char = buildPartySaves()[activeSlot];
-      const uri = await generateCharacterPortrait(char);
-      setCharPortraits(prev => ({ ...prev, [activeSlot]: uri }));
+      const base64Uri = await generateCharacterPortrait(char);
+      // PF-01: save to filesystem; persist file URI (not base64) in DB
+      const localUri = await savePortraitToFS(char.characterId, base64Uri);
+      setCharPortraits(prev => ({ ...prev, [activeSlot]: localUri }));
       setCharPortraitRolls(prev => ({ ...prev, [activeSlot]: (prev[activeSlot] ?? 0) + 1 }));
-      saveCharacterPortraits({ [String(activeSlot)]: uri });
+      saveCharacterPortraits({ [String(activeSlot)]: localUri });
       // Generate emotion variants (non-blocking)
       try {
-        const expressions = await generateCharacterExpressions(char, uri);
-        useGameStore.getState().saveCharacterExpressions({ [String(activeSlot)]: expressions });
+        const expressions = await generateCharacterExpressions(char, base64Uri);
+        const localExpressions = await saveExpressionsToFS(char.characterId, expressions);
+        useGameStore.getState().saveCharacterExpressions({ [String(activeSlot)]: localExpressions });
       } catch {
         // Expression generation failure is non-blocking
       }
@@ -221,6 +228,17 @@ export function usePartyRoster(lang: Lang) {
       setGeneratingPortraitFor(null);
     }
   }, [generatingPortraitFor, activeSlot, buildPartySaves, charPortraitRolls, saveCharacterPortraits]);
+
+  const handleSelectCatalogPortrait = useCallback((idx: number, entry: CatalogEntry) => {
+    const source = requireCatalogPortrait(entry);
+    if (source !== null) {
+      setCharPortraits(prev => ({ ...prev, [idx]: entry.portraitPath }));
+      saveCharacterPortraits({ [String(idx)]: entry.portraitPath });
+    }
+    if (entry.expressions && Object.keys(entry.expressions).length > 0) {
+      useGameStore.getState().saveCharacterExpressions({ [String(idx)]: entry.expressions });
+    }
+  }, [saveCharacterPortraits]);
 
   // ── Computed selections ──
 
@@ -314,5 +332,8 @@ export function usePartyRoster(lang: Lang) {
     addCharacter, removeCharacter,
     buildPartySaves, rerollStats, useStdArray,
     handleGeneratePortrait,
+    // Catalog picker
+    showCatalogPicker, setShowCatalogPicker,
+    handleSelectCatalogPortrait,
   };
 }

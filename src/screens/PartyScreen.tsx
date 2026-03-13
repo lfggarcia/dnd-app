@@ -13,6 +13,7 @@ import { GlossaryButton } from '../components/GlossaryModal';
 import { TutorialOverlay } from '../components/TutorialOverlay';
 import { RosterTabs } from '../components/party/RosterTabs';
 import { PortraitSection } from '../components/party/PortraitSection';
+import { CatalogPortraitPicker } from '../components/party/CatalogPortraitPicker';
 import { LaunchProgressModal } from '../components/party/LaunchProgressModal';
 import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
 import { useI18n, type Lang } from '../i18n';
@@ -32,6 +33,7 @@ import {
 } from '../constants/dnd5eLevel1';
 import { useGameStore } from '../stores/gameStore';
 import { generateCharacterPortrait, generateCharacterExpressions } from '../services/geminiImageService';
+import { hasCatalogPortraits } from '../services/characterCatalogService';
 import type { Stats } from '../database/gameRepository';
 
 
@@ -192,6 +194,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   const startNewGame = useGameStore(s => s.startNewGame);
   const tutorial = useTutorial(PARTY_TUTORIAL_STEPS);
   const [partyNameInput, setPartyNameInput] = useState('');
+  const [activeCatalogSlot, setActiveCatalogSlot] = useState<number | null>(null);
 
   const {
     races, classes, backgrounds, loading,
@@ -211,6 +214,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     updateCurrent, onClassChange, generateRandomName,
     addCharacter, removeCharacter, buildPartySaves,
     rerollStats, useStdArray, handleGeneratePortrait,
+    showCatalogPicker, setShowCatalogPicker, handleSelectCatalogPortrait,
   } = usePartyRoster(lang);
 
   const handlePortraitView = useCallback(() => {
@@ -444,6 +448,11 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
             onToggleExpand={() => setPortraitExpanded(v => !v)}
             onGenerate={handleGeneratePortrait}
             onView={handlePortraitView}
+            catalogAvailable={hasCatalogPortraits(current?.charClass ?? '')}
+            onSelectFromCatalog={() => {
+              setActiveCatalogSlot(activeSlot);
+              setShowCatalogPicker(true);
+            }}
           />
         </View>
 
@@ -881,6 +890,17 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
       <PortraitDetailModal
         uri={portraitDetailUri}
         onClose={handlePortraitDetailClose}
+      />
+      <CatalogPortraitPicker
+        visible={showCatalogPicker}
+        charClass={roster[activeCatalogSlot ?? 0]?.charClass ?? ''}
+        race={roster[activeCatalogSlot ?? 0]?.race}
+        lang={lang}
+        onSelect={(entry) => {
+          handleSelectCatalogPortrait(activeCatalogSlot ?? 0, entry);
+          setShowCatalogPicker(false);
+        }}
+        onClose={() => setShowCatalogPicker(false)}
       />
     </View>
   );

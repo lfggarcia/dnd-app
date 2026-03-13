@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, memo, useCallback, useRef, type ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, memo, useCallback, useRef, type ReactNode } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   ActivityIndicator, StyleSheet,
@@ -191,6 +191,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   const { seed, seedHash, inheritedLevel } = route.params;
   const startNewGame = useGameStore(s => s.startNewGame);
   const tutorial = useTutorial(PARTY_TUTORIAL_STEPS);
+  const [partyNameInput, setPartyNameInput] = useState('');
 
   const {
     races, classes, backgrounds, loading,
@@ -245,7 +246,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
         const finalParty = inheritedLevel
           ? party.map(c => ({ ...c, level: Math.max(c.level, inheritedLevel) }))
           : party;
-        startNewGame(seed, seedHash, finalParty);
+        startNewGame(seed, seedHash, finalParty, partyNameInput.trim() || `PARTY_${seed.slice(0, 6).toUpperCase()}`);
 
         const newPortraits: Record<string, string> = {};
         const totalMissing = party.filter(c => !c.portrait).length;
@@ -331,7 +332,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   }, [
     launchStep, roster, charPortraits, buildPartySaves, startNewGame, seed, seedHash,
     lang, setCharPortraits, setLaunchStep, setLaunchSubStep,
-    setPortraitMissingCount, setPortraitConfirmVisible, pendingLaunch, navigation,
+    setPortraitMissingCount, setPortraitConfirmVisible, pendingLaunch, navigation, partyNameInput,
   ]);
 
   // ── Loading State ──
@@ -852,6 +853,16 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
             <Text className="text-destructive font-robotomono text-[10px]">- {t('party.removeMember')}</Text>
           </TouchableOpacity>
         </View>
+        <TextInput
+          style={S.bannerInput}
+          value={partyNameInput}
+          onChangeText={setPartyNameInput}
+          placeholder={lang === 'es' ? 'NOMBRE DE LA PARTY...' : 'PARTY NAME...'}
+          placeholderTextColor="rgba(0,255,65,0.3)"
+          maxLength={24}
+          autoCapitalize="characters"
+          selectionColor="#00FF41"
+        />
         <TouchableOpacity
           onPress={handleLaunch}
           disabled={launchStep !== null}

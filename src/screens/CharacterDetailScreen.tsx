@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   Dimensions,
+  TextInput,
 } from 'react-native';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import Animated, {
@@ -221,6 +222,7 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
   const activeGame    = useGameStore(s => s.activeGame);
   const activeGameId  = useGameStore(s => s.activeGame?.id ?? null);
   const saveCharacterPortraits = useGameStore(s => s.saveCharacterPortraits);
+  const updateProgress = useGameStore(s => s.updateProgress);
   const party = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
   const expressionsJson = activeGame?.expressionsJson ?? {};
 
@@ -230,6 +232,8 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
   const [charItems, setCharItems] = useState<Item[]>([]);
   const [essenceList, setEssenceList] = useState<SavedEssence[]>([]);
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
 
   const char = party[charIndex];
   const expressions = expressionsJson[charIndex] ?? null;
@@ -288,6 +292,21 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
     );
     setSelectedExpression(key);
   }, [selectedExpression, portraitOpacity]);
+
+  const handleRename = useCallback(() => {
+    const trimmed = nameInput.trim().slice(0, 20);
+    if (!trimmed || trimmed === char?.name) {
+      setIsEditingName(false);
+      return;
+    }
+    const updatedParty = party.map(c =>
+      c.characterId === char.characterId
+        ? { ...c, name: trimmed }
+        : c,
+    );
+    updateProgress({ partyData: updatedParty });
+    setIsEditingName(false);
+  }, [nameInput, char, party, updateProgress]);
 
   const hpPct = char ? (char.maxHp > 0 ? char.hp / char.maxHp : 0) : 0;
   // UI-GAP-03: moral risk badge
@@ -430,7 +449,28 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
               <Text style={[S.statusBadge, { color: hpColor }]}>{statusLabel}</Text>
               <View style={[S.statusLine, { backgroundColor: hpColor }]} />
             </View>
-            <Text style={S.portraitName}>{char.name.toUpperCase()}</Text>
+            {isEditingName ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TextInput
+                  style={[S.portraitName, { borderBottomWidth: 1, borderBottomColor: '#00FF41', minWidth: 120, paddingBottom: 2 }]}
+                  value={nameInput}
+                  onChangeText={setNameInput}
+                  maxLength={20}
+                  autoFocus
+                  autoCapitalize="characters"
+                  selectionColor="#00FF41"
+                  onSubmitEditing={handleRename}
+                  onBlur={handleRename}
+                />
+                <TouchableOpacity onPress={handleRename} style={{ marginLeft: 8 }}>
+                  <Text style={{ color: '#00FF41', fontFamily: 'RobotoMono-Bold', fontSize: 12 }}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onLongPress={() => { setNameInput(char.name); setIsEditingName(true); }} activeOpacity={0.7}>
+                <Text style={S.portraitName}>{char.name.toUpperCase()}</Text>
+              </TouchableOpacity>
+            )}
             <Text style={S.portraitSub}>
               {char.race}  ·  {char.charClass}{char.subclass ? ` (${char.subclass})` : ''}
             </Text>

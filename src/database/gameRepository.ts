@@ -279,6 +279,7 @@ export function createSavedGame(
     phase: 'DAY', gold: 0, status: 'active',
     location: 'village', mapState: null, partyPortrait: null, portraitsJson: null, expressionsJson: null,
     inSafeZone: false, safeZoneRoomId: null,
+    combatRoomId: null, combatRoomType: null,
     partyOrigin: 'PLAYER', predecessorGameId: null, createdByPlayer: true, eliminationReason: null,
     killRecords: [],
     createdAt: now, updatedAt: now,

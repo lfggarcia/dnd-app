@@ -1,6 +1,6 @@
 /**
  * migrations.test.ts — DB migration system tests.
- * Verifies that runMigrations runs all 12 versions without throwing
+ * Verifies that runMigrations runs all 17 versions without throwing
  * and that the schema_version table is maintained correctly.
  */
 
@@ -55,10 +55,10 @@ describe('runMigrations', () => {
     expect(() => runMigrations()).not.toThrow();
   });
 
-  test('skips migrations when already at CURRENT_VERSION (12)', () => {
+  test('skips migrations when already at CURRENT_VERSION (17)', () => {
     mockDB.executeSync.mockImplementation((sql: string) => {
       if (sql.includes('SELECT MAX(version)')) {
-        return { rows: [{ v: 12 }] };
+        return { rows: [{ v: 17 }] };
       }
       return { rows: [] };
     });
@@ -83,9 +83,9 @@ describe('runMigrations', () => {
     const calls = mockDB.executeSync.mock.calls.map((c: unknown[]) => c[0] as string);
     const beginCalls = calls.filter((s: string) => s.includes('BEGIN TRANSACTION'));
     const commitCalls = calls.filter((s: string) => s.includes('COMMIT'));
-    // 12 versions → 12 begin + 12 commit
-    expect(beginCalls.length).toBe(12);
-    expect(commitCalls.length).toBe(12);
+    // 17 versions → 17 begin + 17 commit
+    expect(beginCalls.length).toBe(17);
+    expect(commitCalls.length).toBe(17);
   });
 
   test('rolls back and rethrows on migration error', () => {

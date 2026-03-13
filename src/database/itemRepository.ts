@@ -195,5 +195,5 @@ export function getRecentItems(gameId: string, sinceCycle: number): Item[] {
     'SELECT * FROM items WHERE owner_game_id = ? AND obtained_cycle >= ? ORDER BY obtained_cycle DESC LIMIT 50',
     [gameId, sinceCycle],
   );
-  return (result.rows ?? []).map(rowToItem);
+  return (result.rows ?? []).map(r => rowToItem(r as ItemRow));
 }

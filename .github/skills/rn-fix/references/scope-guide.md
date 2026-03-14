@@ -9,7 +9,7 @@ Cuando el usuario dice "aplica la auditoría" sin especificar más, presentar es
 ### Modo 1: Todo en orden
 **Frase:** "aplica todo" / "ejecuta todo" / "resuelve todo"  
 **Comportamiento:** Ejecuta Fase 1 → 2 → 3 → 4 en orden completo  
-**Cuándo sugerirlo:** Sesión dedicada con tiempo suficiente
+**Cuándo sugerirlo:** Siempre
 
 ---
 

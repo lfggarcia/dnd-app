@@ -213,10 +213,10 @@ export const GlossaryModal = ({
   const [dbEntries, setDbEntries] = useState<GlossaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load DB entries when category or lang changes
+  // Load DB entries when category or lang changes (only when modal is visible)
   useEffect(() => {
     const endpoint = DB_ENDPOINTS[activeCategory];
-    if (!endpoint) {
+    if (!endpoint || !visible) {
       setDbEntries([]);
       setLoading(false);
       return;
@@ -271,7 +271,7 @@ export const GlossaryModal = ({
     return () => {
       cancelled = true;
     };
-  }, [activeCategory, lang]);
+  }, [activeCategory, lang, visible]);
 
   // Merge i18n and DB entries, apply search filter
   const entries = useMemo(() => {

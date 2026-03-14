@@ -378,7 +378,7 @@ export const CLASS_ABILITIES: Record<string, ClassAbility> = {
   wizard:    { name: 'MISIL_MAGICO',     description: '3x(1d4+1) sin falla',   targetType: 'enemy' },
   cleric:    { name: 'PALABRA_CURATIVA', description: 'Curar 1d4+SAB aliado',  targetType: 'ally'  },
   druid:     { name: 'ENREDAR',          description: 'Saltar turno enemigo',  targetType: 'enemy' },
-  monk:      { name: 'LLUVIA_GOLPES',    description: '2 golpes 1d4+FUE',      targetType: 'enemy' },
+  monk:      { name: 'LLUVIA_DE_GOLPES', description: '2 golpes 1d4+FUE',      targetType: 'enemy' },
   bard:      { name: 'INSPIRAR',         description: '+1d6 proximo ataque',   targetType: 'ally'  },
   sorcerer:  { name: 'ORBE_CROMATICO',   description: '3d8 fuerza a enemigo',  targetType: 'enemy' },
   warlock:   { name: 'EXPLOSION_OSCURA', description: '1d10 poder oscuro',     targetType: 'enemy' },
@@ -947,7 +947,7 @@ export function buildCombatResultFromLive(
   const ABILITY_MARKERS = [
     'FURIA', 'SEGUNDO_ALIENTO', 'GOLPE_DIVINO', 'MARCA_CAZADOR',
     'ATAQUE_FURTIVO', 'MISIL_MAGICO', 'PALABRA_CURATIVA', 'ENREDAR',
-    'LLUVIA_GOLPES', 'INSPIRAR', 'ORBE_CROMATICO', 'EXPLOSION_OSCURA',
+    'LLUVIA_DE_GOLPES', 'INSPIRAR', 'ORBE_CROMATICO', 'EXPLOSION_OSCURA',
   ];
   state.log.forEach(line => {
     const marker = ABILITY_MARKERS.find(m => line.includes(m));

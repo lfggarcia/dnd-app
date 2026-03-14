@@ -163,45 +163,50 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   setCombatResult: (result) => set({ lastCombatResult: result }),
 
   advanceCycle: async (action) => {
-    const { activeGame } = get();
-    if (!activeGame) return;
+    const { activeGame, loading } = get();
+    if (!activeGame || loading) return; // CR-017: guard against double-tap race condition
 
-    const { advanceTime } = await import('../services/timeService');
-    const { newCycleRaw, newCycle } = advanceTime(activeGame.cycleRaw ?? activeGame.cycle, action);
+    set({ loading: true });
+    try {
+      const { advanceTime } = await import('../services/timeService');
+      const { newCycleRaw, newCycle } = advanceTime(activeGame.cycleRaw ?? activeGame.cycle, action);
 
-    // GAP-04: only run world simulation when a full cycle integer boundary is crossed
-    const prevCycleInt = Math.floor(activeGame.cycleRaw ?? activeGame.cycle);
-    const newCycleInt  = Math.floor(newCycleRaw);
+      // GAP-04: only run world simulation when a full cycle integer boundary is crossed
+      const prevCycleInt = Math.floor(activeGame.cycleRaw ?? activeGame.cycle);
+      const newCycleInt  = Math.floor(newCycleRaw);
 
-    let simResult = { events: [] as import('../services/worldSimulator').SimulationEvent[], updatedRivals: [] as import('../services/rivalGenerator').RivalEntry[] };
-    if (newCycleInt !== prevCycleInt) {
-      const { simulateWorld } = await import('../services/worldSimulator');
-      simResult = await simulateWorld(
-        activeGame.seedHash,
-        newCycleInt,
-        activeGame,
-        prevCycleInt + 1, // only simulate new cycles, not from the beginning
-      );
-      // GAP-01: persist updated rival states with memory
-      if (simResult.updatedRivals.length > 0) {
-        saveRivals(activeGame.seedHash, simResult.updatedRivals, newCycleInt);
+      let simResult = { events: [] as import('../services/worldSimulator').SimulationEvent[], updatedRivals: [] as import('../services/rivalGenerator').RivalEntry[] };
+      if (newCycleInt !== prevCycleInt) {
+        const { simulateWorld } = await import('../services/worldSimulator');
+        simResult = await simulateWorld(
+          activeGame.seedHash,
+          newCycleInt,
+          activeGame,
+          prevCycleInt + 1, // only simulate new cycles, not from the beginning
+        );
+        // GAP-01: persist updated rival states with memory
+        if (simResult.updatedRivals.length > 0) {
+          saveRivals(activeGame.seedHash, simResult.updatedRivals, newCycleInt);
+        }
       }
+
+      const updates = {
+        cycleRaw: newCycleRaw,
+        cycle: newCycleInt,
+        ...(simResult.events.length > 0 && {
+          lastSimEvents: JSON.stringify(simResult.events),
+          lastActionAt: new Date().toISOString(),
+        }),
+      };
+
+      updateSavedGame(activeGame.id, updates as Parameters<typeof updateSavedGame>[1]);
+      set({
+        activeGame: { ...activeGame, ...updates, updatedAt: new Date().toISOString() },
+        ...(simResult.events.length > 0 && { lastSimulationEvents: simResult.events }),
+      });
+    } finally {
+      set({ loading: false });
     }
-
-    const updates = {
-      cycleRaw: newCycleRaw,
-      cycle: newCycleInt,
-      ...(simResult.events.length > 0 && {
-        lastSimEvents: JSON.stringify(simResult.events),
-        lastActionAt: new Date().toISOString(),
-      }),
-    };
-
-    updateSavedGame(activeGame.id, updates as Parameters<typeof updateSavedGame>[1]);
-    set({
-      activeGame: { ...activeGame, ...updates, updatedAt: new Date().toISOString() },
-      ...(simResult.events.length > 0 && { lastSimulationEvents: simResult.events }),
-    });
   },
 
   advanceToVillage: async () => {
@@ -213,7 +218,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     const { newCycle } = advanceToEndOfSeason(activeGame.cycleRaw ?? activeGame.cycle);
 
-    const simResult = await simulateWorld(activeGame.seedHash, newCycle, activeGame);
+    const simResult = await simulateWorld(
+      activeGame.seedHash,
+      newCycle as number,
+      activeGame,
+      (activeGame.cycle ?? 1) + 1, // CR-010: continue from current cycle, don't re-simulate from 0
+    );
 
     // GAP-01: persist updated rival states with memory
     if (simResult.updatedRivals.length > 0) {

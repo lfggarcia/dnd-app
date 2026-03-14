@@ -91,7 +91,7 @@ export const NegotiationScreen = ({ navigation, route }: ScreenProps<'Negotiatio
         navigation.navigate('Battle', { roomId: `rival_flee_${rivalName}`, roomType: 'ELITE' });
       }, 1500);
     }
-  }, [partyData, navigation, rivalName]);
+  }, [partyData, navigation, rivalName, seedHash, cycle]);
 
   const handleProposeAlliance = useCallback(() => {
     // Navigate to AllianceScreen with context

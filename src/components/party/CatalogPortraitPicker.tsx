@@ -151,6 +151,15 @@ export const CatalogPortraitPicker = memo(({
                 />
               )}
               showsVerticalScrollIndicator={false}
+              // CR-065: layout hints to avoid measuring all items on first render
+              getItemLayout={(_, index) => ({
+                length: THUMB_SIZE + 8,
+                offset: (THUMB_SIZE + 8) * Math.floor(index / 3),
+                index,
+              })}
+              windowSize={5}
+              maxToRenderPerBatch={12}
+              initialNumToRender={12}
             />
           )}
 

@@ -164,9 +164,15 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const updateProgress = useGameStore(s => s.updateProgress);
   const partyData = useGameStore(s => s.activeGame?.partyData ?? []);
   const advanceCycle = useGameStore(s => s.advanceCycle);
+  // CR-026: granular selectors for high-frequency fields to prevent full-object re-renders
+  const activeSeedHash = useGameStore(s => s.activeGame?.seedHash ?? '0');
+  const activeMapState = useGameStore(s => s.activeGame?.mapState ?? null);
+  const activeFloor = useGameStore(s => s.activeGame?.floor ?? 1);
+  const activeCycle = useGameStore(s => s.activeGame?.cycle ?? 1);
+  const combatRoomId = useGameStore(s => s.activeGame?.combatRoomId ?? null);
 
-  const floorIndex = activeGame?.floor ?? 1;
-  const cycle = activeGame?.cycle ?? 1;
+  const floorIndex = activeFloor;
+  const cycle = activeCycle;
 
   const [saveExitVisible, setSaveExitVisible] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<DungeonRoom | null>(null);
@@ -174,10 +180,10 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
 
   // ─── Floor state — built from dungeonGraphService ──────────────────────────
   const [floor, setFloor] = useState<DungeonFloor>(() => {
-    let base = generateDungeonFloor(activeGame?.seedHash ?? '0', floorIndex);
+    let base = generateDungeonFloor(activeSeedHash, floorIndex);
     base = applyFloorMutations(base, cycle);
 
-    const explores = parseExplorationState(activeGame?.mapState);
+    const explores = parseExplorationState(activeMapState);
     if (explores && explores.floorIndex === floorIndex) {
       return applyExplorationState(base, explores);
     }
@@ -186,7 +192,7 @@ export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   });
 
   const [currentRoomId, setCurrentRoomId] = useState<number>(() => {
-    const explores = parseExplorationState(activeGame?.mapState);
+    const explores = parseExplorationState(activeMapState);
     if (explores && explores.floorIndex === floorIndex) return explores.currentRoomId;
     return floor.startRoomId;
   });

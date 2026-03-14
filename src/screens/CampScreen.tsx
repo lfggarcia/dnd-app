@@ -92,7 +92,7 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
     });
   }, [partyData, updateProgress, advanceCycle, navigation, cycle, activeGame, lang]);
 
-  const handleWaitEndOfSeason = useCallback(async () => {
+  const handleWaitEndOfSeason = useCallback(() => {
     const remaining = cyclesRemaining(cycle);
     if (remaining === 0) {
       Alert.alert(
@@ -102,9 +102,7 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
       return;
     }
     navigation.navigate('SimulationLoading', { fromCycle: cycle });
-    await advanceToVillage();
-    navigation.navigate('Village');
-  }, [cycle, advanceToVillage, navigation, lang]);
+  }, [cycle, navigation, lang]);
 
   // ── HP color helper ───────────────────────────────────────────────────────────
   const hpColor = (hp: number, maxHp: number) => {

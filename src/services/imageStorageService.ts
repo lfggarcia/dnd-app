@@ -51,8 +51,9 @@ export async function savePortraitToFS(
     : `${characterId}_base.jpg`;
   const filePath = `${dir}/${filename}`;
 
-  // Write original to a temp file first so the manipulator can read it
-  const tempPath = `${dir}/${characterId}_tmp_${Date.now()}.jpg`;
+  // CR-066: include expressionKey in temp name to avoid collisions when called in parallel
+  const tempSuffix = expressionKey ?? 'base';
+  const tempPath = `${dir}/${characterId}_tmp_${tempSuffix}.jpg`;
   await RNFS.writeFile(tempPath, cleanBase64(base64Data), 'base64');
 
   // Compress to 512px wide, 70% JPEG (PF-01: ~3 MB → ~150 KB, 15× reduction)

@@ -6,7 +6,8 @@ import Animated, {
   useAnimatedStyle, 
   withRepeat, 
   withTiming, 
-  withSequence 
+  withSequence,
+  cancelAnimation,
 } from 'react-native-reanimated';
 
 // Single SVG node replaces 100 View nodes — pattern tile repeats infinitely
@@ -41,8 +42,9 @@ export const CRTOverlay = memo(() => {
       -1,
       true
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // CR-060: cancel animation on unmount to prevent orphaned Reanimated worklets
+    return () => cancelAnimation(flicker);
+  }, [flicker]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: 1 - flicker.value + 0.05,

@@ -53,7 +53,9 @@ export function awardXP(
     if (!char.alive) return char;
     const newXP = (char.xp ?? 0) + xpPerChar;
     const newLevel = Math.min(MAX_LEVEL_MVP, getLevelForXP(newXP));
-    const pendingGained = Math.max(0, newLevel - (char.level ?? 1));
+    // Use effective level (current level + already-pending) to avoid double-counting
+    const effectiveLevel = (char.level ?? 1) + (char.pendingLevelUps ?? 0);
+    const pendingGained = Math.max(0, newLevel - effectiveLevel);
     return {
       ...char,
       xp: newXP,

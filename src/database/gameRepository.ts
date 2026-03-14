@@ -178,9 +178,13 @@ function rowToSavedGame(row: SavedGameRow): SavedGame {
     seedHash: row.seed_hash,
     partyName: (row.party_name as string | null) ?? null,
     partyData: (() => {
-      const parsed = JSON.parse(row.party_data) as CharacterSave[];
-      // Retrocompat: ensure every character has a characterId (NI-09)
-      return parsed.map(c => c.characterId ? c : { ...c, characterId: generateId() });
+      try {
+        const parsed = JSON.parse(row.party_data) as CharacterSave[];
+        // Retrocompat: ensure every character has a characterId (NI-09)
+        return parsed.map(c => c.characterId ? c : { ...c, characterId: generateId() });
+      } catch {
+        return []; // corrupted save — treat as empty to avoid crash on store hydrate
+      }
     })(),
     floor: row.floor,
     cycle: row.cycle,

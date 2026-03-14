@@ -107,8 +107,8 @@ const LABELS: Record<RoomType, readonly string[]> = {
 
 function buildRoomTypePool(roomCount: number): RoomType[] {
   // Guaranteed rooms: START x1, BOSS x1, ELITE x1
-  // Rest distributed as: ~50% NORMAL, ~20% EVENT, ~15% TREASURE, ~15% ELITE
-  const pool: RoomType[] = [];
+  // CR-007: start pool with the guaranteed ELITE so the last room isn't left without a type
+  const pool: RoomType[] = ['ELITE'];
   const variable = roomCount - 3; // minus START, BOSS, 1 fixed ELITE
   for (let i = 0; i < variable; i++) {
     const roll = i / variable;

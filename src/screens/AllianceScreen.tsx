@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { useI18n } from '../i18n';
@@ -38,8 +38,11 @@ export const AllianceScreen = ({ navigation }: ScreenProps<'Alliance'>) => {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Available rivals to propose alliance to
-  const rivals = generateRivals(seedHash, floor, cycle).filter(r => r.status !== 'defeated');
+  // CR-034: memoize — generateRivals is expensive and only changes when seed/floor/cycle change
+  const rivals = useMemo(
+    () => generateRivals(seedHash, floor, cycle).filter(r => r.status !== 'defeated'),
+    [seedHash, floor, cycle],
+  );
 
   const handleFormAlliance = useCallback((rivalName: string) => {
     if (gold < PROPOSAL_FEE) {

@@ -33,13 +33,15 @@ export const CycleTransitionScreen = ({ navigation, route }: ScreenProps<'CycleT
   ], [t, nextCycle, simSummaries]);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
+    const fadeIn = Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 800,
       useNativeDriver: true,
-    }).start();
+    });
+    fadeIn.start();
 
-    Animated.loop(
+    // CR-028: store loop ref to stop animation on unmount and prevent memory leak
+    const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1,
@@ -52,7 +54,9 @@ export const CycleTransitionScreen = ({ navigation, route }: ScreenProps<'CycleT
           useNativeDriver: true,
         }),
       ]),
-    ).start();
+    );
+    pulseLoop.start();
+    return () => { fadeIn.stop(); pulseLoop.stop(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

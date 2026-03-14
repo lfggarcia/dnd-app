@@ -69,18 +69,21 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
 
   const activeGameId = useGameStore(s => s.activeGame?.id ?? null);
 
-  const inventoryItems = useMemo<LootDrop[]>(() => {
-    if (!showArmory || !activeGameId) return [];
+  const [inventoryItems, setInventoryItems] = useState<LootDrop[]>([]);
+
+  // CR-024: DB queries must be in useEffect, not useMemo (blocks JS thread during render)
+  useEffect(() => {
+    if (!showArmory || !activeGameId) { setInventoryItems([]); return; }
     try {
-      return getItemsByGame(activeGameId).map(item => ({
+      setInventoryItems(getItemsByGame(activeGameId).map(item => ({
         id: item.id,
         name: item.name,
         type: item.type,
         rarity: item.rarity,
         goldValue: item.goldValue,
         data: item.data,
-      }));
-    } catch { return []; }
+      })));
+    } catch { setInventoryItems([]); }
   }, [showArmory, activeGameId]);
 
   // Mark location as village on mount

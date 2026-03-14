@@ -101,7 +101,8 @@ export function checkForAbandonment(
     }
 
     const morale = char.morale ?? MORALE_INITIAL;
-    const atRisk = morale < ABANDON_THRESHOLD && isGoodOrLawful(char.alignment ?? '');
+    // CR-014: DnD 5e — Chaotic/Evil characters desert for self-interest; Lawful/Good stay loyal
+    const atRisk = morale < ABANDON_THRESHOLD && !isGoodOrLawful(char.alignment ?? '');
 
     if (atRisk) {
       const abandonChance = (ABANDON_THRESHOLD - morale) / ABANDON_THRESHOLD;

@@ -107,8 +107,10 @@ function decideAction(
     adjusted[key] = Math.max(0, adjusted[key] + noise);
   }
 
-  // Normalizar pesos
+  // CR-011: guard against all weights being 0 to prevent NaN from division by zero
   const total = Object.values(adjusted).reduce((s, v) => s + v, 0);
+  if (total <= 0) return 'explore';
+
   const normalized = Object.fromEntries(
     Object.entries(adjusted).map(([k, v]) => [k, v / total]),
   ) as Record<AIAction, number>;
@@ -390,6 +392,14 @@ export async function simulateWorld(
           nearbyRivals.map(r => r.profile),
           nearbyRivals.map(r => r.memory),
         );
+      }
+    }
+
+    // CR-009: purge defeated SYSTEM parties to prevent unbounded aiStates growth
+    for (let i = aiStates.length - 1; i >= 0; i--) {
+      if (aiStates[i].entry.status === 'defeated' &&
+          aiStates[i].entry.name.startsWith('SYSTEM_')) {
+        aiStates.splice(i, 1);
       }
     }
   }

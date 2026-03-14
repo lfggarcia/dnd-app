@@ -2,13 +2,13 @@ import React, { useMemo, memo, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
+import { AppImage } from '../components/AppImage';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { GlossaryButton } from '../components/GlossaryModal';
 import { PortraitDetailModal } from '../components/party/PortraitDetailModal';
@@ -75,7 +75,7 @@ const CharacterCard = memo(({ char, uri, accent, idx, generatingPortrait, onPres
       {/* Portrait */}
       <View style={[S.portrait, { backgroundColor: `${accent}0E` }]}>
         {uri ? (
-          <Image
+          <AppImage
             source={{ uri }}
             style={StyleSheet.absoluteFillObject}
             resizeMode="cover"

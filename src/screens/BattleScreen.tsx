@@ -3,9 +3,13 @@ import React, {
 } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, BackHandler,
-  Image, Animated, StyleSheet, Dimensions, Platform, Modal,
-  type ImageSourcePropType,
+  Animated, StyleSheet, Dimensions, Platform, Modal,
 } from 'react-native';
+import { AppImage } from '../components/AppImage';
+import type { Source as FastImageSource } from '@d11/react-native-fast-image';
+
+/** FastImage-compatible image source: bundled asset (number) or URI object. */
+type AppImageSource = number | FastImageSource;
 import { CRTOverlay } from '../components/CRTOverlay';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
@@ -86,7 +90,7 @@ type TokenProps = {
   actor: TurnActor;
   index: number;
   currentTurnIdx: number;
-  portraitSource: ImageSourcePropType | null;
+  portraitSource: AppImageSource | null;
   isDead: boolean;
 };
 
@@ -108,11 +112,7 @@ const TurnToken = memo(({ actor, index, currentTurnIdx, portraitSource, isDead }
         ]}
       >
         {portraitSource != null && (
-          <Image
-            source={portraitSource}
-            style={S.tokenImg}
-            resizeMode="cover"
-          />
+        <AppImage source={portraitSource} style={S.tokenImg} resizeMode="cover" />
         )}
         {portraitSource == null && (
           <Text style={[S.tokenFallback, { color }]}>?</Text>
@@ -131,7 +131,7 @@ const TurnToken = memo(({ actor, index, currentTurnIdx, portraitSource, isDead }
 type TimelineProps = {
   turnOrder: TurnActor[];
   currentTurnIdx: number;
-  portraitSources: Array<ImageSourcePropType | null>;
+  portraitSources: Array<AppImageSource | null>;
   deadFlags: boolean[];
 };
 
@@ -198,7 +198,7 @@ const EnemyCard = memo(({
       {/* Illustration fills all available vertical space */}
       <View style={S.enemyIllus}>
         {illus != null ? (
-          <Image
+        <AppImage
             source={illus}
             style={S.enemyIllusImg}
             resizeMode="cover"
@@ -285,7 +285,7 @@ const PartyCard = memo(({
       {/* Portrait fills entire card */}
       <View style={S.partyIllus}>
         {portrait != null ? (
-          <Image
+          <AppImage
             source={{ uri: portrait }}
             style={S.partyIllusImg}
             resizeMode="cover"
@@ -373,7 +373,7 @@ const LogStrip = memo(({ log }: { log: string[] }) => {
 
 // ── Defeat Animation ─────────────────────────────────────────────────────────────
 
-const DefeatAnimation = memo(({ source }: { source: ImageSourcePropType }) => {
+const DefeatAnimation = memo(({ source }: { source: AppImageSource }) => {
   const scale   = useRef(new Animated.Value(0.6)).current;
   const rotDeg  = useRef(new Animated.Value(-5)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -411,7 +411,7 @@ const DefeatAnimation = memo(({ source }: { source: ImageSourcePropType }) => {
           elevation: 20,
         }}
       >
-        <Image source={source} style={{ width: cardW, height: cardH}} resizeMode="cover" />
+        <AppImage source={source} style={{ width: cardW, height: cardH}} resizeMode="cover" />
       </Animated.View>
     </View>
   );
@@ -787,7 +787,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     uiPhase === 'PLAYER_TARGET_ABILITY' && currentAbility?.targetType === 'ally';
 
   // Pick the enemy illustration for the defeat animation (stable once outcome is set)
-  const defeatIllus = useMemo<ImageSourcePropType | null>(() => {
+  const defeatIllus = useMemo<AppImageSource | null>(() => {
     if (cs.outcome !== 'DEFEAT') return null;
     const alive = cs.enemyState.filter(e => !e.defeated);
     const pool  = alive.length > 0 ? alive : cs.enemyState;
@@ -809,7 +809,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
   }, [partyData, expressionsJson, portraitsMap, partyEmotions]);
 
   // ── Precompute timeline data ─────────────────────────────────────────────────
-  const timelinePortraits = useMemo<Array<ImageSourcePropType | null>>(() =>
+  const timelinePortraits = useMemo<Array<AppImageSource | null>>(() =>
     cs.turnOrder.map(actor => {
       if (actor.type === 'party') {
         const uri = getPartyPortrait(actor.idx);
@@ -817,7 +817,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       }
       const enemy = cs.enemyState[actor.idx];
       const illus = MONSTER_ILLUSTRATIONS[enemy?.name ?? ''];
-      return illus != null ? (illus as ImageSourcePropType) : null;
+      return illus != null ? (illus as AppImageSource) : null;
     }),
     [cs.turnOrder, cs.enemyState, getPartyPortrait],
   );

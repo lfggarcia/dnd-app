@@ -6,10 +6,10 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  Image,
   Dimensions,
   TextInput,
 } from 'react-native';
+import { AnimatedAppImage } from '../components/AppImage';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import Animated, {
   useSharedValue,
@@ -406,7 +406,7 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
         >
           {activePortraitUri ? (
             <>
-              <Animated.Image
+              <AnimatedAppImage
                 source={{ uri: activePortraitUri }}
                 style={[{ width: '100%', height: '100%' }, portraitAnimStyle]}
                 resizeMode="cover"

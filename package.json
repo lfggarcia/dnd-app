@@ -11,9 +11,13 @@
     "sprites:test": "node scripts/test-sprite-gen.js",
     "sprites:generate": "node scripts/generate-sprites.js --resume",
     "sprites:generate:fresh": "node scripts/generate-sprites.js",
-    "check:circular": "npx madge --circular src/services/"
+    "check:circular": "npx madge --circular src/services/",
+    "assets:compress": "node scripts/compress-assets.js",
+    "assets:compress:dry": "node scripts/compress-assets.js --dry-run",
+    "assets:update-webp": "node scripts/update-require-webp.js"
   },
   "dependencies": {
+    "@d11/react-native-fast-image": "^8.13.0",
     "@oguzhnatly/react-native-image-manipulator": "^1.0.17",
     "@op-engineering/op-sqlite": "^15.2.5",
     "@react-native-masked-view/masked-view": "^0.3.2",
@@ -25,7 +29,6 @@
     "nativewind": "^4.2.2",
     "react": "19.2.3",
     "react-native": "0.84.0",
-    "react-native-fast-image": "^8.6.3",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.30.0",
     "react-native-reanimated": "^4.2.2",
@@ -56,6 +59,7 @@
     "prettier": "2.8.8",
     "react-native-svg-transformer": "^1.5.3",
     "react-test-renderer": "19.2.3",
+    "sharp": "^0.34.5",
     "tailwindcss": "3",
     "typescript": "^5.8.3"
   },

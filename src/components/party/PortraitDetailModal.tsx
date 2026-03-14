@@ -3,13 +3,13 @@ import {
   Modal,
   View,
   Text,
-  Image,
   TouchableOpacity,
   Share,
   Dimensions,
   StyleSheet,
   Platform,
 } from 'react-native';
+import { AppImage } from '../AppImage';
 import { useI18n } from '../../i18n';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -85,7 +85,7 @@ function PortraitDetailModalInner({ uri, onClose, title }: Props) {
               <Text style={[S.cornerGlyph, S.cornerBL]}>◆</Text>
               <Text style={[S.cornerGlyph, S.cornerBR]}>◆</Text>
 
-              <Image
+              <AppImage
                 source={{ uri }}
                 style={S.image}
                 resizeMode="cover"

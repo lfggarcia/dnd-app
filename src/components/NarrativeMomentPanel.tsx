@@ -10,7 +10,8 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Image, Animated } from 'react-native';
+import { View, Text, Animated } from 'react-native';
+import { AppImage } from './AppImage';
 import type { EmotionState } from '../services/emotionalNarrativeService';
 
 // CRT-palette accent colors per emotion family
@@ -66,9 +67,10 @@ export const NarrativeMomentPanel = ({ charName, emotion, portraitUri, onDismiss
       {/* Header row: portrait + name + intensity dots */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
         {portraitUri != null && (
-          <Image
+          <AppImage
             source={{ uri: portraitUri }}
             style={{ width: 48, height: 48, borderWidth: 1, borderColor: color, marginRight: 10 }}
+            resizeMode="cover"
           />
         )}
         <View style={{ flex: 1 }}>

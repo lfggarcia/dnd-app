@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
 import {
-  View, Text, Image, TouchableOpacity, ActivityIndicator, StyleSheet,
+  View, Text, TouchableOpacity, ActivityIndicator, StyleSheet,
 } from 'react-native';
+import { AppImage } from '../AppImage';
 import type { Lang } from '../../i18n';
 
 type Props = {
@@ -81,7 +82,7 @@ export const PortraitSection = memo(({
           style={S.portraitBox}
         >
           {portrait ? (
-            <Image source={{ uri: portrait }} style={S.portraitImage} resizeMode="cover" />
+            <AppImage source={{ uri: portrait }} style={S.portraitImage} resizeMode="cover" />
           ) : (
             <Text style={S.placeholderLabel}>PORTRAIT</Text>
           )}

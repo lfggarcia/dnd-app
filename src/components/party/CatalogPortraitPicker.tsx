@@ -1,8 +1,9 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList,
-  Modal, StyleSheet, Image, ActivityIndicator,
+  Modal, StyleSheet, ActivityIndicator,
 } from 'react-native';
+import { AppImage } from '../AppImage';
 import type { Lang } from '../../i18n';
 import {
   getCatalogPortraits,
@@ -46,7 +47,7 @@ const PortraitThumb = memo(({ entry, selected, onPress }: ThumbProps) => {
       activeOpacity={0.75}
     >
       {source ? (
-        <Image
+        <AppImage
           source={source}
           style={S.thumbImg}
           resizeMode="cover"

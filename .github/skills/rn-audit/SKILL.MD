@@ -17,6 +17,25 @@ organizada por categorías con soluciones step-by-step, y un roadmap maestro que
 
 ---
 
+## Paso 0 — Leer el BRIEFING.md si existe
+
+**Hacer esto ANTES de cualquier análisis de código.**
+
+```bash
+cat plan/BRIEFING.md 2>/dev/null || echo "NO_EXISTE"
+```
+
+Si existe: leer todos los issues (BRF-XXX) y tenerlos presentes durante todo el análisis.
+Los issues del BRIEFING se incorporan a las categorías correspondientes con la etiqueta:
+```markdown
+> **Fuente:** 🧑‍💻 Auto-descubierto / Conocimiento del equipo (BRF-001)
+```
+
+Si no existe: considerar correr `rn-discover` primero para auto-generar el BRIEFING,
+o continuar sin él si el usuario quiere solo el audit estático.
+
+---
+
 ## Paso 1 — Determinar número de auditoría
 
 Antes de crear cualquier archivo:

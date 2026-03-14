@@ -19,6 +19,24 @@ solo documentas lo que ves. Cada comentario tiene contexto, el por qué, y cómo
 
 ---
 
+## Paso 0 — Leer el BRIEFING.md si existe
+
+**Hacer esto ANTES de revisar cualquier archivo.**
+
+```bash
+cat plan/BRIEFING.md 2>/dev/null || echo "NO_EXISTE"
+```
+
+Si existe: incorporar los issues del BRIEFING al review. En cada archivo afectado por un issue
+BRF-XXX, agregar una sección **"Issues del briefing verificados en este archivo"** con:
+- Confirmación de si el archivo está afectado
+- Evidencia exacta en el código (línea)
+- Cómo contribuye ese archivo al problema
+
+Si no existe: continuar normalmente.
+
+---
+
 ## Paso 1 — Determinar número de review
 
 ```bash

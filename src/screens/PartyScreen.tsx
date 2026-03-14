@@ -215,7 +215,6 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     addCharacter, removeCharacter, buildPartySaves,
     rerollStats, useStdArray, handleGeneratePortrait,
     showCatalogPicker, setShowCatalogPicker, handleSelectCatalogPortrait,
-		characterPortraitKeys
   } = usePartyRoster(lang);
 
   const handlePortraitView = useCallback(() => {
@@ -365,10 +364,6 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     );
   }
 
-	console.log('Rendering PartyScreen with state:', {
-		portraitsKey: characterPortraitKeys
-	});
-
   return (
     <View className="flex-1 bg-background">
       <GlossaryButton />
@@ -477,7 +472,6 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
 						onGenerate={handleGeneratePortrait}
 						onView={handlePortraitView}
 						catalogAvailable={hasCatalogPortraits(current?.charClass ?? '')}
-						portraitsKey={characterPortraitKeys[activeSlot] ?? null}
 						onSelectFromCatalog={() => {
 							setActiveCatalogSlot(activeSlot);
 							setShowCatalogPicker(true);

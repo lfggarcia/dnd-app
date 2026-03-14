@@ -82,8 +82,6 @@ export const PortraitSection = memo(({
         >
           {portrait ? (
             <Image source={{ uri: portrait }} style={S.portraitImage} resizeMode="cover" />
-          ) : generating ? (
-            <ActivityIndicator size="small" color="#00FF41" />
           ) : (
             <Text style={S.placeholderLabel}>PORTRAIT</Text>
           )}
@@ -103,13 +101,6 @@ export const PortraitSection = memo(({
                   </Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={onGenerate} disabled={generating} style={[S.genBtn, { opacity: generating ? 0.5 : 1 }]}>
-                <Text style={S.genBtnText}>
-                  {generating
-                    ? (lang === 'es' ? '⏳ GENERANDO...' : '⏳ GENERATING...')
-                    : (lang === 'es' ? '⚡ GENERAR (IA)' : '⚡ GENERATE (AI)')}
-                </Text>
-              </TouchableOpacity>
             </View>
           ) : (
             <View>
@@ -118,25 +109,16 @@ export const PortraitSection = memo(({
                   {lang === 'es' ? '🔍 VER RETRATO' : '🔍 VIEW PORTRAIT'}
                 </Text>
               </TouchableOpacity>
-
-              {portraitRolls < maxRolls ? (
+							{catalogAvailable && onSelectFromCatalog && (
                 <TouchableOpacity
-                  onPress={onGenerate}
+                  onPress={onSelectFromCatalog}
                   disabled={generating}
-                  style={[S.regenBtn, { opacity: generating ? 0.5 : 1 }]}
+                  style={[S.catalogBtn, { opacity: generating ? 0.5 : 1 }]}
                 >
-                  <Text style={S.regenBtnText}>
-                    {generating
-                      ? (lang === 'es' ? '⏳ GENERANDO...' : '⏳ GENERATING...')
-                      : `↻ ${lang === 'es' ? 'REGENERAR' : 'REGENERATE'} (${maxRolls - portraitRolls}/${maxRolls})`}
+                  <Text style={S.catalogBtnText}>
+                    {lang === 'es' ? '🖼 SELECCIONAR RETRATO' : '🖼 SELECT PORTRAIT'}
                   </Text>
                 </TouchableOpacity>
-              ) : (
-                <Text style={S.maxLabel}>
-                  {lang === 'es'
-                    ? `MÁXIMO ALCANZADO (${maxRolls}/${maxRolls})`
-                    : `MAX ROLLS (${maxRolls}/${maxRolls})`}
-                </Text>
               )}
             </View>
           )}

@@ -1,0 +1,17 @@
+assets/images/monsters/wight/illustration.png 2.9MB
+assets/images/monsters/skeleton/illustration.png 2.9MB
+assets/images/monsters/skeleton_knight/illustration.png 2.9MB
+assets/images/monsters/werewolf/illustration.png 2.8MB
+assets/images/monsters/skeleton_mage/illustration.png 2.8MB
+assets/images/monsters/skeleton_archer/illustration.png 2.8MB
+assets/images/monsters/orc/illustration.png 2.8MB
+assets/images/monsters/mummy/illustration.png 2.8MB
+assets/images/monsters/goblin_shaman/illustration.png 2.8MB
+assets/images/monsters/giant_spider/illustration.png 2.8MB
+assets/images/monsters/dragon_wyrmling/illustration.png 2.8MB
+assets/images/monsters/berserker/illustration.png 2.8MB
+assets/images/monsters/zombie/illustration.png 2.7MB
+assets/images/monsters/troll/illustration.png 2.7MB
+assets/images/monsters/rat/illustration.png 2.7MB
+(... 1307 more files in assets/images/)
+Total: 1322 images, 1.3 GB

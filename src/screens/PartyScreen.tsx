@@ -215,6 +215,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     addCharacter, removeCharacter, buildPartySaves,
     rerollStats, useStdArray, handleGeneratePortrait,
     showCatalogPicker, setShowCatalogPicker, handleSelectCatalogPortrait,
+		characterPortraitKeys
   } = usePartyRoster(lang);
 
   const handlePortraitView = useCallback(() => {
@@ -364,6 +365,10 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     );
   }
 
+	console.log('Rendering PartyScreen with state:', {
+		portraitsKey: characterPortraitKeys
+	});
+
   return (
     <View className="flex-1 bg-background">
       <GlossaryButton />
@@ -412,61 +417,76 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
           </Text>
         </View>
       </View>
-
+			<View className='p-3'>
+				<View className='p-3 border-b border-primary/40 flex-row justify-between items-center'>
+					<TextInput
+						style={S.bannerInput}
+						value={partyNameInput}
+						onChangeText={setPartyNameInput}
+						placeholder={lang === 'es' ? 'NOMBRE DE LA PARTY...' : 'PARTY NAME...'}
+						placeholderTextColor="rgba(0,255,65,0.3)"
+						maxLength={24}
+						autoCapitalize="characters"
+						selectionColor="#00FF41"
+					/>
+				</View>
+			</View>
       <RosterTabs
         roster={roster}
         activeSlot={activeSlot}
         onSlotPress={setActiveSlot}
         classes={classes}
       />
+			<View className='px-3'>
+				{/* ── Character Summary Banner ── */}
+				<View className="border border-primary/30 rounded-md bg-primary/5 px-4 py-3">
+					{/* Name row with random name button */}
+					<View className="flex-row items-center mb-1">
+						<TextInput
+							value={current.name}
+							onChangeText={text => updateCurrent({ name: text })}
+							maxLength={16}
+							style={[S.bannerInput, { flex: 1 }]}
+							placeholderTextColor="rgba(0,255,65,0.3)"
+							placeholder={t('party.namePlaceholder')}
+							selectionColor="#00FF41"
+						/>
+						<TouchableOpacity
+							onPress={generateRandomName}
+							style={{ marginLeft: 8, borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}
+						>
+							<Text style={{ color: 'rgba(0,255,65,0.7)', fontFamily: 'RobotoMono-Regular', fontSize: 11 }}>
+								{lang === 'es' ? '🎲 NOMBRE' : '🎲 NAME'}
+							</Text>
+						</TouchableOpacity>
+					</View>
+					<Text style={S.bannerSub} className="font-robotomono text-xs mb-3">
+						{currentRace?.name || current.race} · {currentClass?.name || current.charClass}
+						{currentSubData ? ` · ${currentSubData.name}` : ''}
+					</Text>
+
+					<PortraitSection
+						lang={lang}
+						portrait={charPortraits[activeSlot] ?? null}
+						portraitRolls={charPortraitRolls[activeSlot] ?? 0}
+						generating={generatingPortraitFor === activeSlot}
+						error={portraitError}
+						expanded={portraitExpanded}
+						maxRolls={MAX_PORTRAIT_ROLLS}
+						onToggleExpand={() => setPortraitExpanded(v => !v)}
+						onGenerate={handleGeneratePortrait}
+						onView={handlePortraitView}
+						catalogAvailable={hasCatalogPortraits(current?.charClass ?? '')}
+						portraitsKey={characterPortraitKeys[activeSlot] ?? null}
+						onSelectFromCatalog={() => {
+							setActiveCatalogSlot(activeSlot);
+							setShowCatalogPicker(true);
+						}}
+					/>
+				</View>
+			</View>
 
       <ScrollView className="flex-1 px-3 pt-4" showsVerticalScrollIndicator={false}>
-
-        {/* ── Character Summary Banner ── */}
-        <View className="mb-5 border border-primary/30 rounded-md bg-primary/5 px-4 py-3">
-          {/* Name row with random name button */}
-          <View className="flex-row items-center mb-1">
-            <TextInput
-              value={current.name}
-              onChangeText={text => updateCurrent({ name: text })}
-              maxLength={16}
-              style={[S.bannerInput, { flex: 1 }]}
-              placeholderTextColor="rgba(0,255,65,0.3)"
-              placeholder={t('party.namePlaceholder')}
-              selectionColor="#00FF41"
-            />
-            <TouchableOpacity
-              onPress={generateRandomName}
-              style={{ marginLeft: 8, borderWidth: 1, borderColor: 'rgba(0,255,65,0.3)', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}
-            >
-              <Text style={{ color: 'rgba(0,255,65,0.7)', fontFamily: 'RobotoMono-Regular', fontSize: 11 }}>
-                {lang === 'es' ? '🎲 NOMBRE' : '🎲 NAME'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={S.bannerSub} className="font-robotomono text-xs mb-3">
-            {currentRace?.name || current.race} · {currentClass?.name || current.charClass}
-            {currentSubData ? ` · ${currentSubData.name}` : ''}
-          </Text>
-
-          <PortraitSection
-            lang={lang}
-            portrait={charPortraits[activeSlot] ?? null}
-            portraitRolls={charPortraitRolls[activeSlot] ?? 0}
-            generating={generatingPortraitFor === activeSlot}
-            error={portraitError}
-            expanded={portraitExpanded}
-            maxRolls={MAX_PORTRAIT_ROLLS}
-            onToggleExpand={() => setPortraitExpanded(v => !v)}
-            onGenerate={handleGeneratePortrait}
-            onView={handlePortraitView}
-            catalogAvailable={hasCatalogPortraits(current?.charClass ?? '')}
-            onSelectFromCatalog={() => {
-              setActiveCatalogSlot(activeSlot);
-              setShowCatalogPicker(true);
-            }}
-          />
-        </View>
 
         {/* ── 1. Race ── */}
         <SectionCard borderColor="border-primary/40">
@@ -874,16 +894,6 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
             <Text className="text-destructive font-robotomono text-[10px]">- {t('party.removeMember')}</Text>
           </TouchableOpacity>
         </View>
-        <TextInput
-          style={S.bannerInput}
-          value={partyNameInput}
-          onChangeText={setPartyNameInput}
-          placeholder={lang === 'es' ? 'NOMBRE DE LA PARTY...' : 'PARTY NAME...'}
-          placeholderTextColor="rgba(0,255,65,0.3)"
-          maxLength={24}
-          autoCapitalize="characters"
-          selectionColor="#00FF41"
-        />
         <TouchableOpacity
           onPress={handleLaunch}
           disabled={launchStep !== null}

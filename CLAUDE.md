@@ -4,17 +4,34 @@
 
 ## Sistema de calidad activo
 
-Las skills viven en `plan/skills/`. Antes de cualquier acción, verificar el estado del pipeline:
+Las skills viven en `plan/skills/`. **Antes de cualquier acción**, ejecutar este diagnóstico de estado en orden y detenerse en el primer caso que aplique:
 
-```bash
-# ▶ Verificando estado del pipeline anterior
-ls plan/audit/ 2>/dev/null | tail -1
-ls plan/codereview/ 2>/dev/null | tail -1
-ls plan/ | grep pipeline
-```
+### Diagnóstico de estado (ejecutar siempre al inicio)
 
-Si hay un MASTER-ROADMAP con items `- [ ]` sin resolver → continuar desde ahí.
-Si no hay nada → empezar pipeline desde cero.
+> ▶ Determinando estado actual del pipeline
+
+**Caso 1 — rn-fix en progreso (prioridad máxima)**
+Serena MCP: `find_files("plan/*MASTER-ROADMAP.md")`
+Si existe → Serena MCP: `read_file("plan/[MASTER-ROADMAP encontrado]")`
+Si tiene items `- [ ]` sin resolver → **REANUDAR rn-fix desde el primer `- [ ]`**. No hacer nada más.
+
+**Caso 2 — codereview completo, fix no iniciado**
+Serena MCP: `find_files("plan/codereview/*/ROADMAP.md")`
+Si existe y el MASTER-ROADMAP tiene todos `- [ ]` → **REANUDAR rn-fix desde Phase 1**.
+
+**Caso 3 — audit completo, codereview no iniciado**
+Serena MCP: `find_files("plan/audit/*/ROADMAP.md")`
+Si existe pero no hay `plan/codereview/` → **REANUDAR desde rn-codereview**.
+
+**Caso 4 — discover completo, audit no iniciado**
+Serena MCP: `read_file("plan/BRIEFING.md")`
+Si existe pero no hay `plan/audit/` → **REANUDAR desde rn-audit**.
+
+**Caso 5 — sin trabajo previo**
+Si ninguno de los casos anteriores aplica → **EMPEZAR pipeline desde rn-discover**.
+
+> ⚠️ Nunca iniciar una fase que ya tiene su carpeta de output creada con contenido.
+> La existencia de `plan/audit/audit-NNN/` con archivos = esa fase ya se ejecutó.
 
 ## Herramienta principal: Serena MCP
 
@@ -43,7 +60,13 @@ Reservar **bash** exclusivamente para:
 
 ## Cómo retomar después de compactación
 
-> ▶ Restaurando contexto de sesión anterior
+Ejecutar el diagnóstico de estado de arriba — es exactamente para esto.
+El estado completo del pipeline vive en `plan/`, no en la conversación.
 
-Serena MCP: `find_files("plan/*MASTER-ROADMAP.md")` → leer el más reciente  
+Si necesitas contexto adicional de lo que se hizo en la sesión anterior:
+
+> ▶ Restaurando contexto completo de sesión anterior
+
+Serena MCP: `find_files("plan/*MASTER-ROADMAP.md")` → leer el más reciente
 Serena MCP: `read_file("plan/BRIEFING.md")`
+Serena MCP: `find_files("plan/fix-session/**/*.md")` → leer el SESSION-REPORT más reciente si existe

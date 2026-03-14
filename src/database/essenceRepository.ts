@@ -68,6 +68,46 @@ export function saveEssenceDrop(input: EssenceSaveInput): void {
   );
 }
 
+/**
+ * CR-BS-04: Batch version — wraps all inserts in a single transaction
+ * to avoid per-row overhead when persisting multiple essence drops at once.
+ */
+export function saveEssenceDropsBatch(inputs: EssenceSaveInput[]): void {
+  if (inputs.length === 0) return;
+  const db = getDB();
+  const now = new Date().toISOString();
+  db.executeSync('BEGIN TRANSACTION');
+  try {
+    for (const input of inputs) {
+      const id = `${input.seedHash}_essence_${input.definitionId}_${input.obtainedCycle}_${input.obtainedFloor}`;
+      db.executeSync(
+        `INSERT OR IGNORE INTO essences (
+          id, seed_hash, owner_game_id, owner_char_name, definition_id,
+          rank, evolution_level, kills_on_type, equipped,
+          obtained_cycle, obtained_floor, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+        [
+          id,
+          input.seedHash,
+          input.ownerGameId,
+          input.ownerCharName,
+          input.definitionId,
+          input.rank,
+          input.evolutionLevel,
+          input.killsOnThisType,
+          input.obtainedCycle,
+          input.obtainedFloor,
+          now,
+        ],
+      );
+    }
+    db.executeSync('COMMIT');
+  } catch (e) {
+    db.executeSync('ROLLBACK');
+    throw e;
+  }
+}
+
 export function getEssencesByChar(gameId: string, charName: string): SavedEssence[] {
   const db = getDB();
   const result = db.executeSync(

@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler, InteractionManager } from 'react-native';
 import { CRTOverlay } from '../components/CRTOverlay';
 import { TypewriterText } from '../components/TypewriterText';
 import { GlossaryButton } from '../components/GlossaryModal';
@@ -28,53 +28,57 @@ export const ReportScreen = ({ navigation, route }: ScreenProps<'Report'>) => {
   const [lootDrops, setLootDrops] = useState<LootDrop[]>([]);
 
   // Generate and persist loot on first render after a victory
+  // PERF-003: deferred via InteractionManager so initial render is not blocked
   useEffect(() => {
-    if (outcome !== 'VICTORY' || !roomType || !activeGameId) return;
-    try {
-      const lootTable = ['NORMAL', 'ELITE', 'BOSS', 'TREASURE', 'SECRET'] as const;
-      type LootRoomType = typeof lootTable[number];
-      const validType: LootRoomType = lootTable.includes(roomType as LootRoomType)
-        ? (roomType as LootRoomType)
-        : 'NORMAL';
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (outcome !== 'VICTORY' || !roomType || !activeGameId) return;
+      try {
+        const lootTable = ['NORMAL', 'ELITE', 'BOSS', 'TREASURE', 'SECRET'] as const;
+        type LootRoomType = typeof lootTable[number];
+        const validType: LootRoomType = lootTable.includes(roomType as LootRoomType)
+          ? (roomType as LootRoomType)
+          : 'NORMAL';
 
-      const drops: LootDrop[] = generateRoomLoot(roomId, validType, activeFloor, activeCycle, seedHash);
+        const drops: LootDrop[] = generateRoomLoot(roomId, validType, activeFloor, activeCycle, seedHash);
 
-      if (validType === 'BOSS') {
-        const alreadyClaimed = bossLootAlreadyClaimed ?? isBossLootClaimed(seedHash, roomId);
-        if (!alreadyClaimed) {
-          const unique = generateBossUniqueLoot(seedHash, roomId, activeFloor);
-          if (unique) drops.push(unique);
+        if (validType === 'BOSS') {
+          const alreadyClaimed = bossLootAlreadyClaimed ?? isBossLootClaimed(seedHash, roomId);
+          if (!alreadyClaimed) {
+            const unique = generateBossUniqueLoot(seedHash, roomId, activeFloor);
+            if (unique) drops.push(unique);
+          }
         }
-      }
 
-      // Persist to DB
-      for (const drop of drops) {
-        try {
-          createItem({
-            seedHash,
-            ownerGameId: activeGameId,
-            ownerCharName: null,
-            name: drop.name,
-            type: drop.type,
-            rarity: drop.rarity,
-            isEquipped: false,
-            isUnique: drop.type === 'boss_loot',
-            obtainedCycle: activeCycle,
-            floorObtained: activeFloor,
-            goldValue: drop.goldValue,
-            data: drop.data,
-            claimed: false,
-          });
-        } catch { /* already exists — idempotent */ }
-      }
+        // Persist to DB
+        for (const drop of drops) {
+          try {
+            createItem({
+              seedHash,
+              ownerGameId: activeGameId,
+              ownerCharName: null,
+              name: drop.name,
+              type: drop.type,
+              rarity: drop.rarity,
+              isEquipped: false,
+              isUnique: drop.type === 'boss_loot',
+              obtainedCycle: activeCycle,
+              floorObtained: activeFloor,
+              goldValue: drop.goldValue,
+              data: drop.data,
+              claimed: false,
+            });
+          } catch { /* already exists — idempotent */ }
+        }
 
-      // Update gold from goldEarned
-      if (combatResult?.goldEarned) {
-        updateProgress({ gold: gold + combatResult.goldEarned });
-      }
+        // Update gold from goldEarned
+        if (combatResult?.goldEarned) {
+          updateProgress({ gold: gold + combatResult.goldEarned });
+        }
 
-      setLootDrops(drops);
-    } catch { /* non-critical — report still shows */ }
+        setLootDrops(drops);
+      } catch { /* non-critical — report still shows */ }
+    });
+    return () => task.cancel();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

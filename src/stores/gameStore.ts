@@ -12,6 +12,7 @@ import {
 } from '../database/gameRepository';
 import { saveRivals } from '../database/rivalRepository';
 import type { CombatResult } from '../services/combatEngine';
+import type { SimulationEvent } from '../services/worldSimulator';
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ type GameState = {
   /** Last combat result — in-memory only, not persisted */
   lastCombatResult: CombatResult | null;
   /** Last world simulation events — updated on each advanceCycle call */
-  lastSimulationEvents: import('../services/worldSimulator').SimulationEvent[] | null;
+  lastSimulationEvents: SimulationEvent[] | null;
 };
 
 type GameActions = {

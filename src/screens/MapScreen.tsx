@@ -26,6 +26,7 @@ import {
   type FloorExplorationState,
   type RoomType,
 } from '../services/dungeonGraphService';
+import { parseExplorationState } from '../utils/mapState';
 
 // ─── Canvas dimensions (computed once at module load) ────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -140,23 +141,7 @@ const ConnectionLines = React.memo(({ floor, roomMap, currentRoomId, accessibleI
   </Svg>
 ));
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function isExplorationState(parsed: unknown): parsed is FloorExplorationState {
-  return (
-    typeof parsed === 'object' && parsed !== null &&
-    'floorIndex' in parsed && 'visitedRoomIds' in parsed &&
-    'revealedRoomIds' in parsed && 'currentRoomId' in parsed
-  );
-}
-
-function parseExplorationState(raw: string | null | undefined): FloorExplorationState | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (isExplorationState(parsed)) return parsed;
-  } catch { /* ignore */ }
-  return null;
-}
+// ─── Helpers (parse moved to src/utils/mapState.ts — CR-MS-01) ───────────────
 
 export const MapScreen = ({ navigation }: ScreenProps<'Map'>) => {
   const { t } = useI18n();

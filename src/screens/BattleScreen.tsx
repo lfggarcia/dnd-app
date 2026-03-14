@@ -50,7 +50,8 @@ import {
 import { isBossLootClaimed } from '../database/itemRepository';
 import { recordPartyKill } from '../services/bountyService';
 import { resolveEssenceDrop } from '../services/essenceService';
-import { saveEssenceDrop, incrementMonsterKills } from '../database/essenceRepository';
+import { saveEssenceDropsBatch, incrementMonsterKills } from '../database/essenceRepository';
+import { parseExplorationState } from '../utils/mapState';
 import type { ScreenProps } from '../navigation/types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -583,14 +584,16 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
         }
 
         // Essence drops for each defeated monster (Sprint 7 / Paso 7-06)
+        // CR-BS-04: collect all drops then persist in a single DB transaction
         if (activeGameId && seedHash) {
+          const essenceBatch: Parameters<typeof saveEssenceDropsBatch>[0] = [];
           for (const enemy of result.enemiesDefeated) {
             const monsterKey = enemy.name;
             for (const aliveChar of updatedParty.filter(c => c.alive)) {
               incrementMonsterKills(activeGameId, aliveChar.name, monsterKey, activeCycle, seedHash);
               const drop = resolveEssenceDrop(monsterKey, monsterKey, roomId, seedHash, activeCycle);
               if (drop) {
-                saveEssenceDrop({
+                essenceBatch.push({
                   ...drop,
                   killsOnThisType: drop.killsOnThisType,
                   ownerGameId: activeGameId,
@@ -601,6 +604,9 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
                 });
               }
             }
+          }
+          if (essenceBatch.length > 0) {
+            try { saveEssenceDropsBatch(essenceBatch); } catch { /* non-critical */ }
           }
         }
       } else {
@@ -638,13 +644,13 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       const roomIdNum = Number(roomId);
       let updatedMapState: string | null = null;
       if (outcome === 'VICTORY' && mapState) {
-        try {
-          const parsed = JSON.parse(mapState) as { floorIndex: number; visitedRoomIds: number[]; revealedRoomIds: number[]; currentRoomId: number };
+        const parsed = parseExplorationState(mapState);
+        if (parsed) {
           if (!parsed.visitedRoomIds.includes(roomIdNum)) {
             parsed.visitedRoomIds.push(roomIdNum);
           }
           updatedMapState = JSON.stringify(parsed);
-        } catch { /* leave mapState unchanged */ }
+        }
       }
 
       updateProgress({
@@ -710,12 +716,12 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     } else if (tactic === 'DASH') {
       newCs = resolvePlayerDash(cs, actor.idx);
     } else {
-      // HELP: assist a random alive ally (not self)
+      // HELP: assist a random alive ally (not self) — CR-BS-03
       const aliveAllies = cs.partyState
         .map((m, i) => ({ m, i }))
         .filter(({ m, i }) => m.currentHp > 0 && i !== actor.idx);
       const helpTarget = aliveAllies.length > 0
-        ? aliveAllies[0].i
+        ? aliveAllies[rngRef.current.next(0, aliveAllies.length - 1)].i
         : actor.idx;
       newCs = resolvePlayerHelp(cs, actor.idx, helpTarget);
     }

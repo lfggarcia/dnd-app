@@ -68,7 +68,8 @@ type AIPartyState = {
  * Decide la próxima acción para este ciclo usando pesos ponderados + ruido.
  * Now uses aiProfileEngine.getActionWeights() which integrates memory adaptation.
  */
-function decideAction(
+// CR-WS-04: exported for unit testing
+export function decideAction(
   state: AIPartyState,
   nearbyRivals: AIPartyState[],
   rng: ReturnType<typeof makePRNG>,
@@ -128,7 +129,8 @@ function decideAction(
 
 // ─── Resolver cada acción ─────────────────────────────────
 
-function executeAction(
+// CR-WS-04: exported for unit testing
+export function executeAction(
   state: AIPartyState,
   action: AIAction,
   nearbyRivals: AIPartyState[],

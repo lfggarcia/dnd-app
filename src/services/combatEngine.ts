@@ -231,17 +231,20 @@ export function resolveCombat(
 
   // ── Initiative ──────────────────────────────────────────────────────────────
   type Actor = { isParty: true; idx: number } | { isParty: false; idx: number };
-  const initiativePairs: { actor: Actor; roll: number }[] = [
+  const initiativePairs: { actor: Actor; roll: number; dexMod: number }[] = [
     ...partyState.map((c, i) => ({
       actor: { isParty: true as const, idx: i },
       roll: statMod(c.baseStats.DEX) + rng.next(1, 20),
+      dexMod: statMod(c.baseStats.DEX),
     })),
     ...enemyState.map((e, i) => ({
       actor: { isParty: false as const, idx: i },
       roll: statMod(10) + rng.next(1, 20), // enemies use DEX 10 baseline
+      dexMod: statMod(10),
     })),
   ];
-  initiativePairs.sort((a, b) => b.roll - a.roll);
+  // CR-CE-04: use DEX modifier as tie-breaker when initiative rolls are equal
+  initiativePairs.sort((a, b) => b.roll - a.roll || b.dexMod - a.dexMod);
 
   log.push('INITIATIVE:');
   initiativePairs.forEach(({ actor, roll }) => {
@@ -346,6 +349,11 @@ export function resolveCombat(
     // Check end condition after full round
     if (partyState.every(c => c.currentHp <= 0)) { outcome = 'DEFEAT'; break; }
     if (enemyState.every(e => e.defeated))        { outcome = 'VICTORY'; break; }
+  }
+
+  // CR-CE-03: defensive check — if MAX_ROUNDS exceeded without a clean win, treat as DEFEAT
+  if (round >= MAX_ROUNDS && enemyState.some(e => !e.defeated)) {
+    outcome = 'DEFEAT';
   }
 
   // ── Final tallies ──────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useI18n } from '../i18n';
 import type { Alliance } from '../services/allianceService';
@@ -9,7 +9,7 @@ type Props = {
   onBreak: () => void;
 };
 
-export const AllianceCard = ({ alliance, currentCycle, onBreak }: Props) => {
+export const AllianceCard = memo(({ alliance, currentCycle, onBreak }: Props) => {
   const { lang } = useI18n();
   const cyclesLeft = Math.max(0, alliance.expiresAtCycle - currentCycle);
   const isExpiring = cyclesLeft <= 3;
@@ -69,4 +69,4 @@ export const AllianceCard = ({ alliance, currentCycle, onBreak }: Props) => {
       </TouchableOpacity>
     </View>
   );
-};
+});

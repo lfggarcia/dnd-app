@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useI18n } from '../i18n';
 import type { BountyRecord } from '../services/bountyService';
@@ -18,7 +18,7 @@ type Props = {
   onPress?: (bounty: BountyRecord) => void;
 };
 
-export const BountyBoard = ({ bounties, onPress }: Props) => {
+export const BountyBoard = memo(({ bounties, onPress }: Props) => {
   const { lang } = useI18n();
   const active = bounties.filter(b => b.isActive);
 
@@ -63,4 +63,4 @@ export const BountyBoard = ({ bounties, onPress }: Props) => {
       })}
     </ScrollView>
   );
-};
+});

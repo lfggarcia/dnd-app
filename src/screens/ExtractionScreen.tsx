@@ -52,6 +52,7 @@ export const ExtractionScreen = ({ navigation, route }: ScreenProps<'Extraction'
   }, [activeGameId, cycle]);
 
   // Animate gold counter from 0 to realGold
+  // PERF-010: 50ms interval (20fps) instead of 30ms (33fps) — reduces renders
   useEffect(() => {
     if (realGold === 0) { setPhase('done'); return; }
     let current = 0;
@@ -65,7 +66,7 @@ export const ExtractionScreen = ({ navigation, route }: ScreenProps<'Extraction'
       } else {
         setDisplayedGold(current);
       }
-    }, 30);
+    }, 50);
     return () => clearInterval(interval);
   }, [realGold]);
 

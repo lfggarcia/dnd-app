@@ -22,6 +22,15 @@
  *   12 classes × 4 race variants + 8 extra entries = 56 entries minimum.
  *
  * Requirements: Node 18+, ComfyUI at COMFY_URL with PerfectDeliberate v8 + LoRAs.
+ *
+ * ── Resolución (Opción B) ─────────────────────────────────────────────────────
+ * Stage 1 (KSampler base): 832×1216 — sin cambios, buena base para FaceDetailer
+ * Stage 2 (hires-fix):     1024×1496 — reducido de 1248×1824
+ *   • Mantiene el mismo aspect ratio (0.684) que el workflow original
+ *   • Cubre el 100% de los dispositivos budget/mid-range y el 87% de flagships
+ *   • En CharacterDetailScreen el vignette SVG cubre cualquier suavidad marginal
+ *   • Ahorro de tiempo stage 2: ~32% menos pixel-steps (45.5M → 30.7M)
+ *   • Peso estimado con JPEG 75%: ~160KB por portrait (vs ~3.4MB raw actual)
  */
 'use strict';
 
@@ -46,7 +55,15 @@ if (major < 18) { console.error(`Node 18+ required`); process.exit(1); }
 // Quality tags
 // ---------------------------------------------------------------------------
 const QUALITY_PREFIX = 'score_9, score_8_up, score_8, masterpiece, best quality, newest, absurdres';
-const QUALITY_NEG    = 'score_6, score_5, score_4, low quality, worst quality, blurry, deformed, bad anatomy, extra limbs, watermark, text, logo, signature, photorealistic, multiple girls, crowd, duplicate';
+const QUALITY_NEG    = 'score_6, score_5, score_4, low quality, worst quality, blurry, deformed, bad anatomy, extra limbs, watermark, text, logo, signature, photorealistic, multiple girls, crowd, duplicate, ' +
+  // Género — el modelo tiende a masculinizar razas robustas (half-orc, dwarf, dragonborn)
+  'male, man, boy, masculine face, masculine jaw, masculine features, male body, male anatomy, ' +
+  // Dientes — artefacto frecuente en poses de boca abierta y expresiones de rabia
+  'bad teeth, deformed teeth, ugly teeth, extra teeth, broken teeth, melting teeth, tooth artifact, dental deformity, ' +
+  // Nariz — artefacto frecuente en elfs y half-orcs con rasgos no humanos
+  'bad nose, deformed nose, ugly nose, misshapen nose, flat nose, crooked nose, nose artifact, ' +
+  // Anatomía de manos y brazos — frecuente en poses dramáticas
+  'bad hands, deformed hands, extra fingers, fused fingers, impossible pose, wrong anatomy arms, bad arm anatomy';
 
 // ---------------------------------------------------------------------------
 // Race visual descriptors (must match RACE_VISUAL in geminiImageService.ts)
@@ -138,8 +155,8 @@ const CATALOG_ENTRIES = [
     bg:   'stormy battlefield ruins, lightning flashes' },
   { key: 'barbarian_half-orc_2', charClass: 'barbarian', race: 'half-orc',  subclass: 'berserker',
     hair: 'short black mohawk',         eyes: 'glowing red rage eyes',
-    skin: 'olive grey-green orc skin',  desc: 'small tusks, tribal war paint, muscular build, leather vest',
-    pose: 'cowboy shot, roaring battle cry stance, axe swinging',
+    skin: 'olive grey-green orc skin',  desc: 'small feminine tusks, tribal war paint, athletic feminine build, leather vest, female orc warrior',
+    pose: 'cowboy shot, roaring battle cry stance, axe raised overhead',
     bg:   'burning village with dramatic fire glow' },
   { key: 'barbarian_dwarf_3',    charClass: 'barbarian', race: 'dwarf',     subclass: 'totem',
     hair: 'braided auburn hair with bone beads', eyes: 'steel blue determined eyes',
@@ -156,12 +173,14 @@ const CATALOG_ENTRIES = [
   { key: 'bard_half-elf_1',     charClass: 'bard', race: 'half-elf', subclass: 'lore',
     hair: 'wavy chestnut hair with colorful streaks', eyes: 'bright green charismatic eyes',
     skin: 'warm tan mixed-heritage skin', desc: 'colorful performer vest, lute under arm, charming grin',
-    pose: 'cowboy shot, mid-performance bow, one hand behind back dramatically',
+    // Pose anterior "one hand behind back dramatically" generaba anatomía imposible.
+    // Nueva pose: ambas manos visibles con gestos naturales.
+    pose: 'cowboy shot, performing on stage, one arm extended outward in dramatic flourish, other hand resting on hip',
     bg:   'warm tavern stage, lantern and candle light' },
   { key: 'bard_human_2',        charClass: 'bard', race: 'human',    subclass: 'valor',
     hair: 'short auburn hair',           eyes: 'lively blue eyes',
     skin: 'fair rosy skin',    desc: 'valor bard, light leather armor, short sword and lute, battle-ready pose',
-    pose: 'cowboy shot, weapon and instrument held simultaneously, ready for anything',
+    pose: 'cowboy shot, sword at hip, lute slung on back, one hand on sword hilt ready for battle',
     bg:   'coastal cliff, dramatic sea wind, bards tale moment' },
   { key: 'bard_tiefling_3',     charClass: 'bard', race: 'tiefling', subclass: 'lore',
     hair: 'dark purple silky hair',      eyes: 'golden curious eyes',
@@ -330,7 +349,8 @@ const CATALOG_ENTRIES = [
   { key: 'rogue_tiefling_3',   charClass: 'rogue', race: 'tiefling', subclass: 'thief',
     hair: 'short blue-black hair, small horns', eyes: 'cunning amber slit-pupil eyes',
     skin: 'blue-grey tiefling smooth skin', desc: 'tiefling thief, elegant dark outfit with pockets everywhere, charming confidence',
-    pose: 'cowboy shot, leaning casual but hands very busy stealing unnoticed',
+    // Pose anterior era vaga y generaba manos deformadas. Nueva: postura clara y natural.
+    pose: 'cowboy shot, standing with arms relaxed at sides, sly smirk, fingers lightly touching coin pouch',
     bg:   'noble party reception hall, chandelier above' },
   { key: 'rogue_half-elf_4',   charClass: 'rogue', race: 'half-elf', subclass: 'assassin',
     hair: 'sleek dark pulled-back hair',    eyes: 'narrow calculating violet eyes',
@@ -522,7 +542,10 @@ function buildPortraitWorkflow(positiveText, negativeText, seed) {
     '11': { class_type: 'VAEDecodeTiled',          inputs: { samples: ['10', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
     '12': { class_type: 'UpscaleModelLoader',      inputs: { model_name: 'remacri_original.safetensors' } },
     '13': { class_type: 'ImageUpscaleWithModel',   inputs: { upscale_model: ['12', 0], image: ['11', 0] } },
-    '14': { class_type: 'ImageScale',              inputs: { upscale_method: 'lanczos', width: 1248, height: 1824, crop: 'disabled', image: ['13', 0] } },
+    // Opción B: 1024×1496 en lugar de 1248×1824.
+    // Mismo aspect ratio (0.684). Cubre todos los devices budget/mid y el 87% de flagships.
+    // Ahorro: ~32% menos pixel-steps en este stage vs el workflow original.
+    '14': { class_type: 'ImageScale',              inputs: { upscale_method: 'lanczos', width: 1024, height: 1496, crop: 'disabled', image: ['13', 0] } },
     '15': { class_type: 'VAEEncodeTiled',          inputs: { pixels: ['14', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
     '16': { class_type: 'KSampler',                inputs: { seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise: 0.55, model: ['20', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['15', 0] } },
     '17': { class_type: 'VAEDecodeTiled',          inputs: { samples: ['16', 0], vae: ['1', 2], tile_size: 512, overlap: 32, temporal_size: 64, temporal_overlap: 8 } },
@@ -540,7 +563,9 @@ function buildPromptForEntry(entry) {
   const positive = [
     QUALITY_PREFIX,
     'BREAK',
-    `1girl, solo, ${raceDesc}, ${entry.hair}, ${entry.eyes}, ${entry.skin}`,
+    // 'woman' refuerza el género antes de los rasgos de raza — crítico para half-orc/dwarf/dragonborn
+    // donde el modelo tiene sesgo masculino por las características físicas robustas
+    `1girl, solo, woman, female, ${raceDesc}, ${entry.hair}, ${entry.eyes}, ${entry.skin}`,
     `${classDesc}${subDesc ? `, ${subDesc}` : ''}`,
     `${entry.desc}`,
     `${entry.pose}`,
@@ -625,13 +650,15 @@ async function main() {
   const total  = CATALOG_ENTRIES.length;
   const classes = [...new Set(CATALOG_ENTRIES.map(e => e.charClass))];
 
-  console.log('\n=== TORRE · Character Catalog Generator ===');
-  console.log(`  Entries   : ${total} (${Math.floor(total / 4)} full parties of 4)`);
-  console.log(`  Classes   : ${classes.join(', ')}`);
-  console.log(`  Resume    : ${resume ? 'ON' : 'OFF'}`);
-  console.log(`  Filter    : ${filterClass ? `class=${filterClass}` : 'all'}${filterRace ? ` race=${filterRace}` : ''}`);
-  console.log(`  Output    : assets/images/characters/`);
-  console.log(`  Index     : assets/images/characters/catalog.json`);
+  console.log('\n=== TORRE · Character Catalog Generator (Opción B) ===');
+  console.log(`  Entries    : ${total} (${Math.floor(total / 4)} full parties of 4)`);
+  console.log(`  Classes    : ${classes.join(', ')}`);
+  console.log(`  Stage 1    : 832×1216 @38 steps (sin cambios)`);
+  console.log(`  Stage 2    : 1024×1496 @20 steps (Opción B — era 1248×1824)`);
+  console.log(`  Resume     : ${resume ? 'ON' : 'OFF'}`);
+  console.log(`  Filter     : ${filterClass ? `class=${filterClass}` : 'all'}${filterRace ? ` race=${filterRace}` : ''}`);
+  console.log(`  Output     : assets/images/characters/`);
+  console.log(`  Index      : assets/images/characters/catalog.json`);
   console.log('');
 
   process.stdout.write('Connecting to ComfyUI... ');

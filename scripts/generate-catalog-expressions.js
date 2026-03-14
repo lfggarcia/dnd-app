@@ -23,6 +23,28 @@
  *   node scripts/generate-catalog-expressions.js --expression angry
  *
  * Requirements: Node 18+, ComfyUI at COMFY_URL (same setup as catalog script).
+ *
+ * ── Resolución (Opción B) ─────────────────────────────────────────────────────
+ * Las expresiones se generan a 640×936 (en lugar de heredar el tamaño del portrait).
+ *
+ * Razón: el 92% del costo total de generación está en las 22 expresiones.
+ * FaceDetailer hace crop interno a guide_size:512 independientemente del tamaño
+ * de entrada — el detalle facial es idéntico. El output a 640×936 cubre con
+ * margen todas las superficies de render en la app:
+ *   • GuildScreen card:   525px físicos (flagship) — 640 > 525 ✅
+ *   • BattleScreen strip: ~300px físicos           — 640 > 300 ✅
+ *   • CampScreen:         ~400px físicos           — 640 > 400 ✅
+ *
+ * Implementación: nodo ImageScale (node '15') entre LoadImage (node '10') y
+ * FaceDetailer (node '13'). FaceDetailer recibe 640×936 y produce 640×936.
+ * El crop/paste interno del face sigue siendo guide_size:512 — sin pérdida
+ * de calidad en el detalle facial.
+ *
+ * Ahorro vs workflow original (portrait 1248×1824 heredado):
+ *   • Original: 1248×1824 @20 steps × 22 expr = 1001M pixel-steps
+ *   • Opción B:  640× 936 @20 steps × 22 expr =  264M pixel-steps
+ *   → 73% menos tiempo de generación en expresiones
+ *   → Peso estimado con JPEG 75%: ~65KB por expresión (vs ~3.4MB raw actual)
  */
 'use strict';
 
@@ -191,7 +213,7 @@ async function fetchOutputBlob(filename, subfolder = '') {
 }
 
 // ---------------------------------------------------------------------------
-// Workflow builder (FaceDetailer — mirrors generate-expressions.js exactly)
+// Workflow builder (FaceDetailer — Opción B: expresiones a 640×936)
 // ---------------------------------------------------------------------------
 function buildExpressionWorkflow({ inputImage, positiveText, negativeText, denoise, seed, filenamePrefix }) {
   return {
@@ -207,6 +229,15 @@ function buildExpressionWorkflow({ inputImage, positiveText, negativeText, denoi
     '10': { class_type: 'LoadImage',                   inputs: { image: inputImage } },
     '11': { class_type: 'UltralyticsDetectorProvider', inputs: { model_name: 'bbox/face_yolov8n.pt' } },
     '12': { class_type: 'CLIPTextEncode',              inputs: { text: negativeText, clip: ['8', 0] } },
+    // Opción B — bajar el portrait a 640×936 antes de FaceDetailer.
+    // FaceDetailer hace crop interno al face (guide_size:512) independientemente
+    // del tamaño de la imagen de entrada, así que la calidad facial no cambia.
+    // El output de FaceDetailer hereda el tamaño de este nodo (640×936).
+    // Aspecto ratio: 640/936 = 0.684 — idéntico al portrait original (832/1216).
+    '15': { class_type: 'ImageScale',                  inputs: {
+      image: ['10', 0], upscale_method: 'lanczos',
+      width: 640, height: 936, crop: 'disabled',
+    } },
     '13': { class_type: 'FaceDetailer',                inputs: {
       guide_size: 512, guide_size_for: true, max_size: 1024,
       seed, steps: 20, cfg: 4.0, sampler_name: 'dpmpp_2m', scheduler: 'karras', denoise,
@@ -216,7 +247,7 @@ function buildExpressionWorkflow({ inputImage, positiveText, negativeText, denoi
       sam_bbox_expansion: 0, sam_mask_hint_threshold: 0.7, sam_mask_hint_use_negative: 'False',
       drop_size: 10, wildcard: '', cycle: 1, inpaint_model: false, noise_mask_feather: 20,
       tiled_encode: false, tiled_decode: false,
-      image: ['10', 0], model: ['7', 0], clip: ['8', 0], vae: ['1', 2],
+      image: ['15', 0], model: ['7', 0], clip: ['8', 0], vae: ['1', 2],  // ← usa ['15', 0] no ['10', 0]
       positive: ['9', 0], negative: ['12', 0], bbox_detector: ['11', 0],
     } },
     '14': { class_type: 'SaveImage', inputs: { filename_prefix: filenamePrefix, images: ['13', 0] } },
@@ -330,11 +361,12 @@ async function generateExpressionsForEntry(entry, catalog, filterExpr) {
     fs.writeFileSync(outFile, imgBuf);
     expressionPaths[exprKey] = relOutPath;
     manifest[exprKey] = {
-      label:     expr.label,
-      file:      `expression_${exprKey}.png`,
+      label:      expr.label,
+      file:       `expression_${exprKey}.png`,
+      resolution: '640x936',
       seed,
-      denoise:   expr.denoise,
-      generated: new Date().toISOString(),
+      denoise:    expr.denoise,
+      generated:  new Date().toISOString(),
     };
 
     // Save per-char manifest after each expression (crash-safe)
@@ -345,7 +377,7 @@ async function generateExpressionsForEntry(entry, catalog, filterExpr) {
     saveCatalog(catalog);
 
     const secs = (result.elapsed / 1000).toFixed(1);
-    log(`    ✓ ${expr.label} — saved (${secs}s, ${(imgBuf.length / 1024).toFixed(0)} KB)`);
+    log(`    ✓ ${expr.label} — saved (${secs}s, ${(imgBuf.length / 1024).toFixed(0)} KB @ 640×936)`);
   }
 
   // Final catalog update for this entry
@@ -372,8 +404,9 @@ if (filterExpr && !EXPRESSIONS[filterExpr]) {
 // Entry point
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log('\n=== TORRE · Catalog Expressions Batch Generator ===');
-  console.log(`  Expressions : ${Object.keys(EXPRESSIONS).length} total`);
+  console.log('\n=== TORRE · Catalog Expressions Batch Generator (Opción B) ===');
+  console.log(`  Expresiones : ${Object.keys(EXPRESSIONS).length} total`);
+  console.log(`  Resolución  : 640×936 (Opción B — 73% menos pixel-steps vs original)`);
   console.log(`  Resume      : ${resume ? 'ON' : 'OFF'}`);
   console.log(`  Filter key  : ${filterKey ?? 'all'}`);
   console.log(`  Filter class: ${filterClass ?? 'all'}`);

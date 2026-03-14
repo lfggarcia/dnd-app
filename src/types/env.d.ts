@@ -1,3 +1,2 @@
-declare module '@env' {
-  export const NANO_BANANA_API: string;
-}
+// @env module removed — react-native-dotenv dependency was unused
+

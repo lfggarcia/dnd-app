@@ -292,7 +292,8 @@ export async function simulateWorld(
   const events: SimulationEvent[] = [];
 
   // RT-01: time-limit guard to prevent blocking JS thread on low-end devices
-  const MAX_TOTAL_TIME_MS = 100;
+  // CR-WS-01: increased from 100ms to 150ms for low-end device headroom
+  const MAX_TOTAL_TIME_MS = 150;
   const simStartTime = Date.now();
 
   // Inicializar estado de cada party IA

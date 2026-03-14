@@ -128,6 +128,9 @@ const CLASS_WEAPON_DICE: Record<string, string> = {
 /** Proficiency bonus at level 1 */
 const PROF_BONUS = 2;
 
+/** Gold earned per XP point (CR-CE-02: extracted from inline magic number) */
+const GOLD_PER_XP = 0.15;
+
 // ─── Enemy generation ─────────────────────────────────────────────────────────
 
 type EnemyPool = { base: string; count: [number, number] }[];
@@ -210,8 +213,9 @@ export function resolveCombat(
   const log: string[] = [];
 
   // Party: track mutable HP in combat without mutating the originals
+  // CR-CE-01: guard hp > 0 — a character may be alive:true but hp:0 if state was not synced
   const partyState = party
-    .filter(c => c.alive)
+    .filter(c => c.alive && (c.hp ?? 0) > 0)
     .map(c => ({ ...c, hpBefore: c.hp, currentHp: c.hp }));
 
   // Enemies: each instance is independent
@@ -346,7 +350,7 @@ export function resolveCombat(
 
   // ── Final tallies ──────────────────────────────────────────────────────────
   const totalXp    = defeatedEnemies.reduce((s, e) => s + e.xpEarned, 0);
-  const goldEarned = Math.round(totalXp * 0.15) + rng.next(5, 25);
+  const goldEarned = Math.round(totalXp * GOLD_PER_XP) + rng.next(5, 25);
 
   const partyAfter: CombatPartyMember[] = partyState.map(c => ({
     characterId: c.characterId,
@@ -893,7 +897,7 @@ export function buildCombatResultFromLive(
     });
 
   const totalXp = defeatedEnemies.reduce((s, e) => s + e.xpEarned, 0);
-  const goldEarned = Math.round(totalXp * 0.15) + rng.next(5, 25);
+  const goldEarned = Math.round(totalXp * GOLD_PER_XP) + rng.next(5, 25);
 
   const partyAfter: CombatPartyMember[] = state.partyState.map(c => ({
     characterId: c.characterId,

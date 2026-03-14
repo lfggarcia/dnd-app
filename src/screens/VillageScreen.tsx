@@ -176,7 +176,7 @@ export const VillageScreen = ({ navigation }: ScreenProps<'Village'>) => {
     if (!activeGameId) return;
     try {
       equipItem(item.id, charName);
-    } catch (e) { console.warn('Equip failed', e); }
+    } catch (e) { if (__DEV__) console.warn('Equip failed', e); }
   }, [activeGameId]);
 
   const handleBuildingPress = useCallback((key: string) => {

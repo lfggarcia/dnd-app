@@ -54,7 +54,7 @@ export function useResourceList(endpoint: ApiEndpoint): UseResourceListResult {
       const items = resources.map((r) => ({
         index: r.index_key,
         name: getTranslatedName(endpoint, r.index_key, lang),
-        raw: JSON.parse(r.data) as Record<string, unknown>,
+        raw: (() => { try { return JSON.parse(r.data) as Record<string, unknown>; } catch { return {}; } })(),
       }));
 
       setData(items);

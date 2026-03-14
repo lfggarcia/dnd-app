@@ -66,7 +66,7 @@ export const BlacksmithScreen = ({ navigation }: ScreenProps<'Blacksmith'>) => {
       upgradeItem(item.id, nextRarity);
       updateProgress({ gold: gold - cost });
       refreshInventory();
-    } catch (e) { console.warn('Upgrade failed', e); }
+    } catch (e) { if (__DEV__) console.warn('Upgrade failed', e); }
   }, [gold, updateProgress, refreshInventory, t]);
 
   const RARITY_COLOR: Record<string, string> = {

@@ -210,9 +210,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   advanceToVillage: async () => {
-    const { activeGame } = get();
-    if (!activeGame) return;
+    const { activeGame, loading } = get();
+    if (!activeGame || loading) return; // CR-GS-03: guard against race condition
 
+    set({ loading: true });
+    try {
     const { advanceToEndOfSeason } = await import('../services/timeService');
     const { simulateWorld } = await import('../services/worldSimulator');
 
@@ -242,6 +244,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       activeGame: { ...activeGame, ...updates, updatedAt: new Date().toISOString() },
       lastSimulationEvents: simResult.events,
     });
+    } finally {
+      set({ loading: false });
+    }
   },
 
   setSimulationEvents: (events) => set({ lastSimulationEvents: events }),

@@ -47,10 +47,19 @@ export async function syncEndpoint(
 
   onProgress?.({ endpoint, phase: 'list', current: 0, total: 0 });
 
-  // Fetch all details
-  const items = await fetchAllDetails(endpoint, (done, total) => {
-    onProgress?.({ endpoint, phase: 'details', current: done, total });
-  });
+  // CR-SS-01: apply 30s timeout to prevent indefinite hang if API is unreachable
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
+  let items: { index: string; name: string; data: Record<string, unknown> }[];
+  try {
+    // Fetch all details
+    items = await fetchAllDetails(endpoint, (done, total) => {
+      onProgress?.({ endpoint, phase: 'details', current: done, total });
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // Store in DB
   onProgress?.({

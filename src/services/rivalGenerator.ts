@@ -99,6 +99,9 @@ export function buildRivalPool(seedHash: string): string[] {
 // ─── Main export ──────────────────────────────────────────
 // Drop-in replacement for the inline generateRivals in VillageScreen.
 
+/** Maximum number of rival parties visible in the world at any time (CR-RG-01). */
+const MAX_RIVALS = 5;
+
 export function generateRivals(
   seedHash: string,
   playerFloor: number,
@@ -107,7 +110,7 @@ export function generateRivals(
   const rng  = makePRNG(`${seedHash}_state`);
   const pool = buildRivalPool(seedHash);
 
-  return pool.slice(0, 5).map((name, i) => {
+  return pool.slice(0, MAX_RIVALS).map((name, i) => {
     const isNew = playerCycle <= 1;
 
     const floor = isNew

@@ -13,6 +13,7 @@ type UseDatabase = {
   error: string | null;
   progress: FullSyncProgress | null;
   syncNow: () => Promise<void>;
+  retry: () => void;
   syncStatus: { synced: string[]; missing: string[]; total: number } | null;
 };
 
@@ -28,11 +29,7 @@ export function useDatabase(): UseDatabase {
   const [syncStat, setSyncStat] = useState<UseDatabase['syncStatus']>(null);
   const initializedRef = useRef(false);
 
-  // Initialize DB on mount
-  useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-
+  const initDB = useCallback(() => {
     try {
       runMigrations();
       seedSpanishTranslations();
@@ -46,6 +43,19 @@ export function useDatabase(): UseDatabase {
       setError(err instanceof Error ? err.message : 'DB initialization failed');
     }
   }, []);
+
+  // Initialize DB on mount
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    initDB();
+  }, [initDB]);
+
+  const retry = useCallback(() => {
+    setStatus('initializing');
+    setError(null);
+    initDB();
+  }, [initDB]);
 
   // Manual sync trigger
   const syncNow = useCallback(async () => {
@@ -65,5 +75,5 @@ export function useDatabase(): UseDatabase {
     }
   }, [status]);
 
-  return { status, error, progress, syncNow, syncStatus: syncStat };
+  return { status, error, progress, syncNow, retry, syncStatus: syncStat };
 }

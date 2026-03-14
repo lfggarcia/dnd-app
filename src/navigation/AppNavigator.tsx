@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { MainScreen } from '../screens/MainScreen';
 import { SeedScreen } from '../screens/SeedScreen';
 import { PartyScreen } from '../screens/PartyScreen';
@@ -68,7 +69,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator = () => {
   return (
-    <Suspense fallback={<LazyFallback />}>
+    <ErrorBoundary>
+      <Suspense fallback={<LazyFallback />}>
       <Stack.Navigator
         initialRouteName="Main"
         screenOptions={{
@@ -100,6 +102,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="Blacksmith" component={BlacksmithScreen as React.ComponentType<object>} />
         <Stack.Screen name="EventResolution" component={EventResolutionScreen as React.ComponentType<object>} />
       </Stack.Navigator>
-    </Suspense>
+      </Suspense>
+    </ErrorBoundary>
   );
 };

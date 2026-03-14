@@ -157,7 +157,7 @@ const DESC_BUILDERS: Record<string, DescBuilder> = {
 function hasFullData(endpoint: ApiEndpoint): boolean {
   const first = getFirstResourceByEndpoint(endpoint);
   if (!first) return false;
-  const keys = Object.keys(JSON.parse(first.data) as Record<string, unknown>);
+  const keys = Object.keys((() => { try { return JSON.parse(first.data) as Record<string, unknown>; } catch { return {}; } })());
   return keys.length > 3;
 }
 
@@ -251,7 +251,7 @@ export const GlossaryModal = ({
       const builder = DESC_BUILDERS[activeCategory];
 
       const entries: GlossaryEntry[] = resources.map((r) => {
-        const raw = JSON.parse(r.data) as Record<string, unknown>;
+        const raw = (() => { try { return JSON.parse(r.data) as Record<string, unknown>; } catch { return {} as Record<string, unknown>; } })();
         const name = getTranslatedName(endpoint, r.index_key, lang);
         const desc = builder
           ? builder(raw, lang, r.index_key)

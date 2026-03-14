@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useDatabase } from '../hooks/useDatabase';
 
 type Props = {
@@ -11,7 +11,7 @@ type Props = {
  * before rendering children. Shows a CRT-themed loading screen during init.
  */
 export function DatabaseGate({ children }: Props) {
-  const { status, error, progress, syncNow, syncStatus } = useDatabase();
+  const { status, error, progress, syncNow, retry, syncStatus } = useDatabase();
 
   // Auto-sync when DB is ready but API data is missing
   useEffect(() => {
@@ -45,7 +45,9 @@ export function DatabaseGate({ children }: Props) {
       <View style={styles.container}>
         <Text style={styles.errorTitle}>ERROR DE BASE DE DATOS</Text>
         <Text style={styles.errorMessage}>{error}</Text>
-        <Text style={styles.hint}>Reinicia la aplicación para intentar de nuevo.</Text>
+        <TouchableOpacity onPress={retry} style={styles.retryButton}>
+          <Text style={styles.retryLabel}>REINTENTAR</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -106,5 +108,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255,176,0,0.7)',
     textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 24,
+    backgroundColor: '#FFB000',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryLabel: {
+    fontFamily: 'RobotoMono-Bold',
+    fontSize: 13,
+    color: '#000',
+    letterSpacing: 2,
   },
 });

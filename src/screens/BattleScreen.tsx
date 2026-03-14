@@ -787,7 +787,7 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     const pool  = alive.length > 0 ? alive : cs.enemyState;
     const pick  = pool.length === 1
       ? pool[0]
-      : pool[Math.floor(Math.random() * pool.length)];
+      : pool[rngRef.current.next(0, pool.length - 1)];
     return pick ? (MONSTER_ILLUSTRATIONS[pick.name] ?? null) : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cs.outcome]);

@@ -91,7 +91,7 @@ function rowToWorldEvent(row: WorldEventRow): WorldEvent {
     cycle: row.cycle,
     partyName: row.party_name,
     targetName: row.target_name,
-    data: JSON.parse(row.data || '{}'),
+    data: (() => { try { return JSON.parse(row.data || '{}'); } catch { return {}; } })(),
     createdAt: row.created_at,
   };
 }

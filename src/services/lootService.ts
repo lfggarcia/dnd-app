@@ -78,7 +78,7 @@ export function generateRoomLoot(
   for (const entry of table) {
     if (rng.bool(entry.chance)) {
       drops.push({
-        id: `${seedHash}_${roomId}_${entry.name}_${floor}`,
+        id: `${seedHash}::${roomId}::${entry.name}::${floor}`,
         name: entry.name,
         type: entry.type,
         rarity: entry.rarity,

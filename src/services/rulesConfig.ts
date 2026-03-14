@@ -109,6 +109,12 @@ export const SPELLCASTING_CLASSES = [
 ] as const;
 
 /**
+ * Maximum level available in the MVP game (CR-PS-02: single source of truth).
+ * Per SYSTEMS.MD: "MAX_LEVEL MVP = 10".
+ */
+export const MAX_LEVEL_MVP = 10;
+
+/**
  * XP thresholds for levels 1-20 (cumulative).
  */
 export const XP_TABLE: Record<number, number> = {

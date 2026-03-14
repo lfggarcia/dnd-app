@@ -20,7 +20,8 @@ export function getTranslatedField(
   // Fallback to raw resource data
   const resource = getResource(endpoint, indexKey);
   if (!resource) return null;
-  const data = JSON.parse(resource.data);
+  const data = (() => { try { return JSON.parse(resource.data); } catch { return null; } })();
+  if (!data) return null;
   return resolveFieldPath(data, fieldPath);
 }
 
@@ -36,8 +37,9 @@ export function getTranslatedResource(
   const resource = getResource(endpoint, indexKey);
   if (!resource) return null;
 
-  const data = JSON.parse(resource.data);
+  const data = (() => { try { return JSON.parse(resource.data) as Record<string, unknown>; } catch { return null; } })();
 
+  if (!data) return null;
   if (lang === 'en') return data;
 
   // Get all translations for this resource + language

@@ -77,8 +77,8 @@ export function loadRivals(seedHash: string, limit = 15): PersistedRival[] {
     seedHash: r.seed_hash as string,
     floor: r.floor as number,
     rep: r.rep as number,
-    profile: JSON.parse(r.profile as string) as AIProfile,
-    memory: JSON.parse(r.memory as string) as AIMemoryState,
+    profile: (() => { try { return JSON.parse(r.profile as string) as AIProfile; } catch { return {} as AIProfile; } })(),
+    memory: (() => { try { return JSON.parse(r.memory as string) as AIMemoryState; } catch { return {} as AIMemoryState; } })(),
     lastCycle: r.last_cycle as number,
   }));
 }

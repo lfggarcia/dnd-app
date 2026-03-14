@@ -7,11 +7,12 @@
  */
 
 import type { CharacterSave } from '../database/gameRepository';
-import { getLevelForXP, getXPToNextLevel } from './rulesConfig';
+import { getLevelForXP, getXPToNextLevel, MAX_LEVEL_MVP } from './rulesConfig';
 
 // ─── Constantes ───────────────────────────────────────────
 
-export const MAX_LEVEL_MVP = 10;
+/** @deprecated Import MAX_LEVEL_MVP from rulesConfig instead (CR-PS-02). Re-exported for backward compat. */
+export { MAX_LEVEL_MVP };
 
 /** XP por tipo de objetivo. */
 export const XP_REWARDS = {

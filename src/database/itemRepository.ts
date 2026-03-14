@@ -72,7 +72,7 @@ function rowToItem(row: ItemRow): Item {
     obtainedCycle: row.obtained_cycle,
     floorObtained: row.floor_obtained,
     goldValue: row.gold_value,
-    data: JSON.parse(row.data || '{}'),
+    data: (() => { try { return JSON.parse(row.data || '{}'); } catch { return {}; } })(),
     claimed: row.claimed === 1,
     createdAt: row.created_at,
   };

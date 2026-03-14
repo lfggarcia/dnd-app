@@ -98,7 +98,7 @@ export const MarketScreen = ({ navigation }: ScreenProps<'Market'>) => {
       });
       updateProgress({ gold: gold - item.price });
       setPurchased(prev => new Set(prev).add(item.id));
-    } catch (e) { console.warn('Buy failed', e); }
+    } catch (e) { if (__DEV__) console.warn('Buy failed', e); }
   }, [activeGameId, gold, seedHash, cycle, maxFloor, updateProgress, t]);
 
   const handleSell = useCallback((item: Item) => {
@@ -107,7 +107,7 @@ export const MarketScreen = ({ navigation }: ScreenProps<'Market'>) => {
       deleteItem(item.id);
       updateProgress({ gold: gold + sellPrice });
       setInventory(prev => prev.filter(i => i.id !== item.id));
-    } catch (e) { console.warn('Sell failed', e); }
+    } catch (e) { if (__DEV__) console.warn('Sell failed', e); }
   }, [gold, updateProgress]);
 
   const RARITY_COLOR: Record<string, string> = {

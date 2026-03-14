@@ -388,8 +388,8 @@ const DefeatAnimation = memo(({ source }: { source: ImageSourcePropType }) => {
 
   const rotate = rotDeg.interpolate({ inputRange: [-5, 4], outputRange: ['-5deg', '4deg'] });
 
-  const cardW = ENEMY_MAX_W * 1.2;
-  const cardH = ENEMY_MAX_W * 1.9;
+  const cardW = ENEMY_MAX_W * 2.5;
+  const cardH = ENEMY_MAX_W * 3.2;
 
   return (
     <View style={S.defeatOverlay}>
@@ -410,7 +410,7 @@ const DefeatAnimation = memo(({ source }: { source: ImageSourcePropType }) => {
           elevation: 20,
         }}
       >
-        <Image source={source} style={{ width: cardW, height: cardH }} resizeMode="cover" />
+        <Image source={source} style={{ width: cardW, height: cardH}} resizeMode="cover" />
       </Animated.View>
     </View>
   );

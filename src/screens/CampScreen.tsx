@@ -22,14 +22,12 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
   const { lang } = useI18n();
   const { floor } = route.params;
 
-  const activeGame      = useGameStore(s => s.activeGame);
+  const partyData = useGameStore(s => s.activeGame?.partyData ?? []);
+  const gold      = useGameStore(s => s.activeGame?.gold ?? 0);
+  const cycle     = useGameStore(s => s.activeGame?.cycle ?? 1);
   const updateProgress  = useGameStore(s => s.updateProgress);
   const advanceCycle    = useGameStore(s => s.advanceCycle);
   const advanceToVillage = useGameStore(s => s.advanceToVillage);
-
-  const partyData = activeGame?.partyData ?? [];
-  const gold      = activeGame?.gold ?? 0;
-  const cycle     = activeGame?.cycle ?? 1;
 
   const [tab, setTab] = useState<CampTab>('PARTY');
 

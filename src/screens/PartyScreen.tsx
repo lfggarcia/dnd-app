@@ -23,6 +23,7 @@ import { usePartyLaunch } from '../hooks/usePartyLaunch';
 import { getTranslatedField } from '../services/translationBridge';
 import type { ScreenProps } from '../navigation/types';
 import type { Stats } from '../database/gameRepository';
+import { CatalogEntry, requireCatalogPortrait } from '../services/characterCatalogService';
 
 const S = StyleSheet.create({
   slotsCount: { color: 'rgba(0,255,65,0.5)' },
@@ -58,6 +59,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
     addCharacter, removeCharacter, buildPartySaves,
     rerollStats, useStdArray, handleGeneratePortrait,
     showCatalogPicker, setShowCatalogPicker, handleSelectCatalogPortrait,
+		charPortraitsKeys
   } = rosterHook;
 
   const [activeCatalogSlot, setActiveCatalogSlot] = useState<number | null>(null);
@@ -80,9 +82,9 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
   );
 
   const handlePortraitView = useCallback(() => {
-    const uri = charPortraits[activeSlot];
+    const uri = charPortraitsKeys[activeSlot];
     if (uri) setPortraitDetailUri(uri);
-  }, [charPortraits, activeSlot, setPortraitDetailUri]);
+  }, [charPortraitsKeys, activeSlot, setPortraitDetailUri]);
 
   const handlePortraitDetailClose = useCallback(() => setPortraitDetailUri(null), [setPortraitDetailUri]);
 
@@ -183,7 +185,7 @@ export const PartyScreen = ({ navigation, route }: ScreenProps<'Party'>) => {
           charClass={current.charClass}
           lang={lang}
           namePlaceholder={t('party.namePlaceholder')}
-          portrait={charPortraits[activeSlot] ?? null}
+          portrait={requireCatalogPortrait({key: charPortraitsKeys[activeSlot]} as CatalogEntry) ?? null}
           portraitRolls={charPortraitRolls[activeSlot] ?? 0}
           generating={generatingPortraitFor === activeSlot}
           error={portraitError}

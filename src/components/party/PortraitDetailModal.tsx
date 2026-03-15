@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { AppImage } from '../AppImage';
 import { useI18n } from '../../i18n';
+import { CatalogEntry, requireCatalogPortrait } from '../../services/characterCatalogService';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -50,6 +51,10 @@ function PortraitDetailModalInner({ uri, onClose, title }: Props) {
     }
   }, [uri, title, t]);
 
+	const uriImage = useMemo<number|null>(() => {
+		return requireCatalogPortrait({key: uri} as CatalogEntry);
+	}, [uri]);
+
   const displayTitle = (title ?? t('party.portrait')).toUpperCase();
 
   return (
@@ -86,7 +91,7 @@ function PortraitDetailModalInner({ uri, onClose, title }: Props) {
               <Text style={[S.cornerGlyph, S.cornerBR]}>◆</Text>
 
               <AppImage
-                source={{ uri }}
+                source={uriImage}
                 style={S.image}
                 resizeMode="cover"
               />

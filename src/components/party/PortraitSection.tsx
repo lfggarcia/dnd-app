@@ -82,7 +82,7 @@ export const PortraitSection = memo(({
           style={S.portraitBox}
         >
           {portrait ? (
-            <AppImage source={{ uri: portrait }} style={S.portraitImage} resizeMode="cover" />
+            <AppImage source={portrait} style={S.portraitImage} resizeMode="cover" />
           ) : (
             <Text style={S.placeholderLabel}>PORTRAIT</Text>
           )}

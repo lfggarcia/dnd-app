@@ -1,6 +1,6 @@
-import type { IEventRepository } from '../../domain/repositories/IEventRepository';
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
-import { GameStateError } from '../../domain/errors/DomainError';
+import type { IEventRepository } from '../../../domain/repositories/IEventRepository';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
+import { GameStateError } from '../../../domain/errors/DomainError';
 
 /**
  * ClaimBountyUseCase — allows a party to collect the reward for an active bounty target.

@@ -1,7 +1,7 @@
-import type { IItemRepository } from '../../domain/repositories/IItemRepository';
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
-import { LootDomainService } from '../../domain/services/LootDomainService';
-import { GameStateError } from '../../domain/errors/DomainError';
+import type { IItemRepository } from '../../../domain/repositories/IItemRepository';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
+import { LootDomainService } from '../../../domain/services/LootDomainService';
+import { GameStateError } from '../../../domain/errors/DomainError';
 
 /**
  * SellItemUseCase — sells an item and adds gold to the game.

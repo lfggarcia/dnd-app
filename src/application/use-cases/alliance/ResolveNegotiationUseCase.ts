@@ -1,6 +1,6 @@
 import type { IAllianceStorage } from './ProposeAllianceUseCase';
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
-import { Alliance } from '../../domain/entities/Alliance';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
+import { Alliance } from '../../../domain/entities/Alliance';
 
 /**
  * ResolveNegotiationUseCase — handles the result of a negotiation (accept/reject).

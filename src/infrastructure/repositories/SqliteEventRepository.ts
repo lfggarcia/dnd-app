@@ -65,7 +65,6 @@ export class SqliteEventRepository implements IEventRepository {
       escalateBounty(existing.id, bounty.rewardAmount, bounty.bountyLevel);
     } else {
       createBounty({
-        id: bounty.id,
         seedHash: bounty.seedHash,
         targetGameId: bounty.targetGameId,
         issuedBy: bounty.issuedBy,

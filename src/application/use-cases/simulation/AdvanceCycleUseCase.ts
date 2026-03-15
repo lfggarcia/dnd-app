@@ -1,4 +1,4 @@
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
 import type { IWorldSimulatorPort, SimulationResult } from '../../ports/IWorldSimulatorPort';
 import { advanceTime, type TimeAction } from '../../../services/timeService';
 

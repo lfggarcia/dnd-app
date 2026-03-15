@@ -1,6 +1,6 @@
-import { Alliance, AllianceProps } from '../../domain/entities/Alliance';
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
-import { GameStateError } from '../../domain/errors/DomainError';
+import { Alliance, AllianceProps } from '../../../domain/entities/Alliance';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
+import { GameStateError } from '../../../domain/errors/DomainError';
 
 // These will be replaced by IAllianceRepository once that port is added.
 // For now, raw DB interaction is brokered through IGameRepository snapshots.

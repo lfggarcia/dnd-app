@@ -1,4 +1,4 @@
-import type { IGameRepository, SavedGameSnapshot } from '../../domain/repositories/IGameRepository';
+import type { IGameRepository, SavedGameSnapshot } from '../../../domain/repositories/IGameRepository';
 
 /**
  * LoadGameUseCase — retrieves a saved game by id, or the active game.

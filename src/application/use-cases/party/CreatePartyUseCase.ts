@@ -1,7 +1,7 @@
-import { Party } from '../../domain/entities/Party';
-import { Character, CharacterProps } from '../../domain/entities/Character';
-import { ProgressionDomainService } from '../../domain/services/ProgressionDomainService';
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
+import { Party } from '../../../domain/entities/Party';
+import { Character, CharacterProps } from '../../../domain/entities/Character';
+import { ProgressionDomainService } from '../../../domain/services/ProgressionDomainService';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
 
 /**
  * CreatePartyUseCase — validates and persists a new party for a game.

@@ -1,4 +1,4 @@
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
 
 /**
  * AdvanceFloorUseCase — increments the dungeon floor counter.

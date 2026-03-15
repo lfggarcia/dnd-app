@@ -1,6 +1,6 @@
-import { Character, CharacterProps } from '../../domain/entities/Character';
-import { Party } from '../../domain/entities/Party';
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
+import { Character, CharacterProps } from '../../../domain/entities/Character';
+import { Party } from '../../../domain/entities/Party';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
 
 /**
  * LaunchPartyIntoDungeonUseCase — transitions party from village to dungeon map.

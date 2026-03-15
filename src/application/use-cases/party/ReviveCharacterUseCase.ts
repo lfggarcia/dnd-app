@@ -1,7 +1,7 @@
-import { Character, CharacterProps } from '../../domain/entities/Character';
-import { Party } from '../../domain/entities/Party';
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
-import { GameStateError } from '../../domain/errors/DomainError';
+import { Character, CharacterProps } from '../../../domain/entities/Character';
+import { Party } from '../../../domain/entities/Party';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
+import { GameStateError } from '../../../domain/errors/DomainError';
 
 /**
  * ReviveCharacterUseCase — revives a dead character for a gold cost.

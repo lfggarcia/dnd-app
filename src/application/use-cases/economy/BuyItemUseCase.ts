@@ -1,5 +1,5 @@
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
-import { GameStateError } from '../../domain/errors/DomainError';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
+import { GameStateError } from '../../../domain/errors/DomainError';
 
 /**
  * BuyItemUseCase — deducts gold from the game for a shop purchase.

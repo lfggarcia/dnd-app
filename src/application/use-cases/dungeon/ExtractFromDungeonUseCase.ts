@@ -1,4 +1,4 @@
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
 
 /**
  * ExtractFromDungeonUseCase — moves party back to the village.

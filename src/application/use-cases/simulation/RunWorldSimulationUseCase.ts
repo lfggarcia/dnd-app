@@ -1,5 +1,5 @@
 import type { IWorldSimulatorPort, SimulationResult } from '../../ports/IWorldSimulatorPort';
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
 
 /**
  * RunWorldSimulationUseCase — triggers AI world simulation for a cycle advance.

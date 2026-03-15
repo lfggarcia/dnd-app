@@ -1,5 +1,5 @@
-import type { IGameRepository, SavedGameSnapshot } from '../../domain/repositories/IGameRepository';
-import type { CharacterProps } from '../../domain/entities/Character';
+import type { IGameRepository, SavedGameSnapshot } from '../../../domain/repositories/IGameRepository';
+import type { CharacterProps } from '../../../domain/entities/Character';
 
 /**
  * StartNewGameUseCase — creates a new SavedGame from a seed and party.

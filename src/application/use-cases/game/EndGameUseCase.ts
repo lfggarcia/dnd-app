@@ -1,4 +1,4 @@
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
 
 /**
  * EndGameUseCase — marks a game as completed or dead, or deletes it.

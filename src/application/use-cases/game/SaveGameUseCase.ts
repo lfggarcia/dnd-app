@@ -1,4 +1,4 @@
-import type { IGameRepository, SavedGameSnapshot } from '../../domain/repositories/IGameRepository';
+import type { IGameRepository, SavedGameSnapshot } from '../../../domain/repositories/IGameRepository';
 
 /**
  * SaveGameUseCase — persists game state updates.

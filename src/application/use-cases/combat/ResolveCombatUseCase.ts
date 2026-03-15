@@ -1,10 +1,10 @@
-import { CombatSession } from '../../domain/entities/CombatSession';
-import { CombatDomainService } from '../../domain/services/CombatDomainService';
-import { ProgressionDomainService } from '../../domain/services/ProgressionDomainService';
-import { Character, CharacterProps } from '../../domain/entities/Character';
-import { Party } from '../../domain/entities/Party';
-import { Monster } from '../../domain/entities/Monster';
-import type { IGameRepository } from '../../domain/repositories/IGameRepository';
+import { CombatSession } from '../../../domain/entities/CombatSession';
+import { CombatDomainService } from '../../../domain/services/CombatDomainService';
+import { ProgressionDomainService } from '../../../domain/services/ProgressionDomainService';
+import { Character, CharacterProps } from '../../../domain/entities/Character';
+import { Party } from '../../../domain/entities/Party';
+import { Monster } from '../../../domain/entities/Monster';
+import type { IGameRepository } from '../../../domain/repositories/IGameRepository';
 import type { CombatResult } from './types';
 
 /**

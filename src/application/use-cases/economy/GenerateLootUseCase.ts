@@ -1,7 +1,7 @@
-import { LootDomainService } from '../../domain/services/LootDomainService';
-import type { LootDrop } from '../../domain/services/LootDomainService';
-import type { RoomType } from '../../domain/entities/Room';
-import type { IItemRepository } from '../../domain/repositories/IItemRepository';
+import { LootDomainService } from '../../../domain/services/LootDomainService';
+import type { LootDrop } from '../../../domain/services/LootDomainService';
+import type { RoomType } from '../../../domain/entities/Room';
+import type { IItemRepository } from '../../../domain/repositories/IItemRepository';
 
 /**
  * GenerateLootUseCase — generates and persists room loot.

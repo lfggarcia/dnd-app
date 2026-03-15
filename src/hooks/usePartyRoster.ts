@@ -79,6 +79,7 @@ export function usePartyRoster(lang: Lang) {
   const [roster, setRoster] = useState<CharacterDraft[]>([mkDefault(0)]);
   const [activeSlot, setActiveSlot] = useState(0);
   const [charPortraits, setCharPortraits] = useState<Record<number, string>>({});
+  const [charPortraitsKeys, setCharPortraitsKeys] = useState<Record<number, string>>({});
   const [charPortraitRolls, setCharPortraitRolls] = useState<Record<number, number>>({});
   const [generatingPortraitFor, setGeneratingPortraitFor] = useState<number | null>(null);
   const [portraitError, setPortraitError] = useState<string | null>(null);
@@ -234,6 +235,7 @@ export function usePartyRoster(lang: Lang) {
     if (source !== null) {
       setCharPortraits(prev => ({ ...prev, [idx]: entry.portraitPath }));
       saveCharacterPortraits({ [String(idx)]: entry.portraitPath });
+			setCharPortraitsKeys(prev => ({ ...prev, [idx]: entry.key }));
     }
     if (entry.expressions && Object.keys(entry.expressions).length > 0) {
       useGameStore.getState().saveCharacterExpressions({ [String(idx)]: entry.expressions });
@@ -335,5 +337,6 @@ export function usePartyRoster(lang: Lang) {
     // Catalog picker
     showCatalogPicker, setShowCatalogPicker,
     handleSelectCatalogPortrait,
+		charPortraitsKeys
   };
 }

@@ -26,6 +26,7 @@ import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
 import type { CharacterSave } from '../database/gameRepository';
 import type { ScreenProps } from '../navigation/types';
+import { resolvePortraitSource, resolveExpressionSource, type PortraitSource } from '../utils/mapState';
 
 // ─── Dimensions ───────────────────────────────────────────
 
@@ -41,16 +42,23 @@ const STRIP_ACCENTS = ['#00FF41', '#FFB000', '#FF3E3E', '#4DBBFF'] as const;
 
 type CardProps = {
   char: CharacterSave;
-  uri: string | null;
+  portraitPath: string | null;
   accent: string;
   idx: number;
   generatingPortrait?: boolean;
   onPress: (idx: number) => void;
-  onLongPress: (uri: string) => void;
+  onLongPress: (portraitPath: string) => void;
   onGeneratePortrait: (idx: number) => void;
 };
 
-const CharacterCard = memo(({ char, uri, accent, idx, generatingPortrait, onPress, onLongPress, onGeneratePortrait }: CardProps) => {
+const CharacterCard = memo(({ char, portraitPath, accent, idx, generatingPortrait, onPress, onLongPress, onGeneratePortrait }: CardProps) => {
+  const source = useMemo<PortraitSource | null>(() =>
+    resolveExpressionSource(portraitPath, 'aggressive') ??
+    resolveExpressionSource(portraitPath, 'angry') ??
+    resolveExpressionSource(portraitPath, 'neutral') ??
+    resolvePortraitSource(portraitPath),
+  [portraitPath]);
+
   const { hpPct, hpColor } = useMemo(() => {
     const pct = char.maxHp > 0 ? char.hp / char.maxHp : 0;
     const color = !char.alive
@@ -61,9 +69,9 @@ const CharacterCard = memo(({ char, uri, accent, idx, generatingPortrait, onPres
 
   const handlePress     = useCallback(() => onPress(idx), [onPress, idx]);
   const handleLongPress = useCallback(() => {
-    if (uri) onLongPress(uri);
+    if (portraitPath) onLongPress(portraitPath);
     else onGeneratePortrait(idx);
-  }, [uri, onLongPress, onGeneratePortrait, idx]);
+  }, [portraitPath, onLongPress, onGeneratePortrait, idx]);
 
   return (
     <TouchableOpacity
@@ -74,9 +82,9 @@ const CharacterCard = memo(({ char, uri, accent, idx, generatingPortrait, onPres
     >
       {/* Portrait */}
       <View style={[S.portrait, { backgroundColor: `${accent}0E` }]}>
-        {uri ? (
+        {source != null ? (
           <AppImage
-            source={{ uri }}
+            source={source}
             style={StyleSheet.absoluteFillObject}
             resizeMode="cover"
           />
@@ -143,32 +151,25 @@ const CharacterCard = memo(({ char, uri, accent, idx, generatingPortrait, onPres
 
 type GridProps = {
   party: CharacterSave[];
-  expressionsJson: Record<number, Record<string, string>>;
   portraitsJson: Record<string, string> | null;
   generatingForIdx: number | null;
   onCharPress: (idx: number) => void;
-  onCharLongPress: (uri: string) => void;
+  onCharLongPress: (portraitPath: string) => void;
   onGeneratePortrait: (idx: number) => void;
 };
 
-const PartyGrid = memo(({ party, expressionsJson, portraitsJson, generatingForIdx, onCharPress, onCharLongPress, onGeneratePortrait }: GridProps) => {
+const PartyGrid = memo(({ party, portraitsJson, generatingForIdx, onCharPress, onCharLongPress, onGeneratePortrait }: GridProps) => {
   if (party.length === 0) return null;
 
   return (
     <View style={S.grid}>
       {party.map((char, i) => {
-        const expressions = expressionsJson[i] ?? null;
-        const uri =
-          expressions?.['aggressive'] ??
-          expressions?.['angry'] ??
-          expressions?.['neutral'] ??
-          portraitsJson?.[String(i)] ??
-          null;
+        const portraitPath = portraitsJson?.[String(i)] ?? char.portrait ?? null;
         return (
           <CharacterCard
             key={char.characterId}
             char={char}
-            uri={uri}
+            portraitPath={portraitPath}
             accent={STRIP_ACCENTS[i % STRIP_ACCENTS.length]}
             idx={i}
             generatingPortrait={generatingForIdx === i}
@@ -191,7 +192,6 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
 
   const party           = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
   const aliveCount      = useMemo(() => party.filter(c => c.alive).length, [party]);
-  const expressionsJson = activeGame?.expressionsJson ?? {};
   const portraitsJson   = activeGame?.portraitsJson ?? null;
 
   const [modalUri, setModalUri] = useState<string | null>(null);
@@ -348,7 +348,6 @@ export const GuildScreen = ({ navigation }: ScreenProps<'Guild'>) => {
 
             <PartyGrid
               party={party}
-              expressionsJson={expressionsJson}
               portraitsJson={portraitsJson}
               generatingForIdx={generatingForIdx}
               onCharPress={handleCharPress}

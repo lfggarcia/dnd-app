@@ -12,6 +12,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { AppImage } from './AppImage';
+import type { Source as FastImageSource } from '@d11/react-native-fast-image';
 import type { EmotionState } from '../services/emotionalNarrativeService';
 
 // CRT-palette accent colors per emotion family
@@ -29,7 +30,7 @@ const DISMISS_DELAY_MS = 3500;
 type Props = {
   charName:    string;
   emotion:     EmotionState;
-  portraitUri: string | null;
+  portraitUri: number | FastImageSource | null;
   onDismiss:   () => void;
 };
 
@@ -68,7 +69,7 @@ export const NarrativeMomentPanel = ({ charName, emotion, portraitUri, onDismiss
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
         {portraitUri != null && (
           <AppImage
-            source={{ uri: portraitUri }}
+            source={portraitUri}
             style={{ width: 48, height: 48, borderWidth: 1, borderColor: color, marginRight: 10 }}
             resizeMode="cover"
           />

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { AppImage } from '../AppImage';
 import { useI18n } from '../../i18n';
-import { CatalogEntry, requireCatalogPortrait } from '../../services/characterCatalogService';
+import { resolvePortraitSource, type PortraitSource } from '../../utils/mapState';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -51,8 +51,8 @@ function PortraitDetailModalInner({ uri, onClose, title }: Props) {
     }
   }, [uri, title, t]);
 
-	const uriImage = useMemo<number|null>(() => {
-		return requireCatalogPortrait({key: uri} as CatalogEntry);
+	const portraitSource = useMemo<PortraitSource | null>(() => {
+		return resolvePortraitSource(uri);
 	}, [uri]);
 
   const displayTitle = (title ?? t('party.portrait')).toUpperCase();
@@ -90,11 +90,13 @@ function PortraitDetailModalInner({ uri, onClose, title }: Props) {
               <Text style={[S.cornerGlyph, S.cornerBL]}>◆</Text>
               <Text style={[S.cornerGlyph, S.cornerBR]}>◆</Text>
 
-              <AppImage
-                source={uriImage}
-                style={S.image}
-                resizeMode="cover"
-              />
+              {portraitSource != null ? (
+                <AppImage
+                  source={portraitSource}
+                  style={S.image}
+                  resizeMode="cover"
+                />
+              ) : null}
             </View>
 
             {/* ── Bottom frame ── */}

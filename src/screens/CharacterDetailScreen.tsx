@@ -32,6 +32,7 @@ import { getEssenceSlots } from '../services/essenceService';
 import { ABANDON_THRESHOLD, isGoodOrLawful } from '../services/moralSystem';
 import { useI18n } from '../i18n';
 import { useGameStore } from '../stores/gameStore';
+import { resolvePortraitSource, resolveExpressionSource, getAvailableExpressions, type PortraitSource } from '../utils/mapState';
 import type { Stats } from '../database/gameRepository';
 import type { ScreenProps } from '../navigation/types';
 
@@ -226,6 +227,7 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
   const updateProgress = useGameStore(s => s.updateProgress);
   const party = useMemo(() => activeGame?.partyData ?? [], [activeGame]);
   const expressionsJson = activeGame?.expressionsJson ?? {};
+  const portraitsJson   = activeGame?.portraitsJson ?? {};
 
   const [selectedExpression, setSelectedExpression] = useState('neutral');
   const [fullscreenUri, setFullscreenUri] = useState<string | null>(null);
@@ -237,7 +239,10 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
   const [nameInput, setNameInput] = useState('');
 
   const char = party[charIndex];
-  const expressions = expressionsJson[charIndex] ?? null;
+  // Stored expression paths (for generated, non-catalog portraits)
+  const storedExpressions = expressionsJson[charIndex] ?? null;
+  // Path stored when a portrait was assigned (catalog relative path or file URI)
+  const portraitPath = (portraitsJson[String(charIndex)] ?? char?.portrait) || null;
 
   // Load equipment for this character
   useEffect(() => {
@@ -340,12 +345,16 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
       ? (lang === 'es' ? 'HERIDO' : 'WOUNDED')
       : (lang === 'es' ? 'ACTIVO' : 'ACTIVE');
 
-  const activePortraitUri = expressions?.[selectedExpression]
-    ?? expressions?.['neutral']
-    ?? char?.portrait
-    ?? null;
+  // Catalog expressions (require numbers) take priority; fall back to generated (file URIs)
+  const catalogExpressions = getAvailableExpressions(portraitPath);
+  const activeSource: PortraitSource | null =
+    resolveExpressionSource(portraitPath, selectedExpression) ??
+    resolveExpressionSource(portraitPath, 'neutral') ??
+    (storedExpressions?.[selectedExpression] ? { uri: storedExpressions[selectedExpression] } : null) ??
+    (storedExpressions?.['neutral'] ? { uri: storedExpressions['neutral'] } : null) ??
+    resolvePortraitSource(portraitPath);
 
-  const hasExpressions = !!expressions && Object.keys(expressions).length > 0;
+  const hasExpressions = !!(catalogExpressions ?? (storedExpressions && Object.keys(storedExpressions).length > 0));
 
   const hasPrev = charIndex > 0;
   const hasNext = charIndex < party.length - 1;
@@ -401,13 +410,13 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
         {/* ── Portrait — tappable to fullscreen ── */}
         <TouchableOpacity
           activeOpacity={0.92}
-          onPress={() => activePortraitUri && setFullscreenUri(activePortraitUri)}
+          onPress={() => activeSource != null && setFullscreenUri(portraitPath)}
           style={{ width: SCREEN_W, height: PORTRAIT_H, backgroundColor: '#010a01' }}
         >
-          {activePortraitUri ? (
+          {activeSource != null ? (
             <>
               <AnimatedAppImage
-                source={{ uri: activePortraitUri }}
+                source={activeSource as any}
                 style={[{ width: '100%', height: '100%' }, portraitAnimStyle]}
                 resizeMode="cover"
               />
@@ -449,7 +458,7 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
           )}
 
           {/* Expand hint */}
-          {activePortraitUri && (
+          {activeSource != null && (
             <View style={S.expandHint}>
               <Text style={S.expandHintText}>⤢</Text>
             </View>
@@ -506,7 +515,7 @@ export const CharacterDetailScreen = ({ navigation, route }: ScreenProps<'Charac
             <View style={S.exprStripDivider} />
             <View style={S.exprBtnRow}>
               {EXPRESSION_KEYS.map(key => {
-                const hasVariant = !!expressions?.[key];
+                const hasVariant = !!(catalogExpressions?.[key] ?? storedExpressions?.[key]);
                 const label = EXPR_LABELS[key]?.[lang === 'es' ? 'es' : 'en'] ?? key.toUpperCase();
                 return (
                   <ExprButton

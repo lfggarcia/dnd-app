@@ -55,7 +55,7 @@ import { isBossLootClaimed } from '../database/itemRepository';
 import { recordPartyKill } from '../services/bountyService';
 import { resolveEssenceDrop } from '../services/essenceService';
 import { saveEssenceDropsBatch, incrementMonsterKills } from '../database/essenceRepository';
-import { parseExplorationState } from '../utils/mapState';
+import { parseExplorationState, resolvePortraitSource, resolveExpressionSource } from '../utils/mapState';
 import type { ScreenProps } from '../navigation/types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -256,7 +256,7 @@ const EnemyCard = memo(({
 
 type PartyCardProps = {
   char: LivePartyMember;
-  portrait: string | null;
+  portrait: AppImageSource | null;
   isCurrentTurn: boolean;
   isTargetable: boolean;
   partyIdx: number;
@@ -286,7 +286,7 @@ const PartyCard = memo(({
       <View style={S.partyIllus}>
         {portrait != null ? (
           <AppImage
-            source={{ uri: portrait }}
+            source={portrait}
             style={S.partyIllusImg}
             resizeMode="cover"
           />
@@ -798,22 +798,30 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cs.outcome]);
 
-  const getPartyPortrait = useCallback((idx: number): string | null => {
+  const getPartyPortrait = useCallback((idx: number): AppImageSource | null => {
     const char = partyData[idx];
     if (!char) return null;
-    const exprs = expressionsJson[idx];
-    if (!exprs) return portraitsMap?.[String(idx)] ?? null;
-    // Use the character's active emotion expression; fallback to neutral; fallback to base portrait
+    const portraitPath = portraitsMap?.[String(idx)] ?? char.portrait ?? null;
     const expressionKey = partyEmotions[char.name]?.expression ?? 'neutral';
-    return exprs[expressionKey] ?? exprs['neutral'] ?? portraitsMap?.[String(idx)] ?? null;
+    // Catalog expressions (require numbers)
+    const catalogExpr = resolveExpressionSource(portraitPath, expressionKey)
+      ?? resolveExpressionSource(portraitPath, 'neutral');
+    if (catalogExpr != null) return catalogExpr;
+    // Generated expressions (file URIs stored in expressionsJson)
+    const exprs = expressionsJson[idx];
+    if (exprs) {
+      const exprPath = exprs[expressionKey] ?? exprs['neutral'] ?? portraitsMap?.[String(idx)];
+      if (exprPath) return { uri: exprPath };
+    }
+    // Base portrait
+    return resolvePortraitSource(portraitPath);
   }, [partyData, expressionsJson, portraitsMap, partyEmotions]);
 
   // ── Precompute timeline data ─────────────────────────────────────────────────
   const timelinePortraits = useMemo<Array<AppImageSource | null>>(() =>
     cs.turnOrder.map(actor => {
       if (actor.type === 'party') {
-        const uri = getPartyPortrait(actor.idx);
-        return uri != null ? { uri } : null;
+        return getPartyPortrait(actor.idx);
       }
       const enemy = cs.enemyState[actor.idx];
       const illus = MONSTER_ILLUSTRATIONS[enemy?.name ?? ''];
@@ -873,13 +881,19 @@ export const BattleScreen = ({ navigation, route }: ScreenProps<'Battle'>) => {
       {/* ── Narrative Moment Panel ── */}
       {activeMoment != null && (() => {
         const charIdx = partyData.findIndex(c => c.name === activeMoment.charName);
+        const portraitPath = portraitsMap?.[String(charIdx)] ?? partyData[charIdx]?.portrait ?? null;
         const exprs = expressionsJson[charIdx];
-        const uri = exprs?.[activeMoment.emotion.expression] ?? exprs?.['neutral'] ?? null;
+        const narrativeSource =
+          resolveExpressionSource(portraitPath, activeMoment.emotion.expression) ??
+          resolveExpressionSource(portraitPath, 'neutral') ??
+          (exprs?.[activeMoment.emotion.expression] ? { uri: exprs[activeMoment.emotion.expression] } : null) ??
+          (exprs?.['neutral'] ? { uri: exprs['neutral'] } : null) ??
+          resolvePortraitSource(portraitPath);
         return (
           <NarrativeMomentPanel
             charName={activeMoment.charName}
             emotion={activeMoment.emotion}
-            portraitUri={uri}
+            portraitUri={narrativeSource}
             onDismiss={() => setActiveMoment(null)}
           />
         );

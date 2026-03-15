@@ -25,6 +25,8 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
   const partyData = useGameStore(s => s.activeGame?.partyData ?? []);
   const gold      = useGameStore(s => s.activeGame?.gold ?? 0);
   const cycle     = useGameStore(s => s.activeGame?.cycle ?? 1);
+  const seedHash  = useGameStore(s => s.activeGame?.seedHash ?? '');
+  const activeGameId = useGameStore(s => s.activeGame?.id ?? null);
   const updateProgress  = useGameStore(s => s.updateProgress);
   const advanceCycle    = useGameStore(s => s.advanceCycle);
   const advanceToVillage = useGameStore(s => s.advanceToVillage);
@@ -63,10 +65,10 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
     const healed = partyData.map(c => ({ ...c, hp: c.alive ? c.maxHp : c.hp }));
 
     // Check for abandonment before committing the rest
-    if (activeGame) {
+    if (seedHash) {
       const { abandoned, remained, log } = checkForAbandonment(
         healed,
-        activeGame.seedHash,
+        seedHash,
         cycle,
       );
       if (abandoned.length > 0) {
@@ -88,7 +90,7 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
       to: 'NIGHT',
       cycle: (cycle ?? 1) + LONG_REST_CYCLE_COST,
     });
-  }, [partyData, updateProgress, advanceCycle, navigation, cycle, activeGame, lang]);
+  }, [partyData, updateProgress, advanceCycle, navigation, cycle, seedHash, lang]);
 
   const handleWaitEndOfSeason = useCallback(() => {
     const remaining = cyclesRemaining(cycle);
@@ -310,13 +312,13 @@ export const CampScreen = ({ navigation, route }: ScreenProps<'Camp'>) => {
         )}
 
         {/* INVENTORY TAB */}
-        {tab === 'INVENTORY' && activeGame && (
+        {tab === 'INVENTORY' && activeGameId && (
           <View>
             <Text className="text-primary/40 font-robotomono text-xs mb-3 px-1">
               {lang === 'es' ? 'OBJETOS RECOGIDOS' : 'COLLECTED ITEMS'}
             </Text>
             <InventoryGrid
-              items={getItemsByGame(activeGame.id).map(item => ({
+              items={getItemsByGame(activeGameId).map(item => ({
                 id: item.id,
                 name: item.name,
                 type: item.type,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, type ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import {
   View,
   Text,
@@ -212,6 +212,8 @@ export const GlossaryModal = ({
   const [search, setSearch] = useState('');
   const [dbEntries, setDbEntries] = useState<GlossaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  // Cache of already-loaded DB categories — avoids re-sync on tab switch
+  const loadedCategories = useRef(new Set<string>());
 
   // Load DB entries when category or lang changes (only when modal is visible)
   useEffect(() => {
@@ -225,7 +227,11 @@ export const GlossaryModal = ({
     let cancelled = false;
 
     const load = async () => {
-      setLoading(true);
+      // Skip full reload if this category+lang combo was already fetched
+      const cacheKey = `${activeCategory}:${lang}`;
+      const alreadyLoaded = loadedCategories.current.has(cacheKey);
+
+      if (!alreadyLoaded) setLoading(true);
 
       let count = getResourceCount(endpoint);
 
@@ -262,6 +268,7 @@ export const GlossaryModal = ({
       entries.sort((a, b) => a.name.localeCompare(b.name));
 
       if (!cancelled) {
+        loadedCategories.current.add(cacheKey);
         setDbEntries(entries);
         setLoading(false);
       }
@@ -455,7 +462,9 @@ export const GlossaryModal = ({
             renderItem={({ item }) => <GlossaryEntryItem entry={item} />}
             showsVerticalScrollIndicator={false}
             initialNumToRender={15}
+            maxToRenderPerBatch={8}
             windowSize={5}
+            removeClippedSubviews
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
             ListEmptyComponent={

@@ -1,5 +1,5 @@
 import React, { memo, useEffect } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import Svg, { Defs, Pattern, Rect, Line } from 'react-native-svg';
 import Animated, { 
   useSharedValue, 
@@ -10,18 +10,20 @@ import Animated, {
   cancelAnimation,
 } from 'react-native-reanimated';
 
+// Computed once at module load — TORRE is portrait-only, no rotation support
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+
 // Single SVG node replaces 100 View nodes — pattern tile repeats infinitely
 export const ScanlineOverlay = memo(() => {
-  const { width, height } = useWindowDimensions();
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <Svg width={width} height={height}>
+      <Svg width={SCREEN_W} height={SCREEN_H}>
         <Defs>
           <Pattern id="scanlines" x="0" y="0" width="1" height="2" patternUnits="userSpaceOnUse">
             <Line x1="0" y1="1" x2="1" y2="1" stroke="rgba(0,255,65,0.05)" strokeWidth="1" />
           </Pattern>
         </Defs>
-        <Rect x="0" y="0" width={width} height={height} fill="url(#scanlines)" />
+        <Rect x="0" y="0" width={SCREEN_W} height={SCREEN_H} fill="url(#scanlines)" />
       </Svg>
     </View>
   );

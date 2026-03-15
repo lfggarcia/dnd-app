@@ -1,5 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  cancelAnimation,
+} from 'react-native-reanimated';
 
 interface Props {
   text: string;
@@ -17,19 +24,18 @@ export const TypewriterText = ({
   showCursor = true
 }: Props) => {
   const [displayedText, setDisplayedText] = useState("");
-  const [cursorVisible, setCursorVisible] = useState(true);
-  // Marca si la animación de escritura ha terminado
-  const animDoneRef = useRef(false);
+  const cursorOpacity = useSharedValue(showCursor ? 1 : 0);
 
+  // Typewriter effect — one setState per letter
   useEffect(() => {
-    animDoneRef.current = false;
     let i = 0;
     const timer = setInterval(() => {
-      setDisplayedText(text.slice(0, i + 1));
       i++;
+      setDisplayedText(text.slice(0, i));
       if (i >= text.length) {
         clearInterval(timer);
-        animDoneRef.current = true;
+        cancelAnimation(cursorOpacity); // stop blinking on completion
+        cursorOpacity.value = 0;
         if (onComplete) onComplete();
       }
     }, delay);
@@ -38,26 +44,28 @@ export const TypewriterText = ({
   // onComplete entra en deps para evitar closure obsoleto si el callback cambia
   }, [text, delay, onComplete]);
 
+  // Cursor blink — runs on UI thread via Reanimated, zero JS setState calls
   useEffect(() => {
     if (!showCursor) return;
-    const cursorTimer = setInterval(() => {
-      // Detenemos el parpadeo cuando el texto ya se escribió por completo
-      if (animDoneRef.current) {
-        clearInterval(cursorTimer);
-        return;
-      }
-      setCursorVisible(v => !v);
-    }, 500);
-    return () => clearInterval(cursorTimer);
+    cursorOpacity.value = withRepeat(
+      withTiming(0, { duration: 500 }),
+      -1,
+      true,
+    );
+    return () => cancelAnimation(cursorOpacity);
   }, [showCursor]);
+
+  const cursorStyle = useAnimatedStyle(() => ({
+    opacity: cursorOpacity.value,
+  }));
 
   return (
     <Text className={`font-robotomono ${className}`}>
       {displayedText}
       {showCursor && (
-        <Text style={{ opacity: cursorVisible ? 1 : 0 }} className="text-primary">
+        <Animated.Text style={cursorStyle} className="text-primary">
           _
-        </Text>
+        </Animated.Text>
       )}
     </Text>
   );

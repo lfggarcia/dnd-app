@@ -100,6 +100,18 @@ export const CatalogPortraitPicker = memo(({
     onClose();
   }, [onClose]);
 
+  const handleThumbPress = useCallback((e: CatalogEntry) => {
+    setSelectedKey(e.key);
+  }, []);
+
+  const renderItem = useCallback(({ item }: { item: CatalogEntry }) => (
+    <PortraitThumb
+      entry={item}
+      selected={selectedKey === item.key}
+      onPress={handleThumbPress}
+    />
+  ), [selectedKey, handleThumbPress]);
+
   const isEmpty = entries.length === 0;
 
   return (
@@ -144,13 +156,7 @@ export const CatalogPortraitPicker = memo(({
               keyExtractor={item => item.key}
               numColumns={3}
               contentContainerStyle={S.grid}
-              renderItem={({ item }) => (
-                <PortraitThumb
-                  entry={item}
-                  selected={selectedKey === item.key}
-                  onPress={e => setSelectedKey(e.key)}
-                />
-              )}
+              renderItem={renderItem}
               showsVerticalScrollIndicator={false}
               // CR-065: layout hints to avoid measuring all items on first render
               getItemLayout={(_, index) => ({

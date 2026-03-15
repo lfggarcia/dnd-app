@@ -9,8 +9,14 @@
  * Positioned above the action panel — does not block the combat view.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  cancelAnimation,
+} from 'react-native-reanimated';
 import { AppImage } from './AppImage';
 import type { Source as FastImageSource } from '@d11/react-native-fast-image';
 import type { EmotionState } from '../services/emotionalNarrativeService';
@@ -35,35 +41,43 @@ type Props = {
 };
 
 export const NarrativeMomentPanel = ({ charName, emotion, portraitUri, onDismiss }: Props) => {
-  const slide = useRef(new Animated.Value(120)).current;
+  const slideY = useSharedValue(120);
   const color = FAMILY_ACCENT[emotion.family] ?? '#00FF41';
 
   useEffect(() => {
-    Animated.spring(slide, {
-      toValue: 0,
-      useNativeDriver: true,
-      tension: 80,
-      friction: 12,
-    }).start();
+    slideY.value = withSpring(0, {
+      stiffness: 120,
+      damping: 15,
+      mass: 0.8,
+    });
     const timer = setTimeout(onDismiss, DISMISS_DELAY_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      cancelAnimation(slideY); // safe cleanup if panel unmounts before spring ends
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: slideY.value }],
+  }));
+
   return (
     <Animated.View
-      style={{
-        position: 'absolute',
-        bottom: 160,
-        left: 16,
-        right: 16,
-        transform: [{ translateY: slide }],
-        backgroundColor: '#0A0E0A',
-        borderWidth: 1,
-        borderColor: color,
-        padding: 12,
-        zIndex: 100,
-      }}
+      style={[
+        {
+          position: 'absolute',
+          bottom: 160,
+          left: 16,
+          right: 16,
+          backgroundColor: '#0A0E0A',
+          borderWidth: 1,
+          borderColor: color,
+          padding: 12,
+          zIndex: 100,
+        },
+        animatedStyle,
+      ]}
     >
       {/* Header row: portrait + name + intensity dots */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>

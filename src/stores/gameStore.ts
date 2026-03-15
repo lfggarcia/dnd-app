@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { InteractionManager } from 'react-native';
 import {
   createSavedGame,
   updateSavedGame,
@@ -179,12 +180,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       let simResult = { events: [] as import('../services/worldSimulator').SimulationEvent[], updatedRivals: [] as import('../services/rivalGenerator').RivalEntry[] };
       if (newCycleInt !== prevCycleInt) {
         const { simulateWorld } = await import('../services/worldSimulator');
-        simResult = await simulateWorld(
-          activeGame.seedHash,
-          newCycleInt,
-          activeGame,
-          prevCycleInt + 1, // only simulate new cycles, not from the beginning
-        );
+        simResult = await new Promise((resolve, reject) => {
+          InteractionManager.runAfterInteractions(async () => {
+            try { resolve(await simulateWorld(
+              activeGame.seedHash,
+              newCycleInt,
+              activeGame,
+              prevCycleInt + 1,
+            )); } catch (e) { reject(e); }
+          });
+        });
         // GAP-01: persist updated rival states with memory
         if (simResult.updatedRivals.length > 0) {
           saveRivals(activeGame.seedHash, simResult.updatedRivals, newCycleInt);
@@ -221,12 +226,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     const { newCycle } = advanceToEndOfSeason(activeGame.cycleRaw ?? activeGame.cycle);
 
-    const simResult = await simulateWorld(
-      activeGame.seedHash,
-      newCycle as number,
-      activeGame,
-      (activeGame.cycle ?? 1) + 1, // CR-010: continue from current cycle, don't re-simulate from 0
-    );
+    const simResult = await new Promise<import('../services/worldSimulator').SimulationResult>((resolve, reject) => {
+      InteractionManager.runAfterInteractions(async () => {
+        try { resolve(await simulateWorld(
+          activeGame.seedHash,
+          newCycle as number,
+          activeGame,
+          (activeGame.cycle ?? 1) + 1,
+        )); } catch (e) { reject(e); }
+      });
+    });
 
     // GAP-01: persist updated rival states with memory
     if (simResult.updatedRivals.length > 0) {
